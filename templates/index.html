@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="user-id" content="{{ user_id }}">
+    <title>Webhook Viewer</title>
+    <!-- Prism.js Theme -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" id="prism-dark-theme">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet" id="prism-light-theme" disabled>
+    <!-- Custom Styles -->
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+</head>
+<body>
+<div class="header">
+    <div class="header-content">
+        <div class="header-left">
+            <a href="http://127.0.0.1:5000/">
+                <img id="refreshIndicator" class="refresh-indicator"
+                     src="{{ url_for('static', filename='normal.gif') }}" alt="Status Indicator">
+            </a>
+        </div>
+        <div class="header-right">
+            <div class="notification-icon" onclick="toggleNotifications()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                </svg>
+                <span class="notification-badge" id="notificationBadge">0</span>
+                <div class="notification-dropdown" id="notificationDropdown">
+                    <div class="notification-header">
+                        <h4>Notifications</h4>
+                        <button class="btn-primary" onclick="markAllNotificationsRead()">Clear All</button>
+                    </div>
+                    <div class="notification-list" id="notificationList">
+                        <div class="notification-empty">
+                            <p>No new notifications</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-menu">
+                <button class="profile-button" onclick="toggleProfileMenu()">
+                    <div class="profile-icon">{{ username[0].upper() }}</div>
+                    <span>{{ username }}</span>
+                    <span style="font-size: 12px;">▼</span>
+                </button>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div class="profile-dropdown-item" onclick="openPasswordModal()">
+                        <span>🔐</span>
+                        <span>Change Password</span>
+                    </div>
+                    <div class="profile-dropdown-item">
+                        <span>🎨</span>
+                        <span>Theme</span>
+                        <select class="theme-select-inline" id="themeSelect" onclick="event.stopPropagation()" onchange="changeTheme(this.value)">
+                            <option value="system">System</option>
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                        </select>
+                    </div>
+                    <div class="profile-dropdown-item danger" onclick="logout()">
+                        <span>🚪</span>
+                        <span>Logout</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="container">
+    <div class="controls">
+        <div class="control-group">
+            <label for="webhookSelect"><strong>Select Webhook:</strong></label>
+            <select id="webhookSelect" class="wide-select" onchange="webhookViewer.loadWebhooks()">
+                {% for id in webhook_ids %}
+                <option value="{{ id }}">{{ id }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="control-group">
+            <button onclick="webhookViewer.openGlobalSearch()" class="btn-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     style="margin-right: 0.5rem;">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="m21 21-4.35-4.35"></path>
+                </svg>
+                Global Search
+            </button>
+        </div>
+        <div class="control-group connection-status" id="connectionStatus">
+            <span class="status-dot"></span>
+            <span class="status-text">Connecting...</span>
+        </div>
+        <div class="control-group json-tools" id="jsonTools" style="display: none;">
+            <div class="json-search-container">
+                <input
+                        type="text"
+                        id="jsonSearchInput"
+                        class="json-search-input"
+                        placeholder="Search JSON..."
+                        oninput="webhookViewer.searchJson(this.value)"
+                        onkeydown="webhookViewer.handleSearchKeydown(event)"
+                >
+                <button
+                        class="json-search-clear"
+                        id="jsonSearchClear"
+                        onclick="webhookViewer.clearJsonSearch()"
+                        title="Clear search"
+                >
+                    ✕
+                </button>
+            </div>
+            <span class="search-info" id="searchInfo"></span>
+            <button class="btn-secondary" onclick="webhookViewer.selectAllJson()">Select All</button>
+            <button class="btn-secondary copy-btn-fixed" id="copyJsonBtn" onclick="webhookViewer.copyJsonFromControl()">Copy</button>
+            <!-- Add Download Button with Dropdown -->
+            <div class="download-dropdown-container">
+                <button class="btn-secondary" onclick="webhookViewer.toggleDownloadMenu()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         style="margin-right: 0.5rem;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download
+                </button>
+                <div class="download-dropdown" id="downloadDropdown">
+                    <div class="download-option" onclick="webhookViewer.downloadWebhook('json')">
+                        <span>📄</span> JSON (.json)
+                    </div>
+                    <div class="download-option" onclick="webhookViewer.downloadWebhook('xml')">
+                        <span>📋</span> XML (.xml)
+                    </div>
+                    <div class="download-option" onclick="webhookViewer.downloadWebhook('csv')">
+                        <span>📊</span> CSV (.csv)
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="requests-container">
+            <div class="requests-list">
+                <div class="requests-list-header">
+                    Recent Requests
+                </div>
+                <div class="requests-list-body" id="requestsList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading requests...
+                    </div>
+                </div>
+            </div>
+            <div class="request-details">
+                <div class="details-card" id="requestDetails">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📡</div>
+                        <h3>Select a request to view details</h3>
+                        <p>Choose a webhook request from the list to see its details, headers, and payload.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Password Change Modal -->
+    <div class="modal-overlay" id="passwordModal">
+        <div class="modal">
+            <h3>Change Password</h3>
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label for="oldPassword">Current Password</label>
+                    <input type="password" id="oldPassword" name="oldPassword" required>
+                    <div class="error" id="oldPasswordError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" name="newPassword" required>
+                    <div class="password-requirements">Password must be at least 6 characters long</div>
+                    <div class="error" id="newPasswordError"></div>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" required>
+                    <div class="error" id="confirmPasswordError"></div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Prism.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <!-- Theme Management Script -->
+    <script src="{{ url_for('static', filename='js/webhook-viewer-theme.js') }}"></script>
+    <!-- WebHook Viewer Script -->
+    <script src="{{ url_for('static', filename='js/webhook-viewer.js') }}"></script>
+    <!-- Global Search Modal -->
+    <div class="global-search-modal" id="globalSearchModal">
+        <div class="global-search-container">
+            <div class="global-search-header">
+                <div class="global-search-input-container">
+                    <input
+                            type="text"
+                            id="globalSearchInput"
+                            class="global-search-input"
+                            placeholder="Search across all webhooks..."
+                            onkeyup="webhookViewer.performGlobalSearch(event)"
+                            oninput="webhookViewer.performGlobalSearch(event)"
+                            autofocus
+                    >
+                </div>
+                <button class="btn-secondary" onclick="webhookViewer.closeGlobalSearch()">Close</button>
+            </div>
+            <div class="global-search-results" id="globalSearchResults">
+                <div class="search-no-results">
+                    <p>Enter a search term to search across all your webhooks</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+</body>
+</html>
