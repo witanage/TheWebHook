@@ -49,6 +49,12 @@ class WebhookViewer {
             }
         });
 
+        // Refresh indicator click handler
+        document.getElementById('refreshIndicatorLink').addEventListener('click', (e) => {
+            e.preventDefault();
+            location.reload();
+        });
+
         // Handle window resize for responsive layout
         window.addEventListener('resize', this.debounce(() => {
             this.handleResize();
