@@ -793,9 +793,13 @@ button:active {
 }
 
 .request-item .webhook-id-display {
-    font-size: 0.9rem;
-    color: var(--text-primary);
+    font-size: 0.85rem;
+    color: var(--accent-color);
+    font-weight: 500;
     margin: 0.25rem 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .request-item-header {
