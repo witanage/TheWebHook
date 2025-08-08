@@ -765,6 +765,9 @@ class WebhookViewer {
     }
 
     handleNewWebhook(webhookData) {
+        // Add the webhook_id to the data if it's missing
+        webhookData.webhook_id = this.currentWebhookId;
+
         // Add the new webhook to the beginning of the list
         this.currentRequests.unshift(webhookData);
 
