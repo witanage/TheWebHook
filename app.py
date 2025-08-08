@@ -684,6 +684,7 @@ def handle_webhook(user_id, webhook_id):
             # Prepare webhook data for SSE notification
             webhook_data = {
                 'id': webhook_response_id,
+                'webhook_id': webhook_id,  # Add this line
                 'method': method,
                 'headers': json.dumps(headers),
                 'body': json.dumps(body),
