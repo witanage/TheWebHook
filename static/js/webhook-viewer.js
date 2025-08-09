@@ -19,6 +19,7 @@ class WebhookViewer {
 
         this.globalSearchTimeout = null;
         this.globalSearchResults = [];
+        this.dateRangePicker = null;
 
         this.init();
     }
@@ -28,6 +29,210 @@ class WebhookViewer {
         this.loadInitialData();
         this.setupSSE();
         this.loadNotifications();
+        this.initializeDateRangePicker();
+    }
+
+    initializeDateRangePicker() {
+        const self = this; // Store reference to 'this'
+
+        const picker = flatpickr("#dateRangePicker", {
+            mode: "range",
+            enableTime: false, // Disable time picker
+            dateFormat: "M d, Y", // Just date, no time
+            showMonths: 2,
+            animate: false,
+            placeholder: "Select date range...",
+            maxDate: "today", // Prevent selecting future dates
+            onChange: (selectedDates, dateStr, instance) => {
+                console.log('Date picker changed:', selectedDates); // Debug log
+                if (selectedDates.length === 2) {
+                    // Trigger search when both dates are selected
+                    self.performGlobalSearch();
+                }
+            },
+            onClose: (selectedDates, dateStr, instance) => {
+                console.log('Date picker closed:', selectedDates); // Debug log
+                if (selectedDates.length === 2) {
+                    // Also trigger on close to ensure it fires
+                    self.performGlobalSearch();
+                }
+            },
+            onReady: function(dateObj, dateStr, instance) {
+                // Add custom shortcuts
+                const customShortcuts = document.createElement("div");
+                customShortcuts.className = "flatpickr-shortcuts";
+                customShortcuts.innerHTML = `
+                <button type="button" onclick="webhookViewer.setDateRangePreset('today')">Today</button>
+                <button type="button" onclick="webhookViewer.setDateRangePreset('yesterday')">Yesterday</button>
+                <button type="button" onclick="webhookViewer.setDateRangePreset('last7days')">Last 7 Days</button>
+                <button type="button" onclick="webhookViewer.setDateRangePreset('last30days')">Last 30 Days</button>
+                <button type="button" onclick="webhookViewer.setDateRangePreset('thisMonth')">This Month</button>
+            `;
+                instance.calendarContainer.appendChild(customShortcuts);
+            }
+        });
+
+        this.dateRangePicker = picker;
+    }
+
+    setDateRangePreset(preset) {
+        const now = new Date();
+        let startDate, endDate;
+
+        switch (preset) {
+            case 'today':
+                startDate = new Date(now);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'yesterday':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 1);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(startDate);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'last7days':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 7);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'last30days':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 30);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'thisMonth':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+        }
+
+        this.dateRangePicker.setDate([startDate, endDate]);
+        this.dateRangePicker.close();
+        // Trigger search after setting the date
+        setTimeout(() => {
+            this.performGlobalSearch();
+        }, 100);
+    }
+
+    clearDateRange() {
+        // Clear the date range picker
+        if (this.dateRangePicker) {
+            this.dateRangePicker.clear();
+        }
+
+        // Clear the search input
+        const searchInput = document.getElementById('globalSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+
+        // Clear the search results
+        document.getElementById('globalSearchResults').innerHTML = `
+        <div class="search-no-results">
+            <p>Enter a search term or select a date range to search across all your webhooks</p>
+        </div>
+    `;
+    }
+
+    performGlobalSearch(event) {
+        // Handle keyboard events
+        if (event && event.key === 'Escape') {
+            this.closeGlobalSearch();
+            return;
+        }
+
+        // Get search term from the input field directly
+        const searchInput = document.getElementById('globalSearchInput');
+        const searchTerm = searchInput ? searchInput.value.trim() : '';
+
+        let startDate = '';
+        let endDate = '';
+
+        // Get date range if selected
+        if (this.dateRangePicker && this.dateRangePicker.selectedDates.length === 2) {
+            // Set start date to beginning of day
+            const start = new Date(this.dateRangePicker.selectedDates[0]);
+            start.setHours(0, 0, 0, 0);
+            startDate = start.toISOString().slice(0, 19);
+
+            // Set end date to end of day
+            const end = new Date(this.dateRangePicker.selectedDates[1]);
+            end.setHours(23, 59, 59, 999);
+            endDate = end.toISOString().slice(0, 19);
+
+            console.log('Date range selected:', {
+                startDate,
+                endDate
+            }); // Debug log
+        }
+
+        // Clear timeout from previous keystroke
+        if (this.globalSearchTimeout) {
+            clearTimeout(this.globalSearchTimeout);
+        }
+
+        // Allow search with just date range (no text required)
+        if (searchTerm.length < 2 && !startDate && !endDate) {
+            document.getElementById('globalSearchResults').innerHTML = `
+            <div class="search-no-results">
+                <p>Enter at least 2 characters to search or select a date range</p>
+            </div>
+        `;
+            return;
+        }
+
+        // Show loading state
+        document.getElementById('globalSearchResults').innerHTML = `
+        <div class="global-search-loading">
+            <div class="spinner"></div>
+            <p>Searching...</p>
+        </div>
+    `;
+
+        // Debounce the search
+        this.globalSearchTimeout = setTimeout(() => {
+            this.executeGlobalSearch(searchTerm, startDate, endDate);
+        }, 300);
+    }
+
+    openGlobalSearch() {
+        const modal = document.getElementById('globalSearchModal');
+        const input = document.getElementById('globalSearchInput');
+
+        modal.classList.add('show');
+        input.focus();
+        input.value = '';
+
+        // Clear date range picker
+        if (this.dateRangePicker) {
+            this.dateRangePicker.clear();
+        }
+
+        // Clear previous results
+        document.getElementById('globalSearchResults').innerHTML = `
+        <div class="search-no-results">
+            <p>Enter a search term or select a date range to search across all your webhooks</p>
+        </div>
+    `;
+
+        // Remove any existing event listener and add new one
+        input.removeEventListener('keyup', this.boundPerformGlobalSearch);
+        input.removeEventListener('input', this.boundPerformGlobalSearch);
+
+        // Create bound function to preserve 'this' context
+        this.boundPerformGlobalSearch = (event) => this.performGlobalSearch(event);
+
+        // Add event listeners
+        input.addEventListener('keyup', this.boundPerformGlobalSearch);
+        input.addEventListener('input', this.boundPerformGlobalSearch);
     }
 
     setupEventListeners() {
@@ -394,45 +599,13 @@ class WebhookViewer {
         modal.classList.remove('show');
     }
 
-    performGlobalSearch(event) {
-        // Close on Escape key
-        if (event.key === 'Escape') {
-            this.closeGlobalSearch();
-            return;
-        }
+    async executeGlobalSearch(searchTerm, startDate, endDate) {
+        console.log('Executing search with:', {
+            searchTerm,
+            startDate,
+            endDate
+        }); // Debug log
 
-        const searchTerm = event.target.value.trim();
-
-        // Clear timeout from previous keystroke
-        if (this.globalSearchTimeout) {
-            clearTimeout(this.globalSearchTimeout);
-        }
-
-        // Don't search for very short terms
-        if (searchTerm.length < 2) {
-            document.getElementById('globalSearchResults').innerHTML = `
-                <div class="search-no-results">
-                    <p>Enter at least 2 characters to search</p>
-                </div>
-            `;
-            return;
-        }
-
-        // Show loading state
-        document.getElementById('globalSearchResults').innerHTML = `
-            <div class="global-search-loading">
-                <div class="spinner"></div>
-                <p>Searching...</p>
-            </div>
-        `;
-
-        // Debounce the search
-        this.globalSearchTimeout = setTimeout(() => {
-            this.executeGlobalSearch(searchTerm);
-        }, 300);
-    }
-
-    async executeGlobalSearch(searchTerm) {
         try {
             const response = await fetch('/search_webhooks', {
                 method: 'POST',
@@ -440,7 +613,9 @@ class WebhookViewer {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    search_term: searchTerm
+                    search_term: searchTerm,
+                    start_date: startDate,
+                    end_date: endDate
                 })
             });
 
@@ -451,7 +626,9 @@ class WebhookViewer {
             const data = await response.json();
             this.globalSearchResults = data.results;
 
-            this.renderGlobalSearchResults(searchTerm);
+            console.log('Search results:', data.results.length); // Debug log
+
+            this.renderGlobalSearchResults(searchTerm, startDate, endDate);
 
         } catch (error) {
             console.error('Error performing global search:', error);
@@ -463,13 +640,17 @@ class WebhookViewer {
         }
     }
 
-    renderGlobalSearchResults(searchTerm) {
+    renderGlobalSearchResults(searchTerm, startDate, endDate) {
         const resultsContainer = document.getElementById('globalSearchResults');
 
         if (this.globalSearchResults.length === 0) {
+            let message = 'No results found';
+            if (searchTerm) message += ` for "${this.escapeHtml(searchTerm)}"`;
+            if (startDate || endDate) message += ' in the selected date range';
+
             resultsContainer.innerHTML = `
                 <div class="search-no-results">
-                    <p>No results found for "${this.escapeHtml(searchTerm)}"</p>
+                    <p>${message}</p>
                 </div>
             `;
             return;
@@ -477,26 +658,35 @@ class WebhookViewer {
 
         const resultsHtml = this.globalSearchResults.map(result => {
             const timestamp = new Date(result.timestamp);
-            const timeString = timestamp.toLocaleString();
+            const timeString = timestamp.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
 
-            // Create preview text
+            // Create preview text only if there's a search term
             let previewText = '';
-            if (result.match_context.includes('body')) {
-                try {
-                    const body = JSON.parse(result.body);
-                    previewText = JSON.stringify(body).substring(0, 150) + '...';
-                } catch {
-                    previewText = result.body.substring(0, 150) + '...';
+            if (searchTerm && result.match_context && result.match_context.length > 0) {
+                if (result.match_context.includes('body')) {
+                    try {
+                        const body = JSON.parse(result.body);
+                        previewText = JSON.stringify(body).substring(0, 150) + '...';
+                    } catch {
+                        previewText = result.body.substring(0, 150) + '...';
+                    }
+                } else if (result.match_context.includes('headers')) {
+                    previewText = `Headers: ${result.headers.substring(0, 150)}...`;
+                } else if (result.match_context.includes('query_params')) {
+                    previewText = `Query: ${result.query_params.substring(0, 150)}...`;
                 }
-            } else if (result.match_context.includes('headers')) {
-                previewText = `Headers: ${result.headers.substring(0, 150)}...`;
-            } else if (result.match_context.includes('query_params')) {
-                previewText = `Query: ${result.query_params.substring(0, 150)}...`;
-            }
 
-            // Highlight search term in preview
-            const regex = new RegExp(`(${this.escapeRegExp(searchTerm)})`, 'gi');
-            previewText = this.escapeHtml(previewText).replace(regex, '<span class="search-match-highlight">$1</span>');
+                // Highlight search term in preview
+                const regex = new RegExp(`(${this.escapeRegExp(searchTerm)})`, 'gi');
+                previewText = this.escapeHtml(previewText).replace(regex, '<span class="search-match-highlight">$1</span>');
+            }
 
             return `
                 <div class="search-result-item" onclick="webhookViewer.selectFromGlobalSearch('${result.webhook_id}', ${result.id})">
@@ -507,17 +697,19 @@ class WebhookViewer {
                         </div>
                         <div class="search-result-meta">${timeString}</div>
                     </div>
-                    <div class="search-result-meta">
-                        Found in: ${result.match_context.join(', ')}
-                    </div>
-                    <div class="search-result-preview">${previewText}</div>
+                    ${searchTerm && result.match_context && result.match_context.length > 0 ? `<div class="search-result-meta">Found in: ${result.match_context.join(', ')}</div>` : ''}
+                    ${previewText ? `<div class="search-result-preview">${previewText}</div>` : ''}
                 </div>
             `;
         }).join('');
 
+        let headerText = `Found ${this.globalSearchResults.length} results`;
+        if (searchTerm) headerText += ` for "${this.escapeHtml(searchTerm)}"`;
+        if (startDate || endDate) headerText += ' in the selected date range';
+
         resultsContainer.innerHTML = `
             <div style="margin-bottom: 1rem; color: var(--text-secondary);">
-                Found ${this.globalSearchResults.length} results
+                ${headerText}
             </div>
             ${resultsHtml}
         `;
@@ -592,7 +784,9 @@ class WebhookViewer {
 
             const res = await fetch(`/webhook_ids/${this.userId}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const { ids } = await res.json();
+            const {
+                ids
+            } = await res.json();
 
             // Find new webhook IDs
             const newIds = ids.filter(id => !previousIds.includes(id));
@@ -813,7 +1007,9 @@ class WebhookViewer {
             // Get all webhook IDs
             const res = await fetch(`/webhook_ids/${this.userId}`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const { ids } = await res.json();
+            const {
+                ids
+            } = await res.json();
 
             if (ids.length > 1) {
                 // Find current webhook ID index

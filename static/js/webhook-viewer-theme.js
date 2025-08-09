@@ -28,6 +28,18 @@ function applyTheme(theme) {
         lightTheme.disabled = true;
     }
 
+    // Switch Flatpickr theme
+    const darkFlatpickr = document.getElementById('flatpickr-dark-theme');
+    const lightFlatpickr = document.getElementById('flatpickr-light-theme');
+
+    if (actualTheme === 'light') {
+        darkFlatpickr.disabled = true;
+        lightFlatpickr.disabled = false;
+    } else {
+        darkFlatpickr.disabled = false;
+        lightFlatpickr.disabled = true;
+    }
+
     // Re-highlight code if any is displayed
     if (typeof Prism !== 'undefined') {
         Prism.highlightAll();
