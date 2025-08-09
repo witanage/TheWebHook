@@ -286,25 +286,27 @@ def search_webhooks():
     user_id = session["user_id"]
     data = request.get_json()
     search_term = data.get("search_term", "").strip()
+    start_date = data.get("start_date", "")
+    end_date = data.get("end_date", "")
 
-    if not search_term:
-        return jsonify({"results": []}), 200
-
-    log(f"User {user_id} searching for: {search_term}")
+    log(f"User {user_id} searching for: '{search_term}', date range: {start_date} to {end_date}")
 
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor(pymysql.cursors.DictCursor)
 
-        # Search in webhook body, headers, and query_params
-        # Using LIKE for case-insensitive search
-        search_pattern = f"%{search_term}%"
-
-        cursor.execute("""
+        # Base query
+        query = """
             SELECT id, webhook_id, method, headers, body, query_params, 
                    timestamp, is_read, client_ip
             FROM webhook_responses
-            WHERE user_id = %s 
+            WHERE user_id = %s
+        """
+        params = [user_id]
+
+        # Add search term conditions only if search term is provided
+        if search_term:
+            query += """ 
             AND (
                 body LIKE %s 
                 OR headers LIKE %s 
@@ -312,30 +314,42 @@ def search_webhooks():
                 OR webhook_id LIKE %s
                 OR method LIKE %s
             )
-            ORDER BY timestamp DESC
-            LIMIT 50
-        """, (user_id, search_pattern, search_pattern, search_pattern,
-              search_pattern, search_pattern))
+            """
+            search_pattern = f"%{search_term}%"
+            params.extend([search_pattern] * 5)
 
+        # Add date range conditions
+        if start_date:
+            query += " AND timestamp >= %s"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND timestamp <= %s"
+            params.append(end_date)
+
+        query += " ORDER BY timestamp DESC LIMIT 100"
+
+        cursor.execute(query, params)
         results = cursor.fetchall()
 
-        # Add context for each result (highlighting where the match was found)
+        # Add context for each result only if there's a search term
         for result in results:
             result['match_context'] = []
 
-            # Check where the match occurred
-            if search_term.lower() in str(result.get('body', '')).lower():
-                result['match_context'].append('body')
-            if search_term.lower() in str(result.get('headers', '')).lower():
-                result['match_context'].append('headers')
-            if search_term.lower() in str(result.get('query_params', '')).lower():
-                result['match_context'].append('query_params')
-            if search_term.lower() in result.get('webhook_id', '').lower():
-                result['match_context'].append('webhook_id')
-            if search_term.lower() in result.get('method', '').lower():
-                result['match_context'].append('method')
+            if search_term:
+                # Check where the match occurred
+                if search_term.lower() in str(result.get('body', '')).lower():
+                    result['match_context'].append('body')
+                if search_term.lower() in str(result.get('headers', '')).lower():
+                    result['match_context'].append('headers')
+                if search_term.lower() in str(result.get('query_params', '')).lower():
+                    result['match_context'].append('query_params')
+                if search_term.lower() in result.get('webhook_id', '').lower():
+                    result['match_context'].append('webhook_id')
+                if search_term.lower() in result.get('method', '').lower():
+                    result['match_context'].append('method')
 
-        log(f"Found {len(results)} results for search term: {search_term}")
+        log(f"Found {len(results)} results for search with term='{search_term}', start={start_date}, end={end_date}")
         return jsonify({"results": results}), 200
 
     except pymysql.MySQLError as err:
