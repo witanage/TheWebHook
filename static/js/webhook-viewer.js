@@ -640,6 +640,7 @@ class WebhookViewer {
         }
     }
 
+    // NEW METHOD
     renderGlobalSearchResults(searchTerm, startDate, endDate) {
         const resultsContainer = document.getElementById('globalSearchResults');
 
@@ -649,10 +650,10 @@ class WebhookViewer {
             if (startDate || endDate) message += ' in the selected date range';
 
             resultsContainer.innerHTML = `
-                <div class="search-no-results">
-                    <p>${message}</p>
-                </div>
-            `;
+            <div class="search-no-results">
+                <p>${message}</p>
+            </div>
+        `;
             return;
         }
 
@@ -667,9 +668,14 @@ class WebhookViewer {
                 hour12: true
             });
 
-            // Create preview text only if there's a search term
+            // Always create preview text for consistency
             let previewText = '';
+            let matchLocation = '';
+
+            // If search term exists, show where it was found and highlight it
             if (searchTerm && result.match_context && result.match_context.length > 0) {
+                matchLocation = `Found in: ${result.match_context.join(', ')}`;
+
                 if (result.match_context.includes('body')) {
                     try {
                         const body = JSON.parse(result.body);
@@ -686,21 +692,58 @@ class WebhookViewer {
                 // Highlight search term in preview
                 const regex = new RegExp(`(${this.escapeRegExp(searchTerm)})`, 'gi');
                 previewText = this.escapeHtml(previewText).replace(regex, '<span class="search-match-highlight">$1</span>');
+            } else {
+                // For date-only searches, always show body preview
+                try {
+                    const body = JSON.parse(result.body);
+                    const bodyStr = JSON.stringify(body);
+                    if (bodyStr && bodyStr !== '{}' && bodyStr !== 'null') {
+                        previewText = bodyStr.substring(0, 150) + '...';
+                    }
+                } catch {
+                    if (result.body && result.body !== '{}' && result.body !== 'null') {
+                        previewText = result.body.substring(0, 150) + '...';
+                    }
+                }
+
+                // If no body, show headers or query params if available
+                if (!previewText) {
+                    try {
+                        const headers = JSON.parse(result.headers);
+                        if (headers && Object.keys(headers).length > 0) {
+                            previewText = `Headers: ${JSON.stringify(headers).substring(0, 150)}...`;
+                        }
+                    } catch {}
+                }
+
+                if (!previewText) {
+                    try {
+                        const queryParams = JSON.parse(result.query_params);
+                        if (queryParams && Object.keys(queryParams).length > 0) {
+                            previewText = `Query: ${JSON.stringify(queryParams).substring(0, 150)}...`;
+                        }
+                    } catch {}
+                }
+
+                // Escape HTML for non-highlighted previews
+                if (previewText) {
+                    previewText = this.escapeHtml(previewText);
+                }
             }
 
             return `
-                <div class="search-result-item" onclick="webhookViewer.selectFromGlobalSearch('${result.webhook_id}', ${result.id})">
-                    <div class="search-result-header">
-                        <div>
-                            <span class="search-result-webhook-id">${this.escapeHtml(result.webhook_id)}</span>
-                            <span class="search-result-meta"> - ${result.method}</span>
-                        </div>
-                        <div class="search-result-meta">${timeString}</div>
+            <div class="search-result-item" onclick="webhookViewer.selectFromGlobalSearch('${result.webhook_id}', ${result.id})">
+                <div class="search-result-header">
+                    <div>
+                        <span class="search-result-webhook-id">${this.escapeHtml(result.webhook_id)}</span>
+                        <span class="search-result-meta"> - ${result.method}</span>
                     </div>
-                    ${searchTerm && result.match_context && result.match_context.length > 0 ? `<div class="search-result-meta">Found in: ${result.match_context.join(', ')}</div>` : ''}
-                    ${previewText ? `<div class="search-result-preview">${previewText}</div>` : ''}
+                    <div class="search-result-meta">${timeString}</div>
                 </div>
-            `;
+                ${matchLocation ? `<div class="search-result-meta">${matchLocation}</div>` : ''}
+                ${previewText ? `<div class="search-result-preview">${previewText}</div>` : ''}
+            </div>
+        `;
         }).join('');
 
         let headerText = `Found ${this.globalSearchResults.length} results`;
@@ -708,11 +751,11 @@ class WebhookViewer {
         if (startDate || endDate) headerText += ' in the selected date range';
 
         resultsContainer.innerHTML = `
-            <div style="margin-bottom: 1rem; color: var(--text-secondary);">
-                ${headerText}
-            </div>
-            ${resultsHtml}
-        `;
+        <div style="margin-bottom: 1rem; color: var(--text-secondary);">
+            ${headerText}
+        </div>
+        ${resultsHtml}
+    `;
     }
 
     selectFromGlobalSearch(webhookId, requestId) {
