@@ -32,42 +32,75 @@ class WebhookViewer {
         this.initializeDateRangePicker();
     }
 
+    // NEW METHOD
     initializeDateRangePicker() {
         const self = this; // Store reference to 'this'
 
         const picker = flatpickr("#dateRangePicker", {
             mode: "range",
-            enableTime: false, // Disable time picker
-            dateFormat: "M d, Y", // Just date, no time
+            enableTime: false,
+            dateFormat: "M d, Y",
             showMonths: 2,
             animate: false,
             placeholder: "Select date range...",
-            maxDate: "today", // Prevent selecting future dates
+            maxDate: "today",
             onChange: (selectedDates, dateStr, instance) => {
-                console.log('Date picker changed:', selectedDates); // Debug log
+                // Don't trigger on single date selection, wait for range
                 if (selectedDates.length === 2) {
-                    // Trigger search when both dates are selected
-                    self.performGlobalSearch();
+                    // Small delay to ensure UI updates
+                    setTimeout(() => {
+                        self.performGlobalSearch();
+                    }, 100);
                 }
             },
             onClose: (selectedDates, dateStr, instance) => {
-                console.log('Date picker closed:', selectedDates); // Debug log
+                // Trigger search when calendar closes with valid range
                 if (selectedDates.length === 2) {
-                    // Also trigger on close to ensure it fires
-                    self.performGlobalSearch();
+                    setTimeout(() => {
+                        self.performGlobalSearch();
+                    }, 100);
                 }
             },
             onReady: function(dateObj, dateStr, instance) {
                 // Add custom shortcuts
                 const customShortcuts = document.createElement("div");
                 customShortcuts.className = "flatpickr-shortcuts";
-                customShortcuts.innerHTML = `
-                <button type="button" onclick="webhookViewer.setDateRangePreset('today')">Today</button>
-                <button type="button" onclick="webhookViewer.setDateRangePreset('yesterday')">Yesterday</button>
-                <button type="button" onclick="webhookViewer.setDateRangePreset('last7days')">Last 7 Days</button>
-                <button type="button" onclick="webhookViewer.setDateRangePreset('last30days')">Last 30 Days</button>
-                <button type="button" onclick="webhookViewer.setDateRangePreset('thisMonth')">This Month</button>
-            `;
+
+                // Create buttons programmatically to ensure proper event binding
+                const shortcuts = [{
+                        label: 'Today',
+                        preset: 'today'
+                    },
+                    {
+                        label: 'Yesterday',
+                        preset: 'yesterday'
+                    },
+                    {
+                        label: 'Last 7 Days',
+                        preset: 'last7days'
+                    },
+                    {
+                        label: 'Last 30 Days',
+                        preset: 'last30days'
+                    },
+                    {
+                        label: 'This Month',
+                        preset: 'thisMonth'
+                    }
+                ];
+
+                shortcuts.forEach(shortcut => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.textContent = shortcut.label;
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        self.setDateRangePreset(shortcut.preset);
+                    });
+                    customShortcuts.appendChild(button);
+                });
+
                 instance.calendarContainer.appendChild(customShortcuts);
             }
         });
@@ -75,6 +108,7 @@ class WebhookViewer {
         this.dateRangePicker = picker;
     }
 
+    // NEW METHOD
     setDateRangePreset(preset) {
         const now = new Date();
         let startDate, endDate;
@@ -114,12 +148,17 @@ class WebhookViewer {
                 break;
         }
 
-        this.dateRangePicker.setDate([startDate, endDate]);
+        // Set the date programmatically
+        this.dateRangePicker.setDate([startDate, endDate], true);
+
+        // Close the picker
         this.dateRangePicker.close();
-        // Trigger search after setting the date
+
+        // Force trigger the search immediately
+        // The onChange event might not fire when setting programmatically
         setTimeout(() => {
             this.performGlobalSearch();
-        }, 100);
+        }, 150);
     }
 
     clearDateRange() {
