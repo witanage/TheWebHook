@@ -113,6 +113,10 @@ class WebhookViewer {
         const now = new Date();
         let startDate, endDate;
 
+        console.log('=== DATE PRESET DEBUG ===');
+        console.log('Preset selected:', preset);
+        console.log('Current date (now):', now.toISOString());
+
         switch (preset) {
             case 'today':
                 startDate = new Date(now);
@@ -124,41 +128,82 @@ class WebhookViewer {
                 startDate = new Date(now);
                 startDate.setDate(startDate.getDate() - 1);
                 startDate.setHours(0, 0, 0, 0);
-                endDate = new Date(startDate);
+                endDate = new Date(now);
+                endDate.setDate(endDate.getDate() - 1);
                 endDate.setHours(23, 59, 59, 999);
                 break;
             case 'last7days':
                 startDate = new Date(now);
-                startDate.setDate(startDate.getDate() - 7);
+                startDate.setDate(startDate.getDate() - 6); // 7 days including today
                 startDate.setHours(0, 0, 0, 0);
                 endDate = new Date(now);
                 endDate.setHours(23, 59, 59, 999);
                 break;
             case 'last30days':
                 startDate = new Date(now);
-                startDate.setDate(startDate.getDate() - 30);
+                startDate.setDate(startDate.getDate() - 29); // 30 days including today
                 startDate.setHours(0, 0, 0, 0);
                 endDate = new Date(now);
                 endDate.setHours(23, 59, 59, 999);
                 break;
             case 'thisMonth':
                 startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                startDate.setHours(0, 0, 0, 0);
                 endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
                 endDate.setHours(23, 59, 59, 999);
                 break;
+            default:
+                console.error('Unknown preset:', preset);
+                return;
         }
 
-        // Set the date programmatically
-        this.dateRangePicker.setDate([startDate, endDate], true);
+        console.log('Calculated dates:');
+        console.log('  Start:', startDate.toISOString(), '(' + startDate.toLocaleString() + ')');
+        console.log('  End:', endDate.toISOString(), '(' + endDate.toLocaleString() + ')');
 
-        // Close the picker
-        this.dateRangePicker.close();
+        // Set the date in flatpickr
+        if (this.dateRangePicker) {
+            console.log('Setting flatpickr dates...');
+            this.dateRangePicker.setDate([startDate, endDate], false);
 
-        // Force trigger the search immediately
-        // The onChange event might not fire when setting programmatically
+            // Verify what flatpickr actually has
+            console.log('Flatpickr selected dates:', this.dateRangePicker.selectedDates);
+            console.log('Flatpickr selected dates length:', this.dateRangePicker.selectedDates.length);
+
+            // Close the picker
+            this.dateRangePicker.close();
+        }
+
+        // Instead of relying on flatpickr's onChange, directly call the search with the dates
+        console.log('Calling executeGlobalSearch directly...');
+
+        // Get search term from input
+        const searchInput = document.getElementById('globalSearchInput');
+        const searchTerm = searchInput ? searchInput.value.trim() : '';
+
+        // Format dates for the API (matching the format used in performGlobalSearch)
+        const startDateStr = startDate.toISOString().slice(0, 19);
+        const endDateStr = endDate.toISOString().slice(0, 19);
+
+        console.log('Formatted for API:');
+        console.log('  startDate:', startDateStr);
+        console.log('  endDate:', endDateStr);
+        console.log('  searchTerm:', searchTerm);
+
+        // Show loading state
+        document.getElementById('globalSearchResults').innerHTML = `
+        <div class="global-search-loading">
+            <div class="spinner"></div>
+            <p>Searching...</p>
+        </div>
+    `;
+
+        // Directly execute the search
         setTimeout(() => {
-            this.performGlobalSearch();
-        }, 150);
+            this.executeGlobalSearch(searchTerm, startDateStr, endDateStr);
+        }, 100);
+
+        console.log('=== END DATE PRESET DEBUG ===');
     }
 
     clearDateRange() {
@@ -211,6 +256,7 @@ class WebhookViewer {
                 startDate,
                 endDate
             }); // Debug log
+
         }
 
         // Clear timeout from previous keystroke
