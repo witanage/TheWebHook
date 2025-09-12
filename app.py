@@ -733,6 +733,67 @@ def handle_webhook(user_id, webhook_id):
             return jsonify({"message": f"{request.method} webhook received and logged successfully"}), 200
 
 
+@app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def http_status_test(code):
+    """
+    Simple HTTP status code tester endpoint
+    Returns the specified HTTP status code
+    """
+    # Validate status code range
+    if code < 100 or code > 599:
+        return jsonify({"error": "Invalid status code. Must be between 100-599"}), 400
+
+    # Get request data if present
+    request_data = None
+    if request.method in ["POST", "PUT", "PATCH"]:
+        if request.content_type and 'application/json' in request.content_type:
+            request_data = request.get_json(silent=True)
+        else:
+            request_data = request.data.decode("utf-8") if request.data else None
+
+    # Standard status messages
+    status_messages = {
+        200: "OK", 201: "Created", 204: "No Content",
+        301: "Moved Permanently", 302: "Found", 304: "Not Modified",
+        400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
+        404: "Not Found", 405: "Method Not Allowed", 422: "Unprocessable Entity",
+        429: "Too Many Requests", 500: "Internal Server Error",
+        502: "Bad Gateway", 503: "Service Unavailable", 504: "Gateway Timeout"
+    }
+
+    status_message = status_messages.get(code, "Custom Status Code")
+
+    # Handle special cases
+    if code == 204:  # No Content - return empty response
+        return "", code
+
+    # Build response
+    response_body = {
+        "status": code,
+        "message": status_message,
+        "method": request.method,
+        "path": request.path,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+    # Include request data in response if present
+    if request_data:
+        response_body["received_data"] = request_data
+
+    # Add special headers for certain status codes
+    response = jsonify(response_body)
+
+    if code == 401:
+        response.headers['WWW-Authenticate'] = 'Basic realm="Authentication Required"'
+    elif code in [301, 302, 307, 308]:
+        response.headers['Location'] = '/'
+    elif code == 429:
+        response.headers['Retry-After'] = '60'
+    elif code == 503:
+        response.headers['Retry-After'] = '120'
+
+    return response, code
+
 @app.route("/events/<user_id>")
 @login_required
 def events(user_id):
