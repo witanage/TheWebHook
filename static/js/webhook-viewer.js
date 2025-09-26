@@ -1923,6 +1923,25 @@ function closePasswordModal() {
     document.querySelectorAll('.error').forEach(el => el.textContent = '');
 }
 
+function openAboutModal() {
+    document.getElementById('aboutModal').classList.add('show');
+    document.getElementById('profileDropdown').classList.remove('show');
+    // Set user ID in the URL example
+    const userId = document.querySelector('meta[name="user-id"]')?.content || 'YOUR_USER_ID';
+    document.querySelector('.endpoint-url .highlight').textContent = userId;
+}
+
+function closeAboutModal() {
+    document.getElementById('aboutModal').classList.remove('show');
+}
+
+// Close modal when clicking outside
+document.getElementById('aboutModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) {
+        closeAboutModal();
+    }
+});
+
 function logout() {
     window.location.href = "/logout";
 }

@@ -263,6 +263,230 @@ body {
     color: var(--text-secondary);
 }
 
+/* About Modal Styles */
+.modal-large {
+    max-width: 1200px;
+    width: 90%;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0;
+    min-width: auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius);
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    transform: none;
+}
+
+.modal-content {
+    flex: 1;
+    padding: 1.5rem;
+    overflow-y: auto;
+}
+
+.modal-content.scrollable {
+    scrollbar-width: thin;
+    scrollbar-color: var(--bg-quaternary) var(--bg-secondary);
+}
+
+.modal-content.scrollable::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-content.scrollable::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+}
+
+.modal-content.scrollable::-webkit-scrollbar-thumb {
+    background: var(--bg-quaternary);
+    border-radius: 4px;
+}
+
+.modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.about-section {
+    margin-bottom: 2rem;
+}
+
+.about-section:last-child {
+    margin-bottom: 0;
+}
+
+.about-section h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.about-section h5 {
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.about-section p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 0.5rem;
+}
+
+.about-section ul {
+    list-style: none;
+    padding-left: 0;
+}
+
+.about-section li {
+    padding: 0.5rem 0;
+    color: var(--text-secondary);
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.about-section li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--accent-color);
+}
+
+.feature-list li strong {
+    color: var(--text-primary);
+}
+
+.info-card {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    margin: 1rem 0;
+}
+
+.endpoint-url {
+    display: block;
+    background: var(--bg-quaternary);
+    padding: 0.75rem;
+    border-radius: 4px;
+    margin: 0.5rem 0;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+    word-break: break-all;
+    color: var(--text-primary);
+}
+
+.endpoint-url .highlight {
+    color: var(--accent-color);
+    font-weight: bold;
+}
+
+.how-to-steps {
+    margin-top: 1rem;
+}
+
+.step {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.step-number {
+    width: 32px;
+    height: 32px;
+    background: var(--accent-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-content strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.step-content p {
+    margin: 0;
+}
+
+.methods-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.method-badge {
+    padding: 0.25rem 0.75rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    color: var(--accent-color);
+}
+
+/* Mobile responsive for About modal */
+@media (max-width: 768px) {
+    .modal-large {
+        max-width: 95%;
+        max-height: 90vh;
+    }
+
+    .modal-content {
+        padding: 1rem;
+    }
+
+    .step {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .methods-grid {
+        justify-content: center;
+    }
+}
+
 /* Theme selector in profile dropdown */
 .theme-select-inline {
     margin-left: auto;
@@ -1377,7 +1601,7 @@ pre.pretty-json {
     padding: 2rem;
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    max-width: 400px;
+    max-width: 800px;  /* Keep this for default modals */
     width: 90%;
     animation: fadeInScale 0.3s ease-out;
 }
