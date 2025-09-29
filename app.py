@@ -794,6 +794,7 @@ def http_status_test(code):
 
     return response, code
 
+
 @app.route("/events/<user_id>")
 @login_required
 def events(user_id):
