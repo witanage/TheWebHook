@@ -20,6 +20,8 @@ DEBUG = os.getenv("FLASK_DEBUG", "False").lower() == "true"
 LOGGING_ENABLED = os.getenv("LOGGING_ENABLED", "False").lower() == "true"
 RUNNING_HOST = os.getenv("RUNNING_HOST")
 RUNNING_PORT = os.getenv("RUNNING_PORT")
+SSL_CERT_PATH = os.getenv("SSL_CERT_PATH")
+SSL_KEY_PATH = os.getenv("SSL_KEY_PATH")
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
@@ -38,7 +40,6 @@ db_config = {
 }
 
 # Logging Configuration
-LOGGING_ENABLED = LOGGING_ENABLED
 logging.basicConfig(
     filename='app.log',
     level=logging.INFO,
@@ -126,6 +127,8 @@ def notify_user_notification(user_id, webhook_id, webhook_data):
 
 @app.route("/", methods=["GET", "POST"])
 def login():
+    conn = None
+    cursor = None
     try:
         log("Entering login route")
         if "user_id" in session:
@@ -195,9 +198,10 @@ def login():
         log(f"Unexpected error during login: {str(e)}\nStack trace: {traceback.format_exc()}")
         return jsonify({"error": "An unexpected error occurred"}), 500
     finally:
-        if 'conn' in locals() and conn.open:
-            log("Closing database connection")
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
+            log("Closing database connection")
             conn.close()
 
 
@@ -216,6 +220,8 @@ def dashboard():
     user_id = session["user_id"]
     log(f"User {user_id} accessed dashboard")
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
@@ -235,8 +241,9 @@ def dashboard():
         log(f"Database error fetching data: {str(err)}")
         return jsonify({"error": str(err)}), 500
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
     return render_template("index.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
@@ -249,6 +256,8 @@ def webhook_ids(user_id):
     if str(session["user_id"]) != user_id:
         return jsonify({"error": "Unauthorized"}), 403
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
@@ -275,8 +284,9 @@ def webhook_ids(user_id):
         return jsonify({"error": "Database error"}), 500
 
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
 
@@ -291,6 +301,8 @@ def search_webhooks():
 
     log(f"User {user_id} searching for: '{search_term}', date range: {start_date} to {end_date}")
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -359,8 +371,9 @@ def search_webhooks():
         log(f"Unexpected error during search: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
 
@@ -372,6 +385,8 @@ def register():
         hashed_password = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         log(f"Registration attempt for username: {username}")
 
+        conn = None
+        cursor = None
         try:
             conn = pymysql.connect(**db_config)
             cursor = conn.cursor()
@@ -384,8 +399,9 @@ def register():
             log(f"Database error during registration: {str(err)}")
             return jsonify({"error": str(err)}), 500
         finally:
-            if conn.open:
+            if cursor is not None:
                 cursor.close()
+            if conn is not None and conn.open:
                 conn.close()
 
     return render_template("register.html")
@@ -408,6 +424,8 @@ def change_password():
 
     log(f"Password change attempt for user {user_id}")
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -443,8 +461,9 @@ def change_password():
         log(f"Unexpected error during password change: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
 
@@ -454,6 +473,8 @@ def mark_as_read(request_id):
     user_id = session["user_id"]
     log(f"User {user_id} marking request {request_id} as read")
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
@@ -468,8 +489,9 @@ def mark_as_read(request_id):
         log(f"Database error marking request as read: {str(err)}")
         return jsonify({"error": str(err)}), 500
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
     return jsonify({"message": "Request marked as read"}), 200
@@ -481,6 +503,8 @@ def get_notifications():
     user_id = session["user_id"]
     log(f"User {user_id} fetching notifications")
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -517,8 +541,9 @@ def get_notifications():
         log(f"Database error fetching notifications: {str(err)}")
         return jsonify({"error": str(err)}), 500
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
 
@@ -528,6 +553,8 @@ def mark_all_notifications_read():
     user_id = session["user_id"]
     log(f"User {user_id} marking all notifications as read")
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
@@ -559,8 +586,9 @@ def mark_all_notifications_read():
         log(f"Database error marking notifications as read: {str(err)}")
         return jsonify({"error": str(err)}), 500
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
 
@@ -570,6 +598,8 @@ def delete_request(request_id):
     user_id = session["user_id"]
     log(f"User {user_id} deleting request {request_id}")
 
+    conn = None
+    cursor = None
     try:
         conn = pymysql.connect(**db_config)
         cursor = conn.cursor()
@@ -609,8 +639,9 @@ def delete_request(request_id):
         log(f"Database error deleting request: {str(err)}")
         return jsonify({"error": str(err)}), 500
     finally:
-        if conn.open:
+        if cursor is not None:
             cursor.close()
+        if conn is not None and conn.open:
             conn.close()
 
 
@@ -619,6 +650,8 @@ def handle_webhook(user_id, webhook_id):
     # Handle GET requests to retrieve webhook data (original behavior)
     if request.method == "GET":
         log(f"Webhook GET request for user {user_id}, webhook {webhook_id}")
+        conn = None
+        cursor = None
         try:
             conn = pymysql.connect(**db_config)
             cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -635,8 +668,9 @@ def handle_webhook(user_id, webhook_id):
             log(f"Database error in webhook GET: {str(err)}")
             return jsonify({"error": str(err)}), 500
         finally:
-            if conn.open:
+            if cursor is not None:
                 cursor.close()
+            if conn is not None and conn.open:
                 conn.close()
 
         return jsonify(data), 200
@@ -647,6 +681,8 @@ def handle_webhook(user_id, webhook_id):
         client_ip = get_client_ip()
         log(f"Webhook {request.method} received from IP {client_ip} for user {user_id}, webhook {webhook_id}")
 
+        conn = None
+        cursor = None
         try:
             conn = pymysql.connect(**db_config)
             cursor = conn.cursor(pymysql.cursors.DictCursor)
@@ -698,7 +734,7 @@ def handle_webhook(user_id, webhook_id):
             # Prepare webhook data for SSE notification
             webhook_data = {
                 'id': webhook_response_id,
-                'webhook_id': webhook_id,  # Add this line
+                'webhook_id': webhook_id,
                 'method': method,
                 'headers': json.dumps(headers),
                 'body': json.dumps(body),
@@ -718,8 +754,9 @@ def handle_webhook(user_id, webhook_id):
             log(f"Database error in webhook {request.method}: {str(err)}")
             return jsonify({"error": str(err)}), 500
         finally:
-            if conn.open:
+            if cursor is not None:
                 cursor.close()
+            if conn is not None and conn.open:
                 conn.close()
 
         # Return appropriate response based on method
@@ -859,9 +896,31 @@ def events(user_id):
     return response
 
 
+@app.route("/.well-known/pki-validation/<path:filename>")
+def pki_validation(filename):
+    try:
+        from flask import send_from_directory
+        # Serve the file from the .well-known/pki-validation directory
+        return send_from_directory('.well-known/pki-validation', filename)
+    except FileNotFoundError:
+        log(f"PKI validation file not found: {filename}")
+        return jsonify({"error": "File not found"}), 404
+    except Exception as e:
+        log(f"Error serving PKI validation file {filename}: {str(e)}")
+        return jsonify({"error": "Error serving file"}), 500
+
+
 if __name__ == "__main__":
     log("Starting Flask application")
     log(f"Using pymysql version: {pymysql.__version__}")
-    # Disable debug mode for SSE to work properly
-    # Debug mode causes issues with streaming responses
-    app.run(host=RUNNING_HOST, port=RUNNING_PORT, debug=DEBUG, threaded=True)
+
+    # SSL configuration
+    ssl_context = None
+    if SSL_CERT_PATH and SSL_KEY_PATH:
+        ssl_context = (SSL_CERT_PATH, SSL_KEY_PATH)
+        log(f"SSL enabled with cert: {SSL_CERT_PATH}")
+    else:
+        log("SSL not configured - running without HTTPS")
+        ssl_context = None
+
+    app.run(host=RUNNING_HOST, port=RUNNING_PORT, debug=DEBUG, threaded=True, ssl_context=None)
