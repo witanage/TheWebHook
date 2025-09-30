@@ -923,4 +923,4 @@ if __name__ == "__main__":
         log("SSL not configured - running without HTTPS")
         ssl_context = None
 
-    app.run(host=RUNNING_HOST, port=RUNNING_PORT, debug=DEBUG, threaded=True, ssl_context=None)
+    app.run(host=RUNNING_HOST, port=RUNNING_PORT, debug=DEBUG, threaded=True, ssl_context=ssl_context)
