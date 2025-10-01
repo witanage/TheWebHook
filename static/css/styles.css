@@ -1464,6 +1464,39 @@ button:active {
     width: 80px;
 }
 
+.endpoint-url {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.url-text {
+  flex: 1;
+}
+
+.webhook-copy-btn {
+  padding: 6px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.webhook-copy-btn:hover {
+  background: #f0f0f0;
+}
+
+.webhook-copy-btn:active {
+  background: #e0e0e0;
+}
+
 pre.pretty-json {
     background: var(--code-bg);
     padding: 1rem;
