@@ -222,8 +222,17 @@
                     <h4>🚀 Getting Started</h4>
                     <div class="info-card">
                         <h5>Your Webhook URL</h5>
-                        <code class="endpoint-url">https://yourdomain.com/webhook/<span class="highlight">USER_ID</span>/<span
-                                class="highlight">WEBHOOK_ID</span></code>
+                        <code class="endpoint-url">
+                            <span class="url-text">https://webhook.agechecked.com/webhook/<span class="highlight">USER_ID</span>/<span
+                                    class="highlight">WEBHOOK_ID</span></span>
+                            <button class="webhook-copy-btn" onclick="copyWebhookUrlToClipboard()">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                </svg>
+                            </button>
+                        </code>
                         <p>Replace <span class="highlight">USER_ID</span> with your user ID and <span class="highlight">WEBHOOK_ID</span>
                             with any identifier for your webhook.</p>
                     </div>

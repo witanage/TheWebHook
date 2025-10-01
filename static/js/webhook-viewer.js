@@ -1935,6 +1935,15 @@ function closeAboutModal() {
     document.getElementById('aboutModal').classList.remove('show');
 }
 
+function copyWebhookUrlToClipboard() {
+  const urlElement = document.querySelector('.endpoint-url .url-text');
+  const text = urlElement.textContent || urlElement.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+  }).catch(err => {
+    console.error('Failed to copy:', err);
+  });
+}
+
 // Close modal when clicking outside
 document.getElementById('aboutModal').addEventListener('click', (e) => {
     if (e.target === e.currentTarget) {
