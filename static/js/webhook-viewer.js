@@ -1749,67 +1749,68 @@ async checkConnectionHealth() {
     }
 
     searchJson(searchTerm) {
-        const jsonPre = document.getElementById('jsonContent');
-        const searchInfo = document.getElementById('searchInfo');
-        const clearButton = document.getElementById('jsonSearchClear');
+    const jsonPre = document.getElementById('jsonContent');
+    const searchInfo = document.getElementById('searchInfo');
+    const clearButton = document.getElementById('jsonSearchClear');
 
-        if (!jsonPre || !this.originalJsonContent) return;
+    if (!jsonPre || !this.originalJsonContent) return;
 
-        this.currentSearchTerm = searchTerm.trim();
+    this.currentSearchTerm = searchTerm.trim();
 
-        // Show/hide clear button
-        if (clearButton) {
-            clearButton.classList.toggle('show', this.currentSearchTerm.length > 0);
-        }
-
-        if (!this.currentSearchTerm) {
-            // Reset to original content
-            jsonPre.innerHTML = this.originalJsonContent;
-            searchInfo.textContent = '';
-            this.jsonSearchMatches = [];
-            this.currentMatchIndex = -1;
-            return;
-        }
-
-        // Create a temporary element to work with text content
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = this.originalJsonContent;
-        const textContent = tempDiv.textContent || tempDiv.innerText || '';
-
-        // Find all matches
-        this.jsonSearchMatches = [];
-        const regex = new RegExp(this.escapeRegExp(this.currentSearchTerm), 'gi');
-        let match;
-
-        while ((match = regex.exec(textContent)) !== null) {
-            this.jsonSearchMatches.push({
-                index: match.index,
-                length: match[0].length
-            });
-        }
-
-        if (this.jsonSearchMatches.length === 0) {
-            searchInfo.textContent = 'No matches found';
-            searchInfo.style.color = 'var(--danger-color)';
-            return;
-        }
-
-        // Highlight all matches
-        let highlightedContent = this.originalJsonContent;
-        const searchRegex = new RegExp(`(${this.escapeRegExp(this.currentSearchTerm)})`, 'gi');
-
-        // Replace within text nodes only, preserving HTML structure
-        highlightedContent = this.highlightSearchTerms(highlightedContent, searchRegex);
-
-        jsonPre.innerHTML = highlightedContent;
-
-        // Update search info
-        this.currentMatchIndex = 0;
-        this.updateSearchInfo();
-
-        // Scroll to first match
-        this.scrollToMatch(0);
+    // Show/hide clear button
+    if (clearButton) {
+        clearButton.classList.toggle('show', this.currentSearchTerm.length > 0);
     }
+
+    if (!this.currentSearchTerm) {
+        // Reset to original content
+        jsonPre.innerHTML = this.originalJsonContent;
+        searchInfo.textContent = '';
+        this.jsonSearchMatches = [];
+        this.currentMatchIndex = -1;
+        return;
+    }
+
+    // Create a temporary element to work with text content
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = this.originalJsonContent;
+    const textContent = tempDiv.textContent || tempDiv.innerText || '';
+
+    // Find all matches
+    this.jsonSearchMatches = [];
+    const regex = new RegExp(this.escapeRegExp(this.currentSearchTerm), 'gi');
+    let match;
+
+    while ((match = regex.exec(textContent)) !== null) {
+        this.jsonSearchMatches.push({
+            index: match.index,
+            length: match[0].length
+        });
+    }
+
+    if (this.jsonSearchMatches.length === 0) {
+        searchInfo.textContent = 'No matches found';
+        searchInfo.style.color = 'var(--danger-color)';
+        return;
+    }
+
+    // Highlight all matches
+    let highlightedContent = this.originalJsonContent;
+    const searchRegex = new RegExp(`(${this.escapeRegExp(this.currentSearchTerm)})`, 'gi');
+
+    // Replace within text nodes only, preserving HTML structure
+    highlightedContent = this.highlightSearchTerms(highlightedContent, searchRegex);
+
+    jsonPre.innerHTML = highlightedContent;
+
+    // Update search info
+    this.currentMatchIndex = 0;
+    this.updateSearchInfo();
+
+    // Scroll to and highlight first match
+    this.scrollToMatch(0);
+    this.highlightCurrentMatch(0);
+}
 
     highlightSearchTerms(html, regex) {
         // Parse HTML and only replace in text nodes
@@ -1870,26 +1871,44 @@ async checkConnectionHealth() {
     }
 
     handleSearchKeydown(event) {
-        if (event.key === 'Enter') {
-            event.preventDefault();
-            if (this.jsonSearchMatches.length > 0) {
-                // Move to next match
-                this.currentMatchIndex = (this.currentMatchIndex + 1) % this.jsonSearchMatches.length;
-                this.updateSearchInfo();
-                this.scrollToMatch(this.currentMatchIndex);
-            }
-        } else if (event.key === 'Escape') {
-            this.clearJsonSearch();
+    if (event.key === 'Enter' || event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (this.jsonSearchMatches.length > 0) {
+            // Move to next match
+            this.currentMatchIndex = (this.currentMatchIndex + 1) % this.jsonSearchMatches.length;
+            this.updateSearchInfo();
+            this.scrollToMatch(this.currentMatchIndex);
+            this.highlightCurrentMatch(this.currentMatchIndex);
         }
+    } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (this.jsonSearchMatches.length > 0) {
+            // Move to previous match
+            this.currentMatchIndex = this.currentMatchIndex - 1;
+            if (this.currentMatchIndex < 0) {
+                this.currentMatchIndex = this.jsonSearchMatches.length - 1;
+            }
+            this.updateSearchInfo();
+            this.scrollToMatch(this.currentMatchIndex);
+            this.highlightCurrentMatch(this.currentMatchIndex);
+        }
+    } else if (event.key === 'Escape') {
+        this.clearJsonSearch();
     }
+}
 
     updateSearchInfo() {
-        const searchInfo = document.getElementById('searchInfo');
-        if (this.jsonSearchMatches.length > 0) {
-            searchInfo.textContent = `${this.currentMatchIndex + 1} of ${this.jsonSearchMatches.length}`;
-            searchInfo.style.color = 'var(--text-secondary)';
-        }
+    const searchInfo = document.getElementById('searchInfo');
+    if (this.jsonSearchMatches.length > 0) {
+        searchInfo.innerHTML = `
+            <span>${this.currentMatchIndex + 1} of ${this.jsonSearchMatches.length}</span>
+            <span style="margin-left: 10px; font-size: 0.75rem; opacity: 0.7;">
+                ↑↓ to navigate
+            </span>
+        `;
+        searchInfo.style.color = 'var(--text-secondary)';
     }
+}
 
     scrollToMatch(index) {
         const highlights = document.querySelectorAll('.json-highlight');
@@ -1906,6 +1925,19 @@ async checkConnectionHealth() {
             }, 1000);
         }
     }
+
+    highlightCurrentMatch(index) {
+    // Remove previous current match highlight
+    document.querySelectorAll('.json-highlight-current').forEach(el => {
+        el.classList.remove('json-highlight-current');
+    });
+
+    // Add current match highlight
+    const highlights = document.querySelectorAll('.json-highlight');
+    if (highlights[index]) {
+        highlights[index].classList.add('json-highlight-current');
+    }
+}
 
     clearJsonSearch() {
         const searchInput = document.getElementById('jsonSearchInput');

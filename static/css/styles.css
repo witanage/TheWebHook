@@ -981,10 +981,44 @@ pre.pretty-json:focus {
     transform: translateY(-50%) scale(1.1);
 }
 
+/* JSON search highlight styles */
+.json-highlight {
+    background-color: var(--highlight-bg);
+    color: var(--highlight-color);
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-weight: bold;
+    box-shadow: 0 0 0 2px var(--warning-color);
+}
+
+/* Currently selected match */
+.json-highlight-current {
+    background-color: var(--accent-color);
+    color: white;
+    box-shadow: 0 0 0 3px var(--accent-color);
+    animation: pulse-highlight 1s ease-out;
+}
+
+@keyframes pulse-highlight {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+/* Search info styling */
 .search-info {
     font-size: 0.8rem;
     color: var(--text-secondary);
     margin-left: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
 }
 
 .json-highlight {
