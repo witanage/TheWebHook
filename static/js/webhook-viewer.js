@@ -32,7 +32,111 @@ class WebhookViewer {
         this.initializeDateRangePicker();
     }
 
-    // NEW METHOD
+    // Add after init() method, around line 32
+async testWebhook() {
+    const webhookId = document.getElementById('webhookSelect').value;
+    if (!webhookId) {
+        this.showNotification('Please select a webhook ID first', 'error');
+        return;
+    }
+
+    const testButton = document.getElementById('testWebhookBtn');
+    const originalText = testButton.innerHTML;
+
+    // Show loading state
+    testButton.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div> Testing...';
+    testButton.disabled = true;
+
+    try {
+        const response = await fetch(`/webhook/${this.userId}/${webhookId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Test-Webhook': 'true'
+            },
+            body: JSON.stringify({
+                test: true,
+                message: 'Test webhook from built-in tester',
+                timestamp: new Date().toISOString(),
+                test_info: {
+                    browser: navigator.userAgent,
+                    protocol: window.location.protocol,
+                    host: window.location.host
+                }
+            })
+        });
+
+        if (response.ok) {
+            this.showNotification('Test webhook sent successfully! Check the webhook list.', 'success');
+
+            // Reload webhooks after a short delay to show the test
+            setTimeout(() => {
+                this.loadWebhooks();
+            }, 500);
+        } else {
+            throw new Error(`HTTP ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Test webhook failed:', error);
+
+        // Check if it's an HTTPS issue
+        if (window.location.protocol === 'http:' && error.message.includes('Failed to fetch')) {
+            this.showNotification('Connection failed! You might have lost HTTPS. Please check your SSL certificate.', 'error');
+        } else {
+            this.showNotification(`Test failed: ${error.message}`, 'error');
+        }
+    } finally {
+        // Restore button state
+        testButton.innerHTML = originalText;
+        testButton.disabled = false;
+    }
+}
+
+// Add connection health check method
+async checkConnectionHealth() {
+    try {
+        const response = await fetch('/health', {
+            method: 'GET',
+            cache: 'no-cache'
+        });
+
+        if (!response.ok) {
+            throw new Error(`Health check failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Update connection status indicator
+        const statusElement = document.getElementById('connectionStatus');
+        const statusDot = statusElement.querySelector('.status-dot');
+        const statusText = statusElement.querySelector('.status-text');
+
+        if (data.status === 'healthy') {
+            statusElement.classList.add('connected');
+            statusText.textContent = 'Connected';
+
+            // Check SSL status
+            if (window.location.protocol === 'http:') {
+                this.showNotification('Warning: Connection is not secure (HTTP). Consider using HTTPS.', 'warning');
+            }
+        } else {
+            statusElement.classList.remove('connected');
+            statusText.textContent = 'Issues Detected';
+        }
+
+        return data;
+    } catch (error) {
+        console.error('Health check error:', error);
+
+        // Update UI to show disconnected state
+        const statusElement = document.getElementById('connectionStatus');
+        statusElement.classList.remove('connected');
+        statusElement.querySelector('.status-text').textContent = 'Disconnected';
+
+        return { status: 'error', message: error.message };
+    }
+}
+
     initializeDateRangePicker() {
         const self = this; // Store reference to 'this'
 
@@ -390,6 +494,11 @@ class WebhookViewer {
     }
 
     setupSSE() {
+        // Add periodic health checks
+        this.healthCheckInterval = setInterval(() => {
+        this.checkConnectionHealth();
+        }, 60000);
+
         // Set up Server-Sent Events for real-time updates
         this.eventSource = new EventSource(`/events/${this.userId}`);
 
@@ -1020,28 +1129,6 @@ class WebhookViewer {
                 this.selectRequest(requestId);
             }
         });
-    }
-
-    selectAllJson() {
-        const jsonPre = document.getElementById('jsonContent');
-        if (!jsonPre) return;
-
-        // Create a range and selection
-        const range = document.createRange();
-        const selection = window.getSelection();
-
-        // Clear any existing selections
-        selection.removeAllRanges();
-
-        // Select the entire content of the pre element
-        range.selectNodeContents(jsonPre);
-        selection.addRange(range);
-
-        // Optional: Show a notification
-        this.showNotification('JSON content selected', 'success');
-
-        // Optional: Focus the element to make the selection more visible
-        jsonPre.focus();
     }
 
     updateNotificationBadge(count) {

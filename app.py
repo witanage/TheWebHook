@@ -896,6 +896,56 @@ def events(user_id):
     return response
 
 
+@app.route("/health", methods=["GET"])
+def health_check():
+    """
+    Health check endpoint to verify server and database connectivity
+    """
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "checks": {
+            "server": "ok",
+            "database": "unknown",
+            "ssl": "unknown"
+        }
+    }
+
+    # Check database connectivity
+    conn = None
+    cursor = None
+    try:
+        conn = pymysql.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1")
+        cursor.fetchone()
+        health_status["checks"]["database"] = "ok"
+    except Exception as e:
+        health_status["status"] = "degraded"
+        health_status["checks"]["database"] = "error"
+        health_status["error"] = str(e)
+        log(f"Health check database error: {str(e)}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.open:
+            conn.close()
+
+    # Check SSL status
+    if request.is_secure:
+        health_status["checks"]["ssl"] = "enabled"
+    else:
+        health_status["checks"]["ssl"] = "disabled"
+        health_status["warnings"] = ["SSL/HTTPS is not enabled"]
+
+    # Determine overall status
+    if health_status["checks"]["database"] == "error":
+        health_status["status"] = "unhealthy"
+        return jsonify(health_status), 503
+
+    return jsonify(health_status), 200
+
+
 @app.route("/.well-known/pki-validation/<path:filename>")
 def pki_validation(filename):
     try:
