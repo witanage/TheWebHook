@@ -1079,11 +1079,15 @@ pre.pretty-json:focus {
     flex-wrap: wrap;
     gap: 1rem;
     align-items: center;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
+    padding: 1.8rem 1rem 1rem 1rem; /* More padding on top */
     background: var(--bg-secondary);
-    border-radius: var(--radius);
     box-shadow: var(--shadow);
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .control-group.json-tools {
