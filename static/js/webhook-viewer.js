@@ -32,110 +32,218 @@ class WebhookViewer {
         this.initializeDateRangePicker();
     }
 
-    // Add after init() method, around line 32
-async testWebhook() {
-    const webhookId = document.getElementById('webhookSelect').value;
-    if (!webhookId) {
-        this.showNotification('Please select a webhook ID first', 'error');
-        return;
-    }
+    async testWebhook() {
+        const webhookSelect = document.getElementById('webhookSelect');
+        let webhookId = webhookSelect.value;
 
-    const testButton = document.getElementById('testWebhookBtn');
-    const originalText = testButton.innerHTML;
-
-    // Show loading state
-    testButton.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px;"></div> Testing...';
-    testButton.disabled = true;
-
-    try {
-        const response = await fetch(`/webhook/${this.userId}/${webhookId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Test-Webhook': 'true'
-            },
-            body: JSON.stringify({
-                test: true,
-                message: 'Test webhook from built-in tester',
-                timestamp: new Date().toISOString(),
-                test_info: {
-                    browser: navigator.userAgent,
-                    protocol: window.location.protocol,
-                    host: window.location.host
-                }
-            })
-        });
-
-        if (response.ok) {
-            this.showNotification('Test webhook sent successfully! Check the webhook list.', 'success');
-
-            // Reload webhooks after a short delay to show the test
-            setTimeout(() => {
-                this.loadWebhooks();
-            }, 500);
-        } else {
-            throw new Error(`HTTP ${response.status}`);
-        }
-    } catch (error) {
-        console.error('Test webhook failed:', error);
-
-        // Check if it's an HTTPS issue
-        if (window.location.protocol === 'http:' && error.message.includes('Failed to fetch')) {
-            this.showNotification('Connection failed! You might have lost HTTPS. Please check your SSL certificate.', 'error');
-        } else {
-            this.showNotification(`Test failed: ${error.message}`, 'error');
-        }
-    } finally {
-        // Restore button state
-        testButton.innerHTML = originalText;
-        testButton.disabled = false;
-    }
-}
-
-// Add connection health check method
-async checkConnectionHealth() {
-    try {
-        const response = await fetch('/health', {
-            method: 'GET',
-            cache: 'no-cache'
-        });
-
-        if (!response.ok) {
-            throw new Error(`Health check failed: ${response.status}`);
+        // If no webhook ID exists, prompt user to create one
+        if (!webhookId || webhookSelect.options.length === 0) {
+            this.showNewWebhookModal();
+            return;
         }
 
-        const data = await response.json();
+        const testButton = document.getElementById('testWebhookBtn');
+        const originalText = testButton.innerHTML;
 
-        // Update connection status indicator
-        const statusElement = document.getElementById('connectionStatus');
-        const statusDot = statusElement.querySelector('.status-dot');
-        const statusText = statusElement.querySelector('.status-text');
+        // Show loading state
+        testButton.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px; display: inline-block;"></div> Testing...';
+        testButton.disabled = true;
 
-        if (data.status === 'healthy') {
-            statusElement.classList.add('connected');
-            statusText.textContent = 'Connected';
+        try {
+            const response = await fetch(`/webhook/${this.userId}/${webhookId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Test-Webhook': 'true'
+                },
+                body: JSON.stringify({
+                    test: true,
+                    message: 'Test webhook from built-in tester',
+                    timestamp: new Date().toISOString(),
+                    test_info: {
+                        browser: navigator.userAgent,
+                        protocol: window.location.protocol,
+                        host: window.location.host
+                    }
+                })
+            });
 
-            // Check SSL status
-            if (window.location.protocol === 'http:') {
-                this.showNotification('Warning: Connection is not secure (HTTP). Consider using HTTPS.', 'warning');
+            if (response.ok) {
+                this.showNotification('Test webhook sent successfully! Check the webhook list.', 'success');
+
+                // Reload webhooks after a short delay to show the test
+                setTimeout(() => {
+                    this.loadWebhooks();
+                }, 500);
+            } else {
+                throw new Error(`HTTP ${response.status}`);
             }
-        } else {
-            statusElement.classList.remove('connected');
-            statusText.textContent = 'Issues Detected';
+        } catch (error) {
+            console.error('Test webhook failed:', error);
+
+            // Check if it's an HTTPS issue
+            if (window.location.protocol === 'http:' && error.message.includes('Failed to fetch')) {
+                this.showNotification('Connection failed! You might have lost HTTPS. Please check your SSL certificate.', 'error');
+            } else {
+                this.showNotification(`Test failed: ${error.message}`, 'error');
+            }
+        } finally {
+            // Restore button state
+            testButton.innerHTML = originalText;
+            testButton.disabled = false;
+        }
+    }
+
+    showNewWebhookModal() {
+        const modal = document.getElementById('newWebhookModal');
+        const input = document.getElementById('newWebhookIdInput');
+        modal.classList.add('show');
+        input.focus();
+        input.value = this.generateWebhookId();
+    }
+
+    closeNewWebhookModal() {
+        const modal = document.getElementById('newWebhookModal');
+        modal.classList.remove('show');
+    }
+
+    generateWebhookId() {
+        // Generate a random webhook ID suggestion
+        const adjectives = ['swift', 'smart', 'rapid', 'live', 'instant', 'quick', 'fast', 'real'];
+        const nouns = ['hook', 'endpoint', 'api', 'service', 'test', 'demo', 'app', 'data'];
+        const random = Math.floor(Math.random() * 1000);
+        const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        const noun = nouns[Math.floor(Math.random() * nouns.length)];
+        return `${adj}-${noun}-${random}`;
+    }
+
+    async createAndTestWebhook() {
+        const input = document.getElementById('newWebhookIdInput');
+        const webhookId = input.value.trim();
+
+        if (!webhookId) {
+            this.showNotification('Please enter a webhook ID', 'error');
+            return;
         }
 
-        return data;
-    } catch (error) {
-        console.error('Health check error:', error);
+        // Validate webhook ID (alphanumeric, hyphens, underscores)
+        if (!/^[a-zA-Z0-9-_]+$/.test(webhookId)) {
+            this.showNotification('Webhook ID can only contain letters, numbers, hyphens, and underscores', 'error');
+            return;
+        }
 
-        // Update UI to show disconnected state
-        const statusElement = document.getElementById('connectionStatus');
-        statusElement.classList.remove('connected');
-        statusElement.querySelector('.status-text').textContent = 'Disconnected';
+        // Close modal
+        this.closeNewWebhookModal();
 
-        return { status: 'error', message: error.message };
+        // Add to select if not exists
+        const webhookSelect = document.getElementById('webhookSelect');
+        const existingOption = Array.from(webhookSelect.options).find(opt => opt.value === webhookId);
+
+        if (!existingOption) {
+            const option = document.createElement('option');
+            option.value = webhookId;
+            option.textContent = webhookId;
+            webhookSelect.appendChild(option);
+        }
+
+        // Select the new webhook ID
+        webhookSelect.value = webhookId;
+        this.currentWebhookId = webhookId;
+
+        // Send test webhook
+        const testButton = document.getElementById('testWebhookBtn');
+        const originalText = testButton.innerHTML;
+
+        testButton.innerHTML = '<div class="spinner" style="width: 16px; height: 16px; margin-right: 8px; display: inline-block;"></div> Testing...';
+        testButton.disabled = true;
+
+        try {
+            const response = await fetch(`/webhook/${this.userId}/${webhookId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Test-Webhook': 'true'
+                },
+                body: JSON.stringify({
+                    test: true,
+                    message: 'First test webhook for new endpoint',
+                    timestamp: new Date().toISOString(),
+                    webhook_id: webhookId,
+                    test_info: {
+                        browser: navigator.userAgent,
+                        protocol: window.location.protocol,
+                        host: window.location.host
+                    }
+                })
+            });
+
+            if (response.ok) {
+                this.showNotification(`Webhook "${webhookId}" created and tested successfully!`, 'success');
+
+                // Reload webhooks after a short delay
+                setTimeout(() => {
+                    this.refreshWebhookSelect(true);
+                    this.loadWebhooks();
+                }, 500);
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+        } catch (error) {
+            console.error('Test webhook failed:', error);
+            this.showNotification(`Failed to test webhook: ${error.message}`, 'error');
+        } finally {
+            testButton.innerHTML = originalText;
+            testButton.disabled = false;
+        }
     }
-}
+
+    // Add connection health check method
+    async checkConnectionHealth() {
+        try {
+            const response = await fetch('/health', {
+                method: 'GET',
+                cache: 'no-cache'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Health check failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+
+            // Update connection status indicator
+            const statusElement = document.getElementById('connectionStatus');
+            const statusDot = statusElement.querySelector('.status-dot');
+            const statusText = statusElement.querySelector('.status-text');
+
+            if (data.status === 'healthy') {
+                statusElement.classList.add('connected');
+                statusText.textContent = 'Connected';
+
+                // Check SSL status
+                if (window.location.protocol === 'http:') {
+                    this.showNotification('Warning: Connection is not secure (HTTP). Consider using HTTPS.', 'warning');
+                }
+            } else {
+                statusElement.classList.remove('connected');
+                statusText.textContent = 'Issues Detected';
+            }
+
+            return data;
+        } catch (error) {
+            console.error('Health check error:', error);
+
+            // Update UI to show disconnected state
+            const statusElement = document.getElementById('connectionStatus');
+            statusElement.classList.remove('connected');
+            statusElement.querySelector('.status-text').textContent = 'Disconnected';
+
+            return {
+                status: 'error',
+                message: error.message
+            };
+        }
+    }
 
     initializeDateRangePicker() {
         const self = this; // Store reference to 'this'
@@ -494,9 +602,18 @@ async checkConnectionHealth() {
     }
 
     setupSSE() {
+        // Set up Server-Sent Events for real-time updates
+        this.eventSource = new EventSource(`/events/${this.userId}`);
+
+        this.eventSource.onopen = () => {
+            console.log('SSE connection established');
+            document.getElementById("refreshIndicator").src = "static/animated.gif";
+            this.updateConnectionStatus(true); // This will now show "Connected"
+        };
+
         // Add periodic health checks
         this.healthCheckInterval = setInterval(() => {
-        this.checkConnectionHealth();
+            this.checkConnectionHealth();
         }, 60000);
 
         // Set up Server-Sent Events for real-time updates
@@ -1166,7 +1283,7 @@ async checkConnectionHealth() {
 
         if (connected) {
             status.classList.add('connected');
-            statusText.textContent = 'Live';
+            statusText.textContent = 'Connected';
         } else {
             status.classList.remove('connected');
             statusText.textContent = 'Reconnecting...';
@@ -1385,16 +1502,39 @@ async checkConnectionHealth() {
 
         this.isLoading = true;
         const webhookId = document.getElementById("webhookSelect").value;
+
+        // Check if no webhook ID is selected
+        if (!webhookId) {
+            this.isLoading = false;
+            // Show helpful empty state instead of error
+            document.getElementById("requestsList").innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🚀</div>
+                <p>No webhooks yet</p>
+                <small>Click "Test Webhook" to create your first one!</small>
+            </div>
+        `;
+            document.getElementById("requestDetails").innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📡</div>
+                <h3>Welcome to Webhook Viewer!</h3>
+                <p>Start by creating a webhook ID using the "Test Webhook" button above.</p>
+            </div>
+        `;
+            this.activeRequestId = null;
+            return;
+        }
+
         this.currentWebhookId = webhookId;
 
         // Show loader in the request list
         const requestsList = document.getElementById("requestsList");
         requestsList.innerHTML = `
-            <div class="loading">
-                <div class="spinner"></div>
-                Loading requests...
-            </div>
-        `;
+        <div class="loading">
+            <div class="spinner"></div>
+            Loading requests...
+        </div>
+    `;
 
         try {
             const response = await fetch(`/webhook/${this.userId}/${webhookId}`);
@@ -1416,20 +1556,34 @@ async checkConnectionHealth() {
                 this.setActiveRequest(latestRequest.id);
                 this.markAsRead(latestRequest.id);
             } else {
-                // Show empty state in details if no requests
+                // Show friendly empty state instead of generic message
                 document.getElementById("requestDetails").innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📡</div>
-                        <h3>No webhooks received yet</h3>
-                        <p>Send a request to your webhook endpoint to see it here.</p>
-                    </div>
-                `;
+                <div class="empty-state">
+                    <div class="empty-state-icon">📡</div>
+                    <h3>No webhooks received yet</h3>
+                    <p>Send a request to your webhook endpoint:</p>
+                    <code style="display: block; margin: 1rem 0; padding: 0.75rem; background: var(--bg-tertiary); border-radius: var(--radius); font-size: 0.85rem;">
+                        https://webhook.agechecked.com/webhook/${this.userId}/${webhookId}
+                    </code>
+                    <p style="margin-top: 1rem;">Or use the "Test Webhook" button above to send a test request.</p>
+                </div>
+            `;
                 this.activeRequestId = null;
             }
 
         } catch (error) {
             console.error("Error loading webhooks:", error);
-            this.showError("Failed to load webhook data");
+            // Don't show error for expected empty states
+            if (error.message.includes('404')) {
+                document.getElementById("requestsList").innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🔍</div>
+                    <p>No data found</p>
+                </div>
+            `;
+            } else {
+                this.showError("Failed to load webhook data");
+            }
         } finally {
             this.isLoading = false;
         }
@@ -1749,68 +1903,68 @@ async checkConnectionHealth() {
     }
 
     searchJson(searchTerm) {
-    const jsonPre = document.getElementById('jsonContent');
-    const searchInfo = document.getElementById('searchInfo');
-    const clearButton = document.getElementById('jsonSearchClear');
+        const jsonPre = document.getElementById('jsonContent');
+        const searchInfo = document.getElementById('searchInfo');
+        const clearButton = document.getElementById('jsonSearchClear');
 
-    if (!jsonPre || !this.originalJsonContent) return;
+        if (!jsonPre || !this.originalJsonContent) return;
 
-    this.currentSearchTerm = searchTerm.trim();
+        this.currentSearchTerm = searchTerm.trim();
 
-    // Show/hide clear button
-    if (clearButton) {
-        clearButton.classList.toggle('show', this.currentSearchTerm.length > 0);
-    }
+        // Show/hide clear button
+        if (clearButton) {
+            clearButton.classList.toggle('show', this.currentSearchTerm.length > 0);
+        }
 
-    if (!this.currentSearchTerm) {
-        // Reset to original content
-        jsonPre.innerHTML = this.originalJsonContent;
-        searchInfo.textContent = '';
+        if (!this.currentSearchTerm) {
+            // Reset to original content
+            jsonPre.innerHTML = this.originalJsonContent;
+            searchInfo.textContent = '';
+            this.jsonSearchMatches = [];
+            this.currentMatchIndex = -1;
+            return;
+        }
+
+        // Create a temporary element to work with text content
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = this.originalJsonContent;
+        const textContent = tempDiv.textContent || tempDiv.innerText || '';
+
+        // Find all matches
         this.jsonSearchMatches = [];
-        this.currentMatchIndex = -1;
-        return;
+        const regex = new RegExp(this.escapeRegExp(this.currentSearchTerm), 'gi');
+        let match;
+
+        while ((match = regex.exec(textContent)) !== null) {
+            this.jsonSearchMatches.push({
+                index: match.index,
+                length: match[0].length
+            });
+        }
+
+        if (this.jsonSearchMatches.length === 0) {
+            searchInfo.textContent = 'No matches found';
+            searchInfo.style.color = 'var(--danger-color)';
+            return;
+        }
+
+        // Highlight all matches
+        let highlightedContent = this.originalJsonContent;
+        const searchRegex = new RegExp(`(${this.escapeRegExp(this.currentSearchTerm)})`, 'gi');
+
+        // Replace within text nodes only, preserving HTML structure
+        highlightedContent = this.highlightSearchTerms(highlightedContent, searchRegex);
+
+        jsonPre.innerHTML = highlightedContent;
+
+        // Update search info
+        this.currentMatchIndex = 0;
+        this.updateSearchInfo();
+
+        // Scroll to and highlight first match
+        this.scrollToMatch(0);
+        this.highlightCurrentMatch(0);
     }
-
-    // Create a temporary element to work with text content
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = this.originalJsonContent;
-    const textContent = tempDiv.textContent || tempDiv.innerText || '';
-
-    // Find all matches
-    this.jsonSearchMatches = [];
-    const regex = new RegExp(this.escapeRegExp(this.currentSearchTerm), 'gi');
-    let match;
-
-    while ((match = regex.exec(textContent)) !== null) {
-        this.jsonSearchMatches.push({
-            index: match.index,
-            length: match[0].length
-        });
-    }
-
-    if (this.jsonSearchMatches.length === 0) {
-        searchInfo.textContent = 'No matches found';
-        searchInfo.style.color = 'var(--danger-color)';
-        return;
-    }
-
-    // Highlight all matches
-    let highlightedContent = this.originalJsonContent;
-    const searchRegex = new RegExp(`(${this.escapeRegExp(this.currentSearchTerm)})`, 'gi');
-
-    // Replace within text nodes only, preserving HTML structure
-    highlightedContent = this.highlightSearchTerms(highlightedContent, searchRegex);
-
-    jsonPre.innerHTML = highlightedContent;
-
-    // Update search info
-    this.currentMatchIndex = 0;
-    this.updateSearchInfo();
-
-    // Scroll to and highlight first match
-    this.scrollToMatch(0);
-    this.highlightCurrentMatch(0);
-}
 
     highlightSearchTerms(html, regex) {
         // Parse HTML and only replace in text nodes
@@ -1871,44 +2025,44 @@ async checkConnectionHealth() {
     }
 
     handleSearchKeydown(event) {
-    if (event.key === 'Enter' || event.key === 'ArrowDown') {
-        event.preventDefault();
-        if (this.jsonSearchMatches.length > 0) {
-            // Move to next match
-            this.currentMatchIndex = (this.currentMatchIndex + 1) % this.jsonSearchMatches.length;
-            this.updateSearchInfo();
-            this.scrollToMatch(this.currentMatchIndex);
-            this.highlightCurrentMatch(this.currentMatchIndex);
-        }
-    } else if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        if (this.jsonSearchMatches.length > 0) {
-            // Move to previous match
-            this.currentMatchIndex = this.currentMatchIndex - 1;
-            if (this.currentMatchIndex < 0) {
-                this.currentMatchIndex = this.jsonSearchMatches.length - 1;
+        if (event.key === 'Enter' || event.key === 'ArrowDown') {
+            event.preventDefault();
+            if (this.jsonSearchMatches.length > 0) {
+                // Move to next match
+                this.currentMatchIndex = (this.currentMatchIndex + 1) % this.jsonSearchMatches.length;
+                this.updateSearchInfo();
+                this.scrollToMatch(this.currentMatchIndex);
+                this.highlightCurrentMatch(this.currentMatchIndex);
             }
-            this.updateSearchInfo();
-            this.scrollToMatch(this.currentMatchIndex);
-            this.highlightCurrentMatch(this.currentMatchIndex);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (this.jsonSearchMatches.length > 0) {
+                // Move to previous match
+                this.currentMatchIndex = this.currentMatchIndex - 1;
+                if (this.currentMatchIndex < 0) {
+                    this.currentMatchIndex = this.jsonSearchMatches.length - 1;
+                }
+                this.updateSearchInfo();
+                this.scrollToMatch(this.currentMatchIndex);
+                this.highlightCurrentMatch(this.currentMatchIndex);
+            }
+        } else if (event.key === 'Escape') {
+            this.clearJsonSearch();
         }
-    } else if (event.key === 'Escape') {
-        this.clearJsonSearch();
     }
-}
 
     updateSearchInfo() {
-    const searchInfo = document.getElementById('searchInfo');
-    if (this.jsonSearchMatches.length > 0) {
-        searchInfo.innerHTML = `
+        const searchInfo = document.getElementById('searchInfo');
+        if (this.jsonSearchMatches.length > 0) {
+            searchInfo.innerHTML = `
             <span>${this.currentMatchIndex + 1} of ${this.jsonSearchMatches.length}</span>
             <span style="margin-left: 10px; font-size: 0.75rem; opacity: 0.7;">
                 ↑↓ to navigate
             </span>
         `;
-        searchInfo.style.color = 'var(--text-secondary)';
+            searchInfo.style.color = 'var(--text-secondary)';
+        }
     }
-}
 
     scrollToMatch(index) {
         const highlights = document.querySelectorAll('.json-highlight');
@@ -1927,17 +2081,17 @@ async checkConnectionHealth() {
     }
 
     highlightCurrentMatch(index) {
-    // Remove previous current match highlight
-    document.querySelectorAll('.json-highlight-current').forEach(el => {
-        el.classList.remove('json-highlight-current');
-    });
+        // Remove previous current match highlight
+        document.querySelectorAll('.json-highlight-current').forEach(el => {
+            el.classList.remove('json-highlight-current');
+        });
 
-    // Add current match highlight
-    const highlights = document.querySelectorAll('.json-highlight');
-    if (highlights[index]) {
-        highlights[index].classList.add('json-highlight-current');
+        // Add current match highlight
+        const highlights = document.querySelectorAll('.json-highlight');
+        if (highlights[index]) {
+            highlights[index].classList.add('json-highlight-current');
+        }
     }
-}
 
     clearJsonSearch() {
         const searchInput = document.getElementById('jsonSearchInput');
@@ -2055,12 +2209,11 @@ function closeAboutModal() {
 }
 
 function copyWebhookUrlToClipboard() {
-  const urlElement = document.querySelector('.endpoint-url .url-text');
-  const text = urlElement.textContent || urlElement.innerText;
-  navigator.clipboard.writeText(text).then(() => {
-  }).catch(err => {
-    console.error('Failed to copy:', err);
-  });
+    const urlElement = document.querySelector('.endpoint-url .url-text');
+    const text = urlElement.textContent || urlElement.innerText;
+    navigator.clipboard.writeText(text).then(() => {}).catch(err => {
+        console.error('Failed to copy:', err);
+    });
 }
 
 // Close modal when clicking outside
