@@ -468,6 +468,14 @@ body {
 
 /* Mobile responsive for About modal */
 @media (max-width: 768px) {
+    .header-right .connection-status .status-text {
+        display: none; /* Hide text on mobile to save space */
+    }
+
+    .header-right .connection-status {
+        padding: 0.5rem;
+        min-width: auto;
+    }
     .modal-large {
         max-width: 95%;
         max-height: 90vh;
@@ -1011,6 +1019,36 @@ pre.pretty-json:focus {
     }
 }
 
+/* Info card for modals */
+.modal .info-card {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.modal .info-card code {
+    background: var(--bg-quaternary);
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+}
+
+/* Spinner inline style */
+.spinner {
+    display: inline-block;
+    border: 2px solid var(--spinner-bg);
+    border-top: 2px solid var(--spinner-color);
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+}
+
 /* Search info styling */
 .search-info {
     font-size: 0.8rem;
@@ -1125,12 +1163,15 @@ pre.pretty-json:focus {
     color: var(--danger-color);
 }
 
+/* Container adjustments for fixed controls */
 .container {
     max-width: 100%;
     width: 100%;
     margin: 0 auto;
-    padding: 1rem;
+    padding: 0; /* Remove padding from container */
     min-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
 }
 
 .control-group {
@@ -1217,14 +1258,17 @@ button:active {
     flex: 1;
 }
 
-.connection-status {
+/* Connection status in header */
+.header-right .connection-status {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.5rem 1rem;
     background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius);
     font-size: 0.85rem;
+    margin-right: 0.5rem; /* Add space before notification icon */
 }
 
 .connection-status .status-dot {
@@ -1237,6 +1281,13 @@ button:active {
 
 .connection-status.connected .status-dot {
     background: var(--success-color);
+    animation: pulse-green 2s infinite;
+}
+
+.connection-status .status-text {
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
 }
 
 .requests-container {

@@ -28,6 +28,10 @@
             </a>
         </div>
         <div class="header-right">
+            <div class="connection-status" id="connectionStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Connecting...</span>  <!-- This can stay as is -->
+            </div>
             <div class="notification-icon" onclick="toggleNotifications()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
@@ -109,10 +113,6 @@
                 </svg>
                 Test Webhook
             </button>
-        </div>
-        <div class="control-group connection-status" id="connectionStatus">
-            <span class="status-dot"></span>
-            <span class="status-text">Connecting...</span>
         </div>
         <div class="control-group json-tools" id="jsonTools" style="display: none;">
             <div class="json-search-container">
@@ -213,6 +213,51 @@
             </form>
         </div>
     </div>
+    <!-- New Webhook Modal -->
+    <div class="modal-overlay" id="newWebhookModal">
+        <div class="modal">
+            <h3>Create New Webhook</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                Enter a unique identifier for your webhook. This will be part of your webhook URL.
+            </p>
+            <form onsubmit="event.preventDefault(); webhookViewer.createAndTestWebhook();">
+                <div class="form-group">
+                    <label for="newWebhookIdInput">Webhook ID</label>
+                    <input
+                            type="text"
+                            id="newWebhookIdInput"
+                            placeholder="e.g., my-app-webhook"
+                            required
+                            pattern="[a-zA-Z0-9-_]+"
+                            title="Only letters, numbers, hyphens, and underscores allowed"
+                    >
+                    <div class="password-requirements">
+                        Only letters, numbers, hyphens (-), and underscores (_) are allowed
+                    </div>
+                </div>
+                <div class="info-card" style="margin: 1.5rem 0;">
+                    <strong>Your webhook URL will be:</strong>
+                    <code style="display: block; margin-top: 0.5rem; word-break: break-all;">
+                        https://webhook.agechecked.com/webhook/{{ user_id }}/<span id="webhookIdPreview"
+                                                                                   style="color: var(--accent-color);">your-webhook-id</span>
+                    </code>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="webhookViewer.closeNewWebhookModal()">Cancel
+                    </button>
+                    <button type="submit" class="btn-primary">Create & Test</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add this script to update the preview -->
+    <script>
+        document.getElementById('newWebhookIdInput').addEventListener('input', function(e) {
+            const preview = document.getElementById('webhookIdPreview');
+            preview.textContent = e.target.value || 'your-webhook-id';
+        });
+    </script>
     <!-- About the App Modal -->
     <div class="modal-overlay" id="aboutModal">
         <div class="modal modal-large">
