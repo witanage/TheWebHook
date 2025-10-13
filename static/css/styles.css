@@ -129,7 +129,8 @@ body {
 }
 
 .refresh-indicator {
-    height: 32px;
+    padding-top: 0.5rem;
+    height: 40px;
     width: auto;
     border-radius: var(--radius);
     transition: var(--transition);
@@ -1465,7 +1466,9 @@ button:active {
 
 .details-card {
     flex: 1;
-    padding: 1.5rem;
+    padding: 0.01rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: var(--bg-quaternary) var(--bg-secondary);
