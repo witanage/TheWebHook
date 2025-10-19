@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+
+    <!-- Global Styles -->
+    <link href="{{ url_for('static', filename='css/global-styles.css') }}" rel="stylesheet">
+
+    {% block extra_head %}
+    <!-- Page-specific styles and scripts go here -->
+    {% endblock %}
+</head>
+<body>
+<!-- Global Header -->
+<div class="global-header">
+    <div class="global-header-content">
+        <div class="global-header-left">
+            {% block header_left %}
+            <button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Menu
+            </button>
+            {% endblock %}
+        </div>
+
+        <div class="global-header-right">
+            <!-- Connection Status (for webhook viewer) -->
+            {% block connection_status %}{% endblock %}
+
+            <!-- Notifications (optional, can be shown globally) -->
+            {% block notifications %}{% endblock %}
+
+            <!-- Profile Menu (Always visible) -->
+            <div class="profile-menu">
+                <button class="profile-button" onclick="toggleProfileMenu()">
+                    <div class="profile-icon">{{ username[0].upper() if username else 'U' }}</div>
+                    <span>{{ username if username else 'User' }}</span>
+                    <span style="font-size: 12px;">▼</span>
+                </button>
+                <div class="profile-dropdown" id="profileDropdown">
+                    <div class="profile-dropdown-item" onclick="openPasswordModal()">
+                        <span>🔐</span>
+                        <span>Change Password</span>
+                    </div>
+                    <div class="profile-dropdown-item">
+                        <span>🎨</span>
+                        <span>Theme</span>
+                        <select class="theme-select-inline" id="themeSelect" onclick="event.stopPropagation()"
+                                onchange="changeTheme(this.value)">
+                            <option value="system">System</option>
+                            <option value="dark">Dark</option>
+                            <option value="light">Light</option>
+                        </select>
+                    </div>
+                    <div class="profile-dropdown-item" onclick="openAboutModal()">
+                        <span>ℹ️</span>
+                        <span>About</span>
+                    </div>
+                    <div class="profile-dropdown-item danger" onclick="logout()">
+                        <span>🚪</span>
+                        <span>Logout</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content -->
+<div class="global-content">
+    {% block content %}
+    <!-- Page-specific content goes here -->
+    {% endblock %}
+</div>
+
+<!-- Password Change Modal (Global) -->
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal">
+        <h3>Change Password</h3>
+        <form id="passwordForm">
+            <div class="form-group">
+                <label for="oldPassword">Current Password</label>
+                <input type="password" id="oldPassword" name="oldPassword" required>
+                <div class="error" id="oldPasswordError"></div>
+            </div>
+            <div class="form-group">
+                <label for="newPassword">New Password</label>
+                <input type="password" id="newPassword" name="newPassword" required>
+                <div class="password-requirements">Password must be at least 6 characters long</div>
+                <div class="error" id="newPasswordError"></div>
+            </div>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm New Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+                <div class="error" id="confirmPasswordError"></div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Change Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- About Modal (Global) -->
+<div class="modal-overlay" id="aboutModal">
+    <div class="modal">
+        <h3>About</h3>
+        <div class="modal-content">
+            <p>Application Suite v1.0</p>
+            <p>© 2024 Your Company</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-primary" onclick="closeAboutModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Global Scripts -->
+<script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
+
+{% block extra_scripts %}
+<!-- Page-specific scripts go here -->
+<!-- Add theme initialization script -->
+<script>
+    // Initialize theme on page load
+    (function() {
+        const savedTheme = localStorage.getItem('selectedTheme') || 'system';
+        let actualTheme = savedTheme;
+
+        if (savedTheme === 'system') {
+            actualTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+
+        document.documentElement.setAttribute('data-theme', actualTheme);
+
+        // Set the select value if it exists
+        const themeSelect = document.getElementById('themeSelect');
+        if (themeSelect) {
+            themeSelect.value = savedTheme;
+        }
+    })();
+</script>
+{% endblock %}
+</body>
+</html>
