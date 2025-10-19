@@ -22,15 +22,27 @@
 <div class="header">
     <div class="header-content">
         <div class="header-left">
-            <a href="#" id="refreshIndicatorLink">
-                <img id="refreshIndicator" class="refresh-indicator"
-                     src="{{ url_for('static', filename='normal.gif') }}" alt="Status Indicator">
-            </a>
+            <button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+                Menu
+            </button>
+
+        </div>
+        <div class="header-center">
+            <div class="refresh-indicator-container">
+                <a href="#" id="refreshIndicatorLink">
+                    <img id="refreshIndicator" class="refresh-indicator"
+                         src="{{ url_for('static', filename='normal.gif') }}" alt="Status Indicator">
+                </a>
+            </div>
         </div>
         <div class="header-right">
             <div class="connection-status" id="connectionStatus">
                 <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>  <!-- This can stay as is -->
+                <span class="status-text">Connecting...</span>
             </div>
             <div class="notification-icon" onclick="toggleNotifications()">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">

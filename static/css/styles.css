@@ -129,11 +129,25 @@ body {
 }
 
 .refresh-indicator {
-    padding-top: 0.5rem;
-    height: 40px;
+    height: 32px;
     width: auto;
     border-radius: var(--radius);
     transition: var(--transition);
+    display: block;
+}
+
+.refresh-indicator-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 1rem;
+}
+
+#refreshIndicatorLink {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
 }
 
 .refresh-indicator:hover {
@@ -1166,6 +1180,25 @@ pre.pretty-json:focus {
 
 .profile-dropdown-item.danger {
     color: var(--danger-color);
+}
+
+.back-to-menu {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: 1rem;
+}
+
+.back-to-menu:hover {
+    background: var(--bg-quaternary);
+    border-color: var(--accent-color);
 }
 
 /* Container adjustments for fixed controls */

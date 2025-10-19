@@ -182,8 +182,9 @@ def login():
                 log("Checking password with bcrypt")
                 if bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
                     session["user_id"] = user["id"]
+                    session["username"] = username  # ADD THIS LINE - Store username in session
                     log(f"Login successful for user {username} (ID: {user['id']})")
-                    return redirect(url_for("dashboard"))
+                    return redirect(url_for("menu"))  # CHANGE THIS - "dashboard" to "menu"
                 else:
                     log(f"Login failed: Incorrect password for {username}")
                     return render_template("login.html", error="Invalid username or password")
@@ -205,20 +206,41 @@ def login():
             conn.close()
 
 
-@app.route("/logout")
+@app.route("/menu")
 @login_required
-def logout():
-    user_id = session.get("user_id")
-    session.pop("user_id", None)
-    log(f"User {user_id} logged out")
-    return redirect(url_for("login"))
-
-
-@app.route("/dashboard")
-@login_required
-def dashboard():
+def menu():
     user_id = session["user_id"]
-    log(f"User {user_id} accessed dashboard")
+    username = session.get("username")
+
+    # If username not in session, fetch from database
+    if not username:
+        conn = None
+        cursor = None
+        try:
+            conn = pymysql.connect(**db_config)
+            cursor = conn.cursor()
+            cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
+            result = cursor.fetchone()
+            username = result[0] if result else "User"
+            session["username"] = username
+        except:
+            username = "User"
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    return render_template("menu.html", username=username)
+
+
+@app.route("/webhook-viewer")
+@login_required
+def webhook_viewer():
+    """Webhook viewer application"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    log(f"User {user_id} accessed webhook viewer")
 
     conn = None
     cursor = None
@@ -232,11 +254,6 @@ def dashboard():
             (user_id, user_id))
         webhook_ids = [row[0] for row in cursor.fetchall()]
 
-        # Get username for display
-        cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
-        user_result = cursor.fetchone()
-        username = user_result[0] if user_result else "User"
-
     except pymysql.MySQLError as err:
         log(f"Database error fetching data: {str(err)}")
         return jsonify({"error": str(err)}), 500
@@ -247,6 +264,22 @@ def dashboard():
             conn.close()
 
     return render_template("index.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    user_id = session.get("user_id")
+    session.pop("user_id", None)
+    log(f"User {user_id} logged out")
+    return redirect(url_for("login"))
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    # Redirect old dashboard URL to new menu
+    return redirect(url_for("menu"))
 
 
 @app.route("/webhook_ids/<user_id>")

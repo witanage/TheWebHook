@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>/httpcode/<int:code> Endpoint Documentation</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.14/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"/>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+</head>
+
+<body class="bg-gray-900 text-gray-100 font-sans leading-relaxed">
+<div class="max-w-4xl mx-auto py-12 px-6">
+
+    <h1 class="text-4xl font-bold mb-4 text-blue-400">HTTP Status Code Tester API</h1>
+    <p class="text-gray-300 mb-6">
+        This endpoint allows you to test and simulate different HTTP status codes.
+        It supports multiple HTTP methods and provides useful diagnostic information
+        about the request, response, and headers.
+    </p>
+
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 mb-10">
+        <h2 class="text-2xl font-semibold text-blue-300 mb-3">📍 Endpoint</h2>
+        <pre class="bg-gray-900 text-blue-100 p-4 rounded-xl overflow-x-auto"><code>/httpcode/&lt;int:code&gt;</code></pre>
+        <p class="mt-2 text-gray-400">Example: <code class="text-blue-400">/httpcode/404</code> returns a 404 Not Found
+            response.</p>
+    </div>
+
+    <!-- 🌐 Endpoint Examples List -->
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 mb-10">
+        <h2 class="text-2xl font-semibold text-blue-300 mb-3">🌐 Common Endpoint Links</h2>
+        <p class="text-gray-400 mb-4">Click any copy icon to copy the full endpoint URL.</p>
+
+        <div class="grid md:grid-cols-2 gap-3">
+            <!-- Endpoint list -->
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/200</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/200">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/201</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/201">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/204</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/204">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/301</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/301">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/302</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/302">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/304</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/304">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/400</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/400">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/401</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/401">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/403</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/403">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/404</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/404">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/405</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/405">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/422</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/422">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/429</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/429">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/500</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/500">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/502</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/502">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/503</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/503">📋</button>
+            </div>
+            <div class="bg-gray-900 p-4 rounded-xl flex justify-between items-center hover:bg-gray-800 transition">
+                <code class="text-blue-400 text-sm">/httpcode/504</code>
+                <button class="copy-btn text-gray-400 hover:text-blue-400" data-url="/httpcode/504">📋</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.copy-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const url = window.location.origin + btn.dataset.url;
+            navigator.clipboard.writeText(url);
+            btn.textContent = '✅';
+            setTimeout(() => (btn.textContent = '📋'), 1200);
+          });
+        });
+    </script>
+
+
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 mb-10">
+        <h2 class="text-2xl font-semibold text-blue-300 mb-3">🧠 Function Description</h2>
+        <p class="text-gray-300 mb-3">
+            This route takes an integer <code class="text-blue-400">&lt;code&gt;</code> between
+            <strong>100</strong> and <strong>599</strong> representing an HTTP status code.
+            It returns a JSON response describing the code and request details.
+        </p>
+        <p class="text-gray-300">Invalid status codes return <code class="text-red-400">400 Bad Request</code>.</p>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 mb-10">
+        <h2 class="text-2xl font-semibold text-blue-300 mb-3">🧾 Example Response</h2>
+        <pre class="language-json rounded-xl"><code>{
+  "status": 200,
+  "message": "OK",
+  "method": "GET",
+  "path": "/httpcode/200",
+  "timestamp": "2025-10-19T13:20:32Z"
+}</code></pre>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 mb-10">
+        <h2 class="text-2xl font-semibold text-blue-300 mb-3">📦 Example with Request Body (POST)</h2>
+        <pre class="language-bash rounded-xl mb-3"><code>curl -X POST -H "Content-Type: application/json" \
+-d '{"name": "Test"}' http://localhost:5000/httpcode/201</code></pre>
+        <pre class="language-json rounded-xl"><code>{
+  "status": 201,
+  "message": "Created",
+  "method": "POST",
+  "path": "/httpcode/201",
+  "timestamp": "2025-10-19T13:21:10Z",
+  "received_data": {
+    "name": "Test"
+  }
+}</code></pre>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 mb-10">
+        <h2 class="text-2xl font-semibold text-blue-300 mb-3">🧩 Special Behaviors</h2>
+        <ul class="list-disc ml-6 text-gray-300">
+            <li><code>204</code> → Returns an empty response (No Content)</li>
+            <li><code>301 / 302 / 307 / 308</code> → Adds a <code>Location: /</code> header</li>
+            <li><code>401</code> → Includes <code>WWW-Authenticate</code> header</li>
+            <li><code>429</code> → Includes <code>Retry-After: 60</code> header</li>
+            <li><code>503</code> → Includes <code>Retry-After: 120</code> header</li>
+        </ul>
+    </div>
+
+    <div class="bg-gray-800 p-6 rounded-2xl shadow-lg border border-gray-700 mb-10">
+        <h2 class="text-2xl font-semibold text-blue-300 mb-3">💡 Example Python Code</h2>
+        <pre class="language-python rounded-xl"><code>@app.route("/httpcode/&lt;int:code&gt;", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def http_status_test(code):
+    if code &lt; 100 or code &gt; 599:
+        return jsonify({"error": "Invalid status code"}), 400
+    response = jsonify({
+        "status": code,
+        "message": "Custom or standard message",
+        "method": request.method,
+        "path": request.path,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    })
+    return response, code</code></pre>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,279 @@
+:root {
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #2d2d2d;
+    --bg-card: #252525;
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+    --accent-primary: #007acc;
+    --accent-success: #28a745;
+    --accent-warning: #ffc107;
+    --border-color: #3d3d3d;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --radius: 12px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Remove this line: background: linear-gradient(135deg, #0a0a0a, #1a1a1a); */
+    color: var(--text-primary);
+    min-height: 100vh;
+    transition: background 0.3s ease; /* Add transition for smooth theme change */
+}
+
+/* Add theme-specific backgrounds */
+:root[data-theme="dark"] body,
+body {
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+}
+
+:root[data-theme="light"] body {
+    background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+}
+
+.menu-header {
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+}
+
+.menu-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    background: linear-gradient(135deg, var(--text-primary), var(--accent-primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.user-name {
+    font-weight: 500;
+}
+
+.logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-primary);
+}
+
+.menu-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.welcome-section {
+    text-align: center;
+    margin-bottom: 3rem;
+}
+
+.welcome-section h2 {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.welcome-section p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+.apps-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.app-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 2rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.app-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow), 0 10px 30px rgba(0, 122, 204, 0.2);
+    border-color: var(--accent-primary);
+}
+
+.app-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: var(--accent-primary);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.app-card:hover::before {
+    transform: scaleX(1);
+}
+
+.app-card.coming-soon {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.app-card.coming-soon:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--border-color);
+}
+
+.app-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--bg-secondary);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.5rem;
+    color: var(--accent-primary);
+}
+
+.webhook-icon {
+    background: linear-gradient(135deg, #0066cc, #007acc);
+    color: white;
+}
+
+.app-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.app-description {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    min-height: 40px;
+}
+
+.app-status {
+    margin-top: auto;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.status-badge.active {
+    background: rgba(40, 167, 69, 0.2);
+    color: var(--accent-success);
+    border: 1px solid var(--accent-success);
+}
+
+.status-badge.coming {
+    background: rgba(255, 193, 7, 0.2);
+    color: var(--accent-warning);
+    border: 1px solid var(--accent-warning);
+}
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent-primary);
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+}
+
+.toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* Add at the top after existing :root */
+:root[data-theme="light"] {
+    --bg-primary: #F8FAFC;
+    --bg-secondary: #ffffff;
+    --bg-card: #ffffff;
+    --text-primary: #1c1e21;
+    --text-secondary: #5f6368;
+    --accent-primary: #0866ff;
+    --accent-success: #42b883;
+    --accent-warning: #f0ad4e;
+    --border-color: #e0e0e0;
+    --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Update body background for light theme */
+body[data-theme="light"] {
+    background: linear-gradient(135deg, #f5f7fa, #c3cfe2);
+}
+
+@media (max-width: 768px) {
+    .menu-container {
+        padding: 1rem;
+    }
+
+    .apps-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .welcome-section h2 {
+        font-size: 1.5rem;
+    }
+}
