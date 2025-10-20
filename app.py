@@ -803,6 +803,16 @@ def handle_webhook(user_id, webhook_id):
             return jsonify({"message": f"{request.method} webhook received and logged successfully"}), 200
 
 
+@app.route("/http-codes")
+@login_required
+def http_codes():
+    """HTTP Codes Tester documentation page"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    log(f"User {user_id} accessed HTTP codes tester")
+    return render_template("httpcodes.html", username=username)
+
+
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def http_status_test(code):
     """
