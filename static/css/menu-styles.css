@@ -244,6 +244,11 @@ body {
     opacity: 1;
 }
 
+.http-icon {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+}
+
 /* Add at the top after existing :root */
 :root[data-theme="light"] {
     --bg-primary: #F8FAFC;
