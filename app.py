@@ -813,6 +813,16 @@ def http_codes():
     return render_template("httpcodes.html", username=username)
 
 
+@app.route("/json-compare")
+@login_required
+def json_compare():
+    """JSON Comparison Tool page"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    log(f"User {user_id} accessed JSON comparison tool")
+    return render_template("json-compare.html", username=username)
+
+
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def http_status_test(code):
     """

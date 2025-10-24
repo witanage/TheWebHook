@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block title %}JSON Comparison Tool{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/json-compare-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="json-compare-container">
+    <div class="page-header">
+        <h1 class="page-title">JSON Comparison Tool</h1>
+        <p class="page-description">Compare two JSON objects and visualize their differences</p>
+    </div>
+
+    <div class="controls">
+        <button class="btn-primary" onclick="compareJSON()">Compare</button>
+        <button class="btn-secondary" onclick="formatJSON()">Format JSON</button>
+        <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        <button class="btn-success" onclick="loadSample()">Load Sample</button>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-box" style="background: #d4edda; border-color: #28a745;"></div>
+            <span>Added</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background: #f8d7da; border-color: #dc3545;"></div>
+            <span>Removed</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-box" style="background: #fff3cd; border-color: #ffc107;"></div>
+            <span>Changed</span>
+        </div>
+    </div>
+
+    <div class="comparison-area">
+        <div class="json-panel">
+            <div class="panel-header">JSON 1</div>
+            <div class="json-editor" id="json1" contenteditable="true"></div>
+        </div>
+        <div class="json-panel">
+            <div class="panel-header">JSON 2</div>
+            <div class="json-editor" id="json2" contenteditable="true"></div>
+        </div>
+    </div>
+
+    <div class="results" id="results" style="display: none;">
+        <div class="results-header">Comparison Results</div>
+
+        <div class="stats">
+            <div class="stat-card stat-added">
+                <div class="stat-icon">+</div>
+                <div class="stat-value" id="addedCount">0</div>
+                <div class="stat-label">Added</div>
+            </div>
+            <div class="stat-card stat-removed">
+                <div class="stat-icon">−</div>
+                <div class="stat-value" id="removedCount">0</div>
+                <div class="stat-label">Removed</div>
+            </div>
+            <div class="stat-card stat-changed">
+                <div class="stat-icon">±</div>
+                <div class="stat-value" id="changedCount">0</div>
+                <div class="stat-label">Changed</div>
+            </div>
+        </div>
+
+        <div class="diff-container" id="diffContainer"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/json-compare.js') }}"></script>
+{% endblock %}
