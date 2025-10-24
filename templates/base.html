@@ -74,7 +74,7 @@
                         <span>ℹ️</span>
                         <span>About</span>
                     </div>
-                    <div class="profile-dropdown-item danger" onclick="logout()">
+                    <div class="profile-dropdown-item danger" onclick="openLogoutModal()">
                         <span>🚪</span>
                         <span>Logout</span>
                     </div>
@@ -130,6 +130,25 @@
         </div>
         <div class="modal-footer">
             <button class="btn-primary" onclick="closeAboutModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Logout Confirmation Modal (Global) -->
+<div class="modal-overlay" id="logoutModal">
+    <div class="modal modal-confirmation">
+        <div class="modal-icon warning">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <path d="M10 17l5-5-5-5"/>
+                <path d="M20 12H4"/>
+            </svg>
+        </div>
+        <h3>Confirm Logout</h3>
+        <p class="modal-message">Are you sure you want to logout? Any unsaved changes will be lost.</p>
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" onclick="closeLogoutModal()">Cancel</button>
+            <button type="button" class="btn-danger" onclick="confirmLogout()">Logout</button>
         </div>
     </div>
 </div>
