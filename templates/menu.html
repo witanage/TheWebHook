@@ -57,20 +57,20 @@
             </div>
         </div>
 
-        <!-- Future App Placeholder 2 -->
-        <div class="app-card coming-soon" onclick="showComingSoon()">
-            <div class="app-icon">
+        <!-- JSON Comparison App -->
+        <div class="app-card" onclick="navigateToApp('json-compare')">
+            <div class="app-icon json-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="1.5" opacity="0.5">
+                     stroke="currentColor" stroke-width="2">
                     <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
                     <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
                     <line x1="12" y1="22.08" x2="12" y2="12"></line>
                 </svg>
             </div>
-            <div class="app-name">Compare JSON</div>
-            <div class="app-description">Coming Soon</div>
+            <div class="app-name">JSON Comparison</div>
+            <div class="app-description">Compare and visualize JSON differences side-by-side</div>
             <div class="app-status">
-                <span class="status-badge coming">Coming Soon</span>
+                <span class="status-badge active">Active</span>
             </div>
         </div>
     </div>
@@ -85,8 +85,10 @@
         if (appName === 'webhook-viewer') {
             window.location.href = '/webhook-viewer';
         } else if (appName === 'http-codes') {
-        window.location.href = '/http-codes';
-    }
+            window.location.href = '/http-codes';
+        } else if (appName === 'json-compare') {
+            window.location.href = '/json-compare';
+        }
     }
 
     function showComingSoon() {
