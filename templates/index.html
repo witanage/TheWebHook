@@ -17,7 +17,6 @@
           id="flatpickr-light-theme" disabled>
     <!-- Custom Styles -->
     <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/global-styles.css') }}" rel="stylesheet">
 </head>
 <body>
 <div class="header">
@@ -413,31 +412,6 @@
         </div>
     </div>
 
-    <!-- Password Change Modal -->
-    <div class="modal-overlay" id="passwordModal">
-        <div class="modal modal-confirmation">
-            <h3>Change Password</h3>
-            <form id="passwordForm" onsubmit="changePassword(event)">
-                <div class="form-group">
-                    <label for="currentPassword">Current Password</label>
-                    <input type="password" id="currentPassword" required>
-                </div>
-                <div class="form-group">
-                    <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" required minlength="6">
-                </div>
-                <div class="form-group">
-                    <label for="confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirmPassword" required minlength="6">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancel</button>
-                    <button type="submit" class="btn-primary">Change Password</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Logout Confirmation Modal -->
     <div class="modal-overlay" id="logoutModal">
         <div class="modal modal-confirmation">
@@ -449,7 +423,7 @@
                 </svg>
             </div>
             <h3>Confirm Logout</h3>
-            <p class="modal-message">Are you sure you want to logout? Any unsaved changes will be lost.</p>
+            <p class="modal-message">Are you sure you want to logout?</p>
             <div class="form-actions">
                 <button type="button" class="btn-secondary" onclick="closeLogoutModal()">Cancel</button>
                 <button type="button" class="btn-danger" onclick="confirmLogout()">Logout</button>
@@ -457,18 +431,15 @@
         </div>
     </div>
 
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container"></div>
-
     <!-- Prism.js Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+    <!-- Global Functions -->
+    <script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
     <!-- Theme Management Script -->
     <script src="{{ url_for('static', filename='js/webhook-viewer-theme.js') }}"></script>
     <!-- WebHook Viewer Script -->
     <script src="{{ url_for('static', filename='js/webhook-viewer.js') }}"></script>
-    <!-- Global Functions Script -->
-    <script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
     <!-- Global Search Modal -->
     <div class="global-search-modal" id="globalSearchModal">
         <div class="global-search-container">

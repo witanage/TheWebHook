@@ -106,7 +106,8 @@ def get_all_menu_items():
 def inject_menu_items():
     """Make menu items available to all templates"""
     menu_items = get_all_menu_items()
-    return {'menu_items': menu_items}
+    is_admin = session.get('is_admin', 0)
+    return {'menu_items': menu_items, 'is_admin': is_admin}
 
 
 # ==================== END MENU ITEMS FUNCTIONS ====================
@@ -138,6 +139,20 @@ def login_required(f):
         if "user_id" not in session:
             log(f"Unauthorized access attempt to {request.path}")
             return redirect(url_for("login"))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            log(f"Unauthorized access attempt to {request.path}")
+            return redirect(url_for("login"))
+        if not session.get("is_admin"):
+            log(f"Non-admin user attempted to access {request.path}")
+            return redirect(url_for("menu"))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -228,9 +243,10 @@ def login():
                 log("Checking password with bcrypt")
                 if bcrypt.checkpw(password.encode("utf-8"), user["password_hash"].encode("utf-8")):
                     session["user_id"] = user["id"]
-                    session["username"] = username  # ADD THIS LINE - Store username in session
-                    log(f"Login successful for user {username} (ID: {user['id']})")
-                    return redirect(url_for("menu"))  # CHANGE THIS - "dashboard" to "menu"
+                    session["username"] = username
+                    session["is_admin"] = user.get("is_admin", 0)
+                    log(f"Login successful for user {username} (ID: {user['id']}, Admin: {user.get('is_admin', 0)})")
+                    return redirect(url_for("menu"))
                 else:
                     log(f"Login failed: Incorrect password for {username}")
                     return render_template("login.html", error="Invalid username or password")
@@ -310,13 +326,6 @@ def webhook_viewer():
             conn.close()
 
     return render_template("index.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
-
-
-@app.route("/json-compare")
-@login_required
-def json_compare():
-    """JSON comparison tool page"""
-    return render_template("json-compare.html", username=session.get("username"))
 
 
 @app.route("/logout")
@@ -866,6 +875,16 @@ def http_codes():
     return render_template("httpcodes.html", username=username)
 
 
+@app.route("/json-compare")
+@login_required
+def json_compare():
+    """JSON comparison tool page"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    log(f"User {user_id} accessed JSON comparison tool")
+    return render_template("json-compare.html", username=username)
+
+
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def http_status_test(code):
     """
@@ -1202,7 +1221,7 @@ def api_reorder_menu_items():
 
 
 @app.route('/admin/menu-items')
-@login_required
+@admin_required
 def admin_menu_items():
     """Admin page to manage menu items"""
     conn = get_db_connection()
@@ -1219,6 +1238,330 @@ def admin_menu_items():
 
 
 # ==================== END MENU ITEMS API ROUTES ====================
+# ==================== ADMIN USER MANAGEMENT ROUTES ====================
+# Add these routes to app.py after the menu items routes
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    """Admin page to manage users"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, username, status, is_admin, created_at,
+                (SELECT COUNT(*) FROM webhook_responses WHERE user_id = users.id) as webhook_count
+                FROM users
+                ORDER BY created_at DESC
+            """
+            cursor.execute(sql)
+            users = cursor.fetchall()
+            return render_template('admin/users.html',
+                                   users=users,
+                                   username=session.get('username'))
+    finally:
+        conn.close()
+
+
+@admin_required
+@app.route('/api/admin/users', methods=['GET'])
+@admin_required
+def api_get_users():
+    """Get all users"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, username, status, is_admin, created_at,
+                (SELECT COUNT(*) FROM webhook_responses WHERE user_id = users.id) as webhook_count
+                FROM users
+                ORDER BY created_at DESC
+            """
+            cursor.execute(sql)
+            users = cursor.fetchall()
+            return jsonify({'success': True, 'users': users})
+    except Exception as e:
+        log(f"Error fetching users: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@admin_required
+@app.route('/api/admin/users/<int:user_id>', methods=['GET'])
+@admin_required
+def api_get_user(user_id):
+    """Get single user by ID"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, username, status, is_admin, created_at,
+                (SELECT COUNT(*) FROM webhook_responses WHERE user_id = users.id) as webhook_count
+                FROM users
+                WHERE id = %s
+            """
+            cursor.execute(sql, (user_id,))
+            user = cursor.fetchone()
+            if user:
+                return jsonify({'success': True, 'user': user})
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+    finally:
+        conn.close()
+
+
+@admin_required
+@app.route('/api/admin/users', methods=['POST'])
+@admin_required
+def api_create_user():
+    """Create a new user"""
+    data = request.json
+
+    # Validate required fields
+    if 'username' not in data or 'password' not in data:
+        return jsonify({'success': False, 'error': 'Username and password required'}), 400
+
+    username = data['username']
+    password = data['password']
+    status = data.get('status', 1)  # Default active
+    is_admin = data.get('is_admin', 0)  # Default normal user
+
+    # Validate password length
+    if len(password) < 6:
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if username exists
+            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+            if cursor.fetchone():
+                return jsonify({'success': False, 'error': 'Username already exists'}), 400
+
+            # Hash password
+            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            # Insert user
+            sql = "INSERT INTO users (username, password_hash, status, is_admin) VALUES (%s, %s, %s, %s)"
+            cursor.execute(sql, (username, hashed_password, status, is_admin))
+            conn.commit()
+
+            log(f"Admin created user: {username}")
+            return jsonify({
+                'success': True,
+                'message': 'User created successfully',
+                'user_id': cursor.lastrowid
+            })
+    except Exception as e:
+        log(f"Error creating user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@admin_required
+@app.route('/api/admin/users/<int:user_id>/status', methods=['PUT'])
+@admin_required
+def api_toggle_user_status(user_id):
+    """Toggle user active/inactive status"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Get current status
+            cursor.execute("SELECT username, status FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'success': False, 'error': 'User not found'}), 404
+
+            # Toggle status
+            new_status = 0 if user['status'] == 1 else 1
+            cursor.execute("UPDATE users SET status = %s WHERE id = %s", (new_status, user_id))
+            conn.commit()
+
+            status_text = 'activated' if new_status == 1 else 'deactivated'
+            log(f"Admin {status_text} user: {user['username']}")
+
+            return jsonify({
+                'success': True,
+                'message': f'User {status_text} successfully',
+                'new_status': new_status
+            })
+    except Exception as e:
+        log(f"Error toggling user status: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['PUT'])
+@admin_required
+def api_update_user(user_id):
+    """Update user details (admin)"""
+    data = request.json
+
+    if 'username' not in data:
+        return jsonify({'success': False, 'error': 'Username required'}), 400
+
+    username = data['username']
+    status = data.get('status', 1)
+    is_admin = data.get('is_admin', 0)
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if user exists
+            cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'success': False, 'error': 'User not found'}), 404
+
+            # Check if new username already exists (if changing username)
+            if username != user['username']:
+                cursor.execute("SELECT id FROM users WHERE username = %s AND id != %s", (username, user_id))
+                if cursor.fetchone():
+                    return jsonify({'success': False, 'error': 'Username already exists'}), 400
+
+            # Update user
+            cursor.execute(
+                "UPDATE users SET username = %s, status = %s, is_admin = %s WHERE id = %s",
+                (username, status, is_admin, user_id)
+            )
+            conn.commit()
+
+            log(f"Admin updated user: {username}")
+
+            return jsonify({
+                'success': True,
+                'message': 'User updated successfully'
+            })
+    except Exception as e:
+        log(f"Error updating user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@admin_required
+@app.route('/api/admin/users/<int:user_id>/password', methods=['PUT'])
+@admin_required
+def api_reset_user_password(user_id):
+    """Reset user password (admin)"""
+    data = request.json
+
+    if 'password' not in data:
+        return jsonify({'success': False, 'error': 'Password required'}), 400
+
+    new_password = data['password']
+
+    if len(new_password) < 6:
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters'}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if user exists
+            cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'success': False, 'error': 'User not found'}), 404
+
+            # Hash new password
+            hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+            # Update password
+            cursor.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hashed_password, user_id))
+            conn.commit()
+
+            log(f"Admin reset password for user: {user['username']}")
+
+            return jsonify({
+                'success': True,
+                'message': 'Password reset successfully'
+            })
+    except Exception as e:
+        log(f"Error resetting password: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@admin_required
+@app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
+@admin_required
+def api_delete_user(user_id):
+    """Delete user (admin)"""
+    # Prevent deleting yourself
+    if user_id == session.get('user_id'):
+        return jsonify({'success': False, 'error': 'Cannot delete your own account'}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if user exists
+            cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
+            user = cursor.fetchone()
+
+            if not user:
+                return jsonify({'success': False, 'error': 'User not found'}), 404
+
+            # Delete user
+            cursor.execute("DELETE FROM users WHERE id = %s", (user_id,))
+            conn.commit()
+
+            log(f"Admin deleted user: {user['username']}")
+
+            return jsonify({
+                'success': True,
+                'message': 'User deleted successfully'
+            })
+    except Exception as e:
+        log(f"Error deleting user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@admin_required
+@app.route('/api/admin/stats', methods=['GET'])
+@admin_required
+def api_admin_stats():
+    """Get admin dashboard statistics"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            stats = {}
+
+            # Total users
+            cursor.execute("SELECT COUNT(*) as count FROM users")
+            stats['total_users'] = cursor.fetchone()['count']
+
+            # Active users
+            cursor.execute("SELECT COUNT(*) as count FROM users WHERE status = 1")
+            stats['active_users'] = cursor.fetchone()['count']
+
+            # Total webhooks
+            cursor.execute("SELECT COUNT(*) as count FROM webhook_responses")
+            stats['total_webhooks'] = cursor.fetchone()['count']
+
+            # Webhooks today
+            cursor.execute("""
+                SELECT COUNT(*) as count FROM webhook_responses 
+                WHERE DATE(timestamp) = CURDATE()
+            """)
+            stats['webhooks_today'] = cursor.fetchone()['count']
+
+            return jsonify({'success': True, 'stats': stats})
+    except Exception as e:
+        log(f"Error fetching admin stats: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ==================== END ADMIN USER MANAGEMENT ROUTES ====================
 
 
 if __name__ == "__main__":
