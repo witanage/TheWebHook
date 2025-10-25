@@ -1,94 +1,67 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="user-id" content="{{ user_id }}">
-    <title>Webhook Viewer</title>
-    <!-- Prism.js Theme -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"
-          id="prism-dark-theme">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"
-          id="prism-light-theme" disabled>
-    <!-- Flatpickr Date Range Picker -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" id="flatpickr-dark-theme">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/light.css"
-          id="flatpickr-light-theme" disabled>
-    <!-- Custom Styles -->
-    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
-</head>
-<body>
-<div class="header">
-    <div class="header-content">
-        <div class="header-left">
-            <button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2">
-                    <polyline points="15 18 9 12 15 6"></polyline>
-                </svg>
-                Menu
-            </button>
+{% extends "base.html" %}
+
+{% block title %}Webhook Viewer{% endblock %}
+
+{% block extra_head %}
+<meta name="user-id" content="{{ user_id }}">
+<!-- Prism.js Theme -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"
+      id="prism-dark-theme">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"
+      id="prism-light-theme" disabled>
+<!-- Flatpickr Date Range Picker -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" id="flatpickr-dark-theme">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/light.css"
+      id="flatpickr-light-theme" disabled>
+<!-- Custom Styles -->
+<link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_left %}
+<button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Menu
+</button>
+<div class="refresh-indicator-container">
+    <a href="#" id="refreshIndicatorLink">
+        <img id="refreshIndicator" class="refresh-indicator"
+             src="{{ url_for('static', filename='normal.gif') }}" alt="Status Indicator">
+    </a>
+</div>
+{% endblock %}
+
+{% block connection_status %}
+<div class="connection-status" id="connectionStatus">
+    <span class="status-dot"></span>
+    <span class="status-text">Connecting...</span>
+</div>
+{% endblock %}
+
+{% block notifications %}
+<div class="notification-icon" onclick="toggleNotifications()">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+    </svg>
+    <span class="notification-badge" id="notificationBadge">0</span>
+    <div class="notification-dropdown" id="notificationDropdown">
+        <div class="notification-header">
+            <h4>Notifications</h4>
+            <button class="btn-primary" onclick="markAllNotificationsRead()">Clear All</button>
         </div>
-        <div class="header-center">
-            <h1 class="header-title">Webhook Viewer</h1>
-        </div>
-        <div class="header-right">
-            <div class="connection-status" id="connectionStatus">
-                <span class="status-dot"></span>
-                <span class="status-text">Connecting...</span>
-            </div>
-            <div class="notification-icon" onclick="toggleNotifications()">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-                </svg>
-                <span class="notification-badge" id="notificationBadge">0</span>
-                <div class="notification-dropdown" id="notificationDropdown">
-                    <div class="notification-header">
-                        <h4>Notifications</h4>
-                        <button class="btn-primary" onclick="markAllNotificationsRead()">Clear All</button>
-                    </div>
-                    <div class="notification-list" id="notificationList">
-                        <div class="notification-empty">
-                            <p>No new notifications</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="profile-menu">
-                <button class="profile-button" onclick="toggleProfileMenu()">
-                    <div class="profile-icon">{{ username[0].upper() }}</div>
-                    <span>{{ username }}</span>
-                    <span style="font-size: 12px;">▼</span>
-                </button>
-                <div class="profile-dropdown" id="profileDropdown">
-                    <div class="profile-dropdown-item" onclick="openPasswordModal()">
-                        <span>🔐</span>
-                        <span>Change Password</span>
-                    </div>
-                    <div class="profile-dropdown-item">
-                        <span>🎨</span>
-                        <span>Theme</span>
-                        <select class="theme-select-inline" id="themeSelect" onclick="event.stopPropagation()"
-                                onchange="changeTheme(this.value)">
-                            <option value="system">System</option>
-                            <option value="dark">Dark</option>
-                            <option value="light">Light</option>
-                        </select>
-                    </div>
-                    <div class="profile-dropdown-item" onclick="openAboutModal()">
-                        <span>ℹ️</span>
-                        <span>About the App</span>
-                    </div>
-                    <div class="profile-dropdown-item danger" onclick="openLogoutModal()">
-                        <span>🚪</span>
-                        <span>Logout</span>
-                    </div>
-                </div>
+        <div class="notification-list" id="notificationList">
+            <div class="notification-empty">
+                <p>No new notifications</p>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block content %}
 <div class="container">
     <div class="controls">
         <div class="control-group">
@@ -191,34 +164,7 @@
             </div>
         </div>
     </div>
-    <!-- Password Change Modal -->
-    <div class="modal-overlay" id="passwordModal">
-        <div class="modal">
-            <h3>Change Password</h3>
-            <form id="passwordForm">
-                <div class="form-group">
-                    <label for="oldPassword">Current Password</label>
-                    <input type="password" id="oldPassword" name="oldPassword" required>
-                    <div class="error" id="oldPasswordError"></div>
-                </div>
-                <div class="form-group">
-                    <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" name="newPassword" required>
-                    <div class="password-requirements">Password must be at least 6 characters long</div>
-                    <div class="error" id="newPasswordError"></div>
-                </div>
-                <div class="form-group">
-                    <label for="confirmPassword">Confirm New Password</label>
-                    <input type="password" id="confirmPassword" name="confirmPassword" required>
-                    <div class="error" id="confirmPasswordError"></div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancel</button>
-                    <button type="submit" class="btn-primary">Change Password</button>
-                </div>
-            </form>
-        </div>
-    </div>
+
     <!-- New Webhook Modal -->
     <div class="modal-overlay" id="newWebhookModal">
         <div class="modal">
@@ -257,14 +203,7 @@
         </div>
     </div>
 
-    <!-- Add this script to update the preview -->
-    <script>
-        document.getElementById('newWebhookIdInput').addEventListener('input', function(e) {
-            const preview = document.getElementById('webhookIdPreview');
-            preview.textContent = e.target.value || 'your-webhook-id';
-        });
-    </script>
-    <!-- About the App Modal -->
+    <!-- About the App Modal (overrides base.html) -->
     <div class="modal-overlay" id="aboutModal">
         <div class="modal modal-large">
             <div class="modal-header">
@@ -406,34 +345,6 @@
         </div>
     </div>
 
-    <!-- Logout Confirmation Modal -->
-    <div class="modal-overlay" id="logoutModal">
-        <div class="modal modal-confirmation">
-            <div class="modal-icon warning">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
-                     stroke="currentColor" stroke-width="2">
-                    <path d="M10 17l5-5-5-5"/>
-                    <path d="M20 12H4"/>
-                </svg>
-            </div>
-            <h3>Confirm Logout</h3>
-            <p class="modal-message">Are you sure you want to logout?</p>
-            <div class="form-actions">
-                <button type="button" class="btn-secondary" onclick="closeLogoutModal()">Cancel</button>
-                <button type="button" class="btn-danger" onclick="confirmLogout()">Logout</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Prism.js Library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-    <!-- Global Functions -->
-    <script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
-    <!-- Theme Management Script -->
-    <script src="{{ url_for('static', filename='js/webhook-viewer-theme.js') }}"></script>
-    <!-- WebHook Viewer Script -->
-    <script src="{{ url_for('static', filename='js/webhook-viewer.js') }}"></script>
     <!-- Global Search Modal -->
     <div class="global-search-modal" id="globalSearchModal">
         <div class="global-search-container">
@@ -496,7 +407,23 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Prism.js Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<!-- Theme Management Script -->
+<script src="{{ url_for('static', filename='js/webhook-viewer-theme.js') }}"></script>
+<!-- WebHook Viewer Script -->
+<script src="{{ url_for('static', filename='js/webhook-viewer.js') }}"></script>
 <!-- Flatpickr Script -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-</body>
-</html>
+<!-- Update Webhook ID Preview -->
+<script>
+    document.getElementById('newWebhookIdInput').addEventListener('input', function(e) {
+        const preview = document.getElementById('webhookIdPreview');
+        preview.textContent = e.target.value || 'your-webhook-id';
+    });
+</script>
+{% endblock %}
