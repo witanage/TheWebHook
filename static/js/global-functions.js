@@ -6,23 +6,23 @@ function toggleProfileMenu() {
 }
 
 function openPasswordModal() {
-    document.getElementById('passwordModal').classList.add('show');
+    document.getElementById('passwordModal').classList.add('active');
     document.getElementById('profileDropdown').classList.remove('show');
 }
 
 function closePasswordModal() {
-    document.getElementById('passwordModal').classList.remove('show');
+    document.getElementById('passwordModal').classList.remove('active');
     document.getElementById('passwordForm').reset();
     document.querySelectorAll('.error').forEach(el => el.textContent = '');
 }
 
 function openAboutModal() {
-    document.getElementById('aboutModal').classList.add('show');
+    document.getElementById('aboutModal').classList.add('active');
     document.getElementById('profileDropdown').classList.remove('show');
 }
 
 function closeAboutModal() {
-    document.getElementById('aboutModal').classList.remove('show');
+    document.getElementById('aboutModal').classList.remove('active');
 }
 
 function openLogoutModal() {
@@ -60,59 +60,49 @@ if (window.matchMedia) {
 }
 
 // Password form submission
-document.addEventListener('DOMContentLoaded', function() {
-    const passwordForm = document.getElementById('passwordForm');
-    if (passwordForm) {
-        passwordForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
+function changePassword(event) {
+    event.preventDefault();
 
-            const oldPassword = document.getElementById('oldPassword').value;
-            const newPassword = document.getElementById('newPassword').value;
-            const confirmPassword = document.getElementById('confirmPassword').value;
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
 
-            // Clear previous errors
-            document.querySelectorAll('.error').forEach(el => el.textContent = '');
-
-            if (newPassword !== confirmPassword) {
-                document.getElementById('confirmPasswordError').textContent = 'Passwords do not match';
-                return;
-            }
-
-            if (newPassword.length < 6) {
-                document.getElementById('newPasswordError').textContent = 'Password must be at least 6 characters';
-                return;
-            }
-
-            try {
-                const response = await fetch('/change_password', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        old_password: oldPassword,
-                        new_password: newPassword
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    alert('Password changed successfully!');
-                    closePasswordModal();
-                } else {
-                    if (response.status === 401) {
-                        document.getElementById('oldPasswordError').textContent = data.error;
-                    } else {
-                        alert(data.error || 'Failed to change password');
-                    }
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Failed to change password');
-            }
-        });
+    if (newPassword !== confirmPassword) {
+        alert('Passwords do not match');
+        return;
     }
+
+    if (newPassword.length < 6) {
+        alert('Password must be at least 6 characters');
+        return;
+    }
+
+    fetch('/change_password', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            old_password: currentPassword,
+            new_password: newPassword
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            alert(data.message);
+            closePasswordModal();
+        } else if (data.error) {
+            alert(data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to change password');
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
 
     // Close dropdowns when clicking outside
     document.addEventListener('click', (event) => {
