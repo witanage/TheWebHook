@@ -16,7 +16,7 @@ function compareJSON() {
         const json2Text = getPlainText('json2').trim();
 
         if (!json1Text || !json2Text) {
-            alert('Please enter JSON in both fields');
+            showModal('Error', 'Please enter JSON in both fields');
             return;
         }
 
@@ -74,7 +74,7 @@ function compareJSON() {
         document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
 
     } catch (e) {
-        alert('Error parsing JSON: ' + e.message);
+        showModal('Error', 'Error parsing JSON: ' + e.message);
     }
 }
 
@@ -250,7 +250,7 @@ function formatJSON() {
             setPlainText('json2', JSON.stringify(obj2, null, 2));
         }
     } catch (e) {
-        alert('Error formatting JSON: ' + e.message);
+        showModal('Error', 'Error formatting JSON: ' + e.message);
     }
 }
 

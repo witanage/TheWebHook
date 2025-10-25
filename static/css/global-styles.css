@@ -254,6 +254,21 @@ body {
     color: #ffc107;
 }
 
+.modal-icon.error {
+    background: rgba(244, 67, 54, 0.1);
+    color: #f44336;
+}
+
+.modal-icon.success {
+    background: rgba(76, 175, 80, 0.1);
+    color: #4caf50;
+}
+
+.modal-icon.info {
+    background: rgba(33, 150, 243, 0.1);
+    color: #2196f3;
+}
+
 .modal h3 {
     margin-bottom: 1rem;
 }
