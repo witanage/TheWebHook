@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}User Management{% endblock %}
+
+{% block page_title %}👥 User Management{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/admin-users.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">👥</div>
+            <div class="stat-content">
+                <div class="stat-value" id="totalUsers">-</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <div class="stat-value" id="activeUsers">-</div>
+                <div class="stat-label">Active Users</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📡</div>
+            <div class="stat-content">
+                <div class="stat-value" id="totalWebhooks">-</div>
+                <div class="stat-label">Total Webhooks</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">📅</div>
+            <div class="stat-content">
+                <div class="stat-value" id="webhooksToday">-</div>
+                <div class="stat-label">Today's Webhooks</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="users-section">
+        <div class="section-header">
+            <h2>All Users</h2>
+            <button class="btn-primary" onclick="openCreateUserModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Add User
+            </button>
+        </div>
+
+        <div class="users-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Webhooks</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    {% for user in users %}
+                    <tr data-user-id="{{ user.id }}">
+                        <td>{{ user.id }}</td>
+                        <td><strong>{{ user.username }}</strong></td>
+                        <td>
+                            <span class="role-badge {{ 'admin' if user.is_admin == 1 else 'user' }}">
+                                {{ 'Admin' if user.is_admin == 1 else 'User' }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="status-badge {{ 'active' if user.status == 1 else 'inactive' }}">
+                                {{ 'Active' if user.status == 1 else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td>{{ user.webhook_count }}</td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-icon" onclick="openEditUserModal({{ user.id }}, '{{ user.username }}', {{ user.status }}, {{ user.is_admin }})" title="Edit User">
+                                    ✏️
+                                </button>
+                                <button class="btn-icon" onclick="toggleUserStatus({{ user.id }})" title="Toggle Status">
+                                    {{ '🔒' if user.status == 1 else '🔓' }}
+                                </button>
+                                <button class="btn-icon" onclick="openResetPasswordModal({{ user.id }}, '{{ user.username }}')" title="Reset Password">
+                                    🔑
+                                </button>
+                                <button class="btn-icon danger" onclick="deleteUser({{ user.id }}, '{{ user.username }}')" title="Delete">
+                                    🗑️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create User Modal -->
+<div class="modal-overlay" id="createUserModal">
+    <div class="modal">
+        <h3>Create New User</h3>
+        <form class="modal-form" id="createUserForm" onsubmit="createUser(event)">
+            <div class="form-group">
+                <label for="newUsername">Username *</label>
+                <input type="text" id="newUsername" required>
+            </div>
+
+            <div class="form-group">
+                <label for="newPassword">Password *</label>
+                <input type="password" id="newPassword" required minlength="6">
+            </div>
+
+            <div class="form-group">
+                <label for="newUserStatus">Status</label>
+                <select id="newUserStatus">
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="newUserAdmin">Role</label>
+                <select id="newUserAdmin">
+                    <option value="0">Normal User</option>
+                    <option value="1">Admin</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeCreateUserModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Create User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reset Password Modal -->
+<div class="modal-overlay" id="resetPasswordModal">
+    <div class="modal">
+        <h3>Reset Password</h3>
+        <p class="modal-message">Reset password for: <strong id="resetUsername"></strong></p>
+        <form class="modal-form" id="resetPasswordForm" onsubmit="resetPassword(event)">
+            <input type="hidden" id="resetUserId">
+
+            <div class="form-group">
+                <label for="resetNewPassword">New Password *</label>
+                <input type="password" id="resetNewPassword" required minlength="6">
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeResetPasswordModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Reset Password</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal-overlay" id="editUserModal">
+    <div class="modal">
+        <h3>Edit User</h3>
+        <form class="modal-form" id="editUserForm" onsubmit="updateUser(event)">
+            <input type="hidden" id="editUserId">
+
+            <div class="form-group">
+                <label for="editUsername">Username *</label>
+                <input type="text" id="editUsername" required>
+            </div>
+
+            <div class="form-group">
+                <label for="editUserStatus">Status</label>
+                <select id="editUserStatus">
+                    <option value="1">Active</option>
+                    <option value="0">Inactive</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="editUserAdmin">Role</label>
+                <select id="editUserAdmin">
+                    <option value="0">Normal User</option>
+                    <option value="1">Admin</option>
+                </select>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeEditUserModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Update User</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="successModal">
+    <div class="modal modal-confirmation">
+        <div class="modal-icon success">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </div>
+        <h3>Success</h3>
+        <p class="modal-message" id="successMessage"></p>
+        <div class="form-actions">
+            <button type="button" class="btn-primary" onclick="closeSuccessModal()">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div class="modal-overlay" id="errorModal">
+    <div class="modal modal-confirmation">
+        <div class="modal-icon error">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+        </div>
+        <h3>Error</h3>
+        <p class="modal-message" id="errorMessage"></p>
+        <div class="form-actions">
+            <button type="button" class="btn-primary" onclick="closeErrorModal()">OK</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin-users.js') }}"></script>
+{% endblock %}

@@ -26,17 +26,18 @@
     {% endblock %}
 </head>
 <body>
-<!-- Global Header -->
+<!-- Global Header with App Navigation -->
 <div class="global-header">
     <div class="global-header-content">
         <div class="global-header-left">
             {% block header_left %}
-            <button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+            <!-- Back Button -->
+            <button class="back-button" onclick="history.back()" title="Go Back">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
                      stroke="currentColor" stroke-width="2">
                     <polyline points="15 18 9 12 15 6"></polyline>
                 </svg>
-                Menu
+                Back
             </button>
             {% endblock %}
         </div>
@@ -47,6 +48,18 @@
 
             <!-- Notifications (optional, can be shown globally) -->
             {% block notifications %}{% endblock %}
+
+            <!-- Admin Button (only for admin users) -->
+            {% if is_admin %}
+            <button class="admin-button" onclick="window.location.href='/admin/users'" title="Admin Panel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+                Admin
+            </button>
+            {% endif %}
 
             <!-- Profile Menu (Always visible) -->
             <div class="profile-menu">
@@ -85,32 +98,27 @@
 </div>
 
 <!-- Main Content -->
-<div class="global-content">
+<main class="main-content">
     {% block content %}
-    <!-- Page-specific content goes here -->
     {% endblock %}
-</div>
+</main>
 
-<!-- Password Change Modal (Global) -->
+<!-- Password Change Modal -->
 <div class="modal-overlay" id="passwordModal">
-    <div class="modal">
+    <div class="modal modal-confirmation">
         <h3>Change Password</h3>
-        <form id="passwordForm">
+        <form id="passwordForm" onsubmit="changePassword(event)">
             <div class="form-group">
-                <label for="oldPassword">Current Password</label>
-                <input type="password" id="oldPassword" name="oldPassword" required>
-                <div class="error" id="oldPasswordError"></div>
+                <label for="currentPassword">Current Password</label>
+                <input type="password" id="currentPassword" required>
             </div>
             <div class="form-group">
                 <label for="newPassword">New Password</label>
-                <input type="password" id="newPassword" name="newPassword" required>
-                <div class="password-requirements">Password must be at least 6 characters long</div>
-                <div class="error" id="newPasswordError"></div>
+                <input type="password" id="newPassword" required minlength="6">
             </div>
             <div class="form-group">
                 <label for="confirmPassword">Confirm New Password</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required>
-                <div class="error" id="confirmPasswordError"></div>
+                <input type="password" id="confirmPassword" required minlength="6">
             </div>
             <div class="form-actions">
                 <button type="button" class="btn-secondary" onclick="closePasswordModal()">Cancel</button>
@@ -120,21 +128,7 @@
     </div>
 </div>
 
-<!-- About Modal (Global) -->
-<div class="modal-overlay" id="aboutModal">
-    <div class="modal">
-        <h3>About</h3>
-        <div class="modal-content">
-            <p>Application Suite v1.0</p>
-            <p>© 2024 Your Company</p>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-primary" onclick="closeAboutModal()">Close</button>
-        </div>
-    </div>
-</div>
-
-<!-- Logout Confirmation Modal (Global) -->
+<!-- Logout Confirmation Modal -->
 <div class="modal-overlay" id="logoutModal">
     <div class="modal modal-confirmation">
         <div class="modal-icon warning">
@@ -145,7 +139,7 @@
             </svg>
         </div>
         <h3>Confirm Logout</h3>
-        <p class="modal-message">Are you sure you want to logout? Any unsaved changes will be lost.</p>
+        <p class="modal-message">Are you sure you want to logout?</p>
         <div class="form-actions">
             <button type="button" class="btn-secondary" onclick="closeLogoutModal()">Cancel</button>
             <button type="button" class="btn-danger" onclick="confirmLogout()">Logout</button>
@@ -153,31 +147,31 @@
     </div>
 </div>
 
+<!-- About Modal -->
+<div class="modal-overlay" id="aboutModal">
+    <div class="modal modal-large">
+        <div class="modal-header">
+            <h3>About</h3>
+            <button class="modal-close" onclick="closeAboutModal()">✕</button>
+        </div>
+        <div class="modal-content">
+            <p>Developer Tools Dashboard</p>
+            <p>Version 1.0</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-primary" onclick="closeAboutModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toastContainer" class="toast-container"></div>
+
 <!-- Global Scripts -->
 <script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
 
 {% block extra_scripts %}
 <!-- Page-specific scripts go here -->
-<!-- Add theme initialization script -->
-<script>
-    // Initialize theme on page load
-    (function() {
-        const savedTheme = localStorage.getItem('selectedTheme') || 'system';
-        let actualTheme = savedTheme;
-
-        if (savedTheme === 'system') {
-            actualTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-
-        document.documentElement.setAttribute('data-theme', actualTheme);
-
-        // Set the select value if it exists
-        const themeSelect = document.getElementById('themeSelect');
-        if (themeSelect) {
-            themeSelect.value = savedTheme;
-        }
-    })();
-</script>
 {% endblock %}
 </body>
 </html>
