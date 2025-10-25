@@ -2,6 +2,8 @@
 
 {% block title %}Manage Menu Items{% endblock %}
 
+{% block page_title %}🛠️ Manage Menu Items{% endblock %}
+
 {% block extra_head %}
 <link href="{{ url_for('static', filename='css/admin-menu-items.css') }}" rel="stylesheet">
 {% endblock %}
@@ -9,7 +11,6 @@
 {% block content %}
 <div class="admin-container">
     <div class="admin-header">
-        <h1>🛠️ Manage Menu Items</h1>
         <button class="btn-primary" onclick="openAddMenuItemModal()">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2">
