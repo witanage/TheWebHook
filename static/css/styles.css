@@ -114,18 +114,40 @@ body {
     max-width: 100%;
     width: 100%;
     margin: 0 auto;
+    position: relative;
 }
 
 .header-left {
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex: 1;
+}
+
+.header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.header-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    margin: 0;
 }
 
 .header-right {
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex: 1;
+    justify-content: flex-end;
 }
 
 .refresh-indicator {
