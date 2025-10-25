@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Menu Items{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/admin-menu-items.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="admin-header">
+        <h1>🛠️ Manage Menu Items</h1>
+        <button class="btn-primary" onclick="openAddMenuItemModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add New Item
+        </button>
+    </div>
+
+    <div class="menu-items-table">
+        <table id="menuItemsTable">
+            <thead>
+            <tr>
+                <th width="50">Order</th>
+                <th width="60">Icon</th>
+                <th>Title</th>
+                <th>Description</th>
+                <th>Route</th>
+                <th width="150">Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for item in menu_items %}
+            <tr data-id="{{ item.id }}">
+                <td>
+                    <span class="drag-handle">⋮⋮</span>
+                    {{ item.display_order }}
+                </td>
+                <td style="font-size: 2rem;">{{ item.icon }}</td>
+                <td><strong>{{ item.title }}</strong></td>
+                <td>{{ item.description }}</td>
+                <td><code>{{ item.route }}</code></td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="btn-icon" onclick="editMenuItem({{ item.id }})" title="Edit">
+                            ✏️
+                        </button>
+                        <button class="btn-icon danger" onclick="deleteMenuItem({{ item.id }})" title="Delete">
+                            🗑️
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add/Edit Menu Item Modal -->
+<div class="modal-overlay" id="menuItemModal">
+    <div class="modal">
+        <h3 id="modalTitle">Add Menu Item</h3>
+        <form class="modal-form" id="menuItemForm" onsubmit="saveMenuItem(event)">
+            <input type="hidden" id="itemId">
+
+            <div class="form-group">
+                <label for="itemTitle">Title *</label>
+                <input type="text" id="itemTitle" required>
+            </div>
+
+            <div class="form-group">
+                <label for="itemDescription">Description *</label>
+                <textarea id="itemDescription" required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="itemIcon">Icon (emoji) *</label>
+                <input type="text" id="itemIcon" placeholder="📡" required>
+            </div>
+
+            <div class="form-group">
+                <label for="itemRoute">Route *</label>
+                <input type="text" id="itemRoute" placeholder="/my-tool" required>
+            </div>
+
+            <div class="form-group">
+                <label for="itemOrder">Display Order</label>
+                <input type="number" id="itemOrder" value="0" min="0">
+            </div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeMenuItemModal()">Cancel</button>
+                <button type="submit" class="btn-primary">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/admin-menu-items.js') }}"></script>
+{% endblock %}

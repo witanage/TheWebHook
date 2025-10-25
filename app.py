@@ -39,6 +39,20 @@ db_config = {
     "connect_timeout": 10
 }
 
+
+def get_db_connection():
+    """Helper function to get database connection"""
+    return pymysql.connect(
+        host=db_config["host"],
+        port=db_config["port"],
+        user=db_config["user"],
+        password=db_config["password"],
+        database=db_config["database"],
+        connect_timeout=db_config["connect_timeout"],
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+
 # Logging Configuration
 logging.basicConfig(
     filename='app.log',
@@ -64,6 +78,38 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
 
 
 sys.excepthook = handle_uncaught_exception
+
+
+# ==================== MENU ITEMS FUNCTIONS ====================
+
+def get_all_menu_items():
+    """Get all active menu items from database"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT id, title, description, icon, route, display_order
+                FROM menu_items
+                WHERE is_active = TRUE
+                ORDER BY display_order ASC, title ASC
+            """
+            cursor.execute(sql)
+            return cursor.fetchall()
+    except Exception as e:
+        log(f"Error loading menu items: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+@app.context_processor
+def inject_menu_items():
+    """Make menu items available to all templates"""
+    menu_items = get_all_menu_items()
+    return {'menu_items': menu_items}
+
+
+# ==================== END MENU ITEMS FUNCTIONS ====================
 
 
 def get_client_ip():
@@ -264,6 +310,13 @@ def webhook_viewer():
             conn.close()
 
     return render_template("index.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
+
+
+@app.route("/json-compare")
+@login_required
+def json_compare():
+    """JSON comparison tool page"""
+    return render_template("json-compare.html", username=session.get("username"))
 
 
 @app.route("/logout")
@@ -813,16 +866,6 @@ def http_codes():
     return render_template("httpcodes.html", username=username)
 
 
-@app.route("/json-compare")
-@login_required
-def json_compare():
-    """JSON Comparison Tool page"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    log(f"User {user_id} accessed JSON comparison tool")
-    return render_template("json-compare.html", username=username)
-
-
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def http_status_test(code):
     """
@@ -1011,6 +1054,171 @@ def pki_validation(filename):
     except Exception as e:
         log(f"Error serving PKI validation file {filename}: {str(e)}")
         return jsonify({"error": "Error serving file"}), 500
+
+
+# ==================== MENU ITEMS API ROUTES ====================
+
+@app.route('/api/menu-items', methods=['GET'])
+def api_get_menu_items():
+    """Get all active menu items"""
+    menu_items = get_all_menu_items()
+    return jsonify({'success': True, 'menu_items': menu_items})
+
+
+@app.route('/api/menu-items/<int:item_id>', methods=['GET'])
+@login_required
+def api_get_menu_item(item_id):
+    """Get single menu item by ID"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = "SELECT * FROM menu_items WHERE id = %s"
+            cursor.execute(sql, (item_id,))
+            item = cursor.fetchone()
+            if item:
+                return jsonify({'success': True, 'item': item})
+            return jsonify({'success': False, 'error': 'Item not found'}), 404
+    finally:
+        conn.close()
+
+
+@app.route('/api/menu-items', methods=['POST'])
+@login_required
+def api_create_menu_item():
+    """Create a new menu item"""
+    data = request.json
+
+    # Validate required fields
+    required = ['title', 'description', 'icon', 'route']
+    for field in required:
+        if field not in data:
+            return jsonify({'success': False, 'error': f'Missing field: {field}'}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                INSERT INTO menu_items (title, description, icon, route, display_order)
+                VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (
+                data['title'],
+                data['description'],
+                data['icon'],
+                data['route'],
+                data.get('display_order', 0)
+            ))
+            conn.commit()
+            return jsonify({
+                'success': True,
+                'message': 'Menu item created successfully',
+                'item_id': cursor.lastrowid
+            })
+    except Exception as e:
+        log(f"Error creating menu item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/menu-items/<int:item_id>', methods=['PUT'])
+@login_required
+def api_update_menu_item(item_id):
+    """Update a menu item"""
+    data = request.json
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Build dynamic UPDATE query
+            allowed_fields = ['title', 'description', 'icon', 'route', 'display_order', 'is_active']
+            updates = []
+            values = []
+
+            for field in allowed_fields:
+                if field in data:
+                    updates.append(f"{field} = %s")
+                    values.append(data[field])
+
+            if not updates:
+                return jsonify({'success': False, 'error': 'No fields to update'}), 400
+
+            values.append(item_id)
+            sql = f"UPDATE menu_items SET {', '.join(updates)} WHERE id = %s"
+            cursor.execute(sql, values)
+            conn.commit()
+
+            if cursor.rowcount > 0:
+                return jsonify({'success': True, 'message': 'Menu item updated successfully'})
+            return jsonify({'success': False, 'error': 'Item not found'}), 404
+    except Exception as e:
+        log(f"Error updating menu item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/menu-items/<int:item_id>', methods=['DELETE'])
+@login_required
+def api_delete_menu_item(item_id):
+    """Delete a menu item (soft delete)"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = "UPDATE menu_items SET is_active = FALSE WHERE id = %s"
+            cursor.execute(sql, (item_id,))
+            conn.commit()
+
+            if cursor.rowcount > 0:
+                return jsonify({'success': True, 'message': 'Menu item deleted successfully'})
+            return jsonify({'success': False, 'error': 'Item not found'}), 404
+    except Exception as e:
+        log(f"Error deleting menu item: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/menu-items/reorder', methods=['POST'])
+@login_required
+def api_reorder_menu_items():
+    """Reorder menu items"""
+    data = request.json
+    items = data.get('items', [])
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            for item in items:
+                sql = "UPDATE menu_items SET display_order = %s WHERE id = %s"
+                cursor.execute(sql, (item['display_order'], item['id']))
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Menu items reordered successfully'})
+    except Exception as e:
+        log(f"Error reordering menu items: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/admin/menu-items')
+@login_required
+def admin_menu_items():
+    """Admin page to manage menu items"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = "SELECT * FROM menu_items ORDER BY display_order ASC, title ASC"
+            cursor.execute(sql)
+            menu_items = cursor.fetchall()
+            return render_template('admin/menu_items.html',
+                                   menu_items=menu_items,
+                                   username=session.get('username'))
+    finally:
+        conn.close()
+
+
+# ==================== END MENU ITEMS API ROUTES ====================
 
 
 if __name__ == "__main__":
