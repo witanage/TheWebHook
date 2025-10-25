@@ -68,12 +68,12 @@ function changePassword(event) {
     const confirmPassword = document.getElementById('confirmPassword').value;
 
     if (newPassword !== confirmPassword) {
-        alert('Passwords do not match');
+        showModal('Error', 'Passwords do not match');
         return;
     }
 
     if (newPassword.length < 6) {
-        alert('Password must be at least 6 characters');
+        showModal('Error', 'Password must be at least 6 characters');
         return;
     }
 
@@ -90,15 +90,14 @@ function changePassword(event) {
     .then(response => response.json())
     .then(data => {
         if (data.message) {
-            alert(data.message);
-            closePasswordModal();
+            showModal('Success', data.message, closePasswordModal);
         } else if (data.error) {
-            alert(data.error);
+            showModal('Error', data.error);
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to change password');
+        showModal('Error', 'Failed to change password');
     });
 }
 

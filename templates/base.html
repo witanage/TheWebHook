@@ -167,7 +167,47 @@
 <!-- Toast Container -->
 <div id="toastContainer" class="toast-container"></div>
 
+<!-- Generic Alert Modal -->
+<div class="modal-overlay" id="genericAlertModal">
+    <div class="modal modal-confirmation">
+        <div class="modal-icon info" id="alertModalIcon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="16" x2="12" y2="12"></line>
+                <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+        </div>
+        <h3 id="alertModalTitle">Alert</h3>
+        <p class="modal-message" id="alertModalMessage"></p>
+        <div class="form-actions">
+            <button type="button" class="btn-primary" id="alertModalOkBtn">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- Generic Confirmation Modal -->
+<div class="modal-overlay" id="genericConfirmModal">
+    <div class="modal modal-confirmation">
+        <div class="modal-icon warning" id="confirmModalIcon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        </div>
+        <h3 id="confirmModalTitle">Confirm</h3>
+        <p class="modal-message" id="confirmModalMessage"></p>
+        <div class="form-actions">
+            <button type="button" class="btn-secondary" id="confirmModalCancelBtn">Cancel</button>
+            <button type="button" class="btn-danger" id="confirmModalConfirmBtn">Confirm</button>
+        </div>
+    </div>
+</div>
+
 <!-- Global Scripts -->
+<script src="{{ url_for('static', filename='js/modal-utils.js') }}"></script>
 <script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
 
 {% block extra_scripts %}
