@@ -551,11 +551,14 @@ class WebhookViewer {
             }
         });
 
-        // Refresh indicator click handler
-        document.getElementById('refreshIndicatorLink').addEventListener('click', (e) => {
-            e.preventDefault();
-            location.reload();
-        });
+        // Refresh indicator click handler (if element exists)
+        const refreshIndicatorLink = document.getElementById('refreshIndicatorLink');
+        if (refreshIndicatorLink) {
+            refreshIndicatorLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                location.reload();
+            });
+        }
 
         // Handle window resize for responsive layout
         window.addEventListener('resize', this.debounce(() => {
@@ -607,7 +610,10 @@ class WebhookViewer {
 
         this.eventSource.onopen = () => {
             console.log('SSE connection established');
-            document.getElementById("refreshIndicator").src = "static/animated.gif";
+            const refreshIndicator = document.getElementById("refreshIndicator");
+            if (refreshIndicator) {
+                refreshIndicator.src = "static/animated.gif";
+            }
             this.updateConnectionStatus(true); // This will now show "Connected"
         };
 
@@ -621,7 +627,10 @@ class WebhookViewer {
 
         this.eventSource.onopen = () => {
             console.log('SSE connection established');
-            document.getElementById("refreshIndicator").src = "static/animated.gif";
+            const refreshIndicator = document.getElementById("refreshIndicator");
+            if (refreshIndicator) {
+                refreshIndicator.src = "static/animated.gif";
+            }
             this.updateConnectionStatus(true);
         };
 
@@ -663,7 +672,10 @@ class WebhookViewer {
 
         this.eventSource.onerror = (error) => {
             console.error('SSE error:', error);
-            document.getElementById("refreshIndicator").src = "static/normal.gif";
+            const refreshIndicator = document.getElementById("refreshIndicator");
+            if (refreshIndicator) {
+                refreshIndicator.src = "static/normal.gif";
+            }
             this.updateConnectionStatus(false);
 
             // Attempt to reconnect after 5 seconds

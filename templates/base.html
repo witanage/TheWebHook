@@ -42,6 +42,12 @@
             {% endblock %}
         </div>
 
+        <div class="global-header-center">
+            {% block header_center %}
+            <h1 class="global-header-title">{% block page_title %}{{ self.title() }}{% endblock %}</h1>
+            {% endblock %}
+        </div>
+
         <div class="global-header-right">
             <!-- Connection Status (for webhook viewer) -->
             {% block connection_status %}{% endblock %}

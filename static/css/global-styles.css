@@ -54,6 +54,7 @@ body {
     align-items: center;
     max-width: 100%;
     margin: 0 auto;
+    position: relative;
 }
 
 .global-header-left,
@@ -61,6 +62,28 @@ body {
     display: flex;
     align-items: center;
     gap: 1rem;
+    flex: 1;
+}
+
+.global-header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.global-header-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+}
+
+.global-header-right {
+    justify-content: flex-end;
 }
 
 /* Back Button */
