@@ -122,10 +122,10 @@ def get_user_menu_items(user_id):
         if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
             log(f"user_menu_items table not found - migration may not be applied yet")
         else:
-            log(f"Error loading user menu items: {e}")
+            log(f"Error loading user menu items for user {user_id}: {e}")
         return []
     except Exception as e:
-        log(f"Error loading user menu items: {e}")
+        log(f"Error loading user menu items for user {user_id}: {e}")
         return []
     finally:
         conn.close()
@@ -1302,6 +1302,15 @@ def api_get_user_menu_assignments(user_id):
             cursor.execute(sql, (user_id,))
             assigned_items = cursor.fetchall()
             return jsonify({'success': True, 'menu_items': assigned_items})
+    except pymysql.Error as e:
+        # If table doesn't exist yet (migration not run), return empty list
+        # This allows the assignment feature to work before migration is applied
+        if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
+            log(f"user_menu_items table not found - migration may not be applied yet")
+            return jsonify({'success': True, 'menu_items': []})
+        else:
+            log(f"Error getting user menu assignments: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
     except Exception as e:
         log(f"Error getting user menu assignments: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1335,6 +1344,17 @@ def api_assign_menu_item_to_user(user_id):
             cursor.execute(sql, (user_id, menu_item_id))
             conn.commit()
             return jsonify({'success': True, 'message': 'Menu item assigned successfully'})
+    except pymysql.Error as e:
+        # If table doesn't exist yet (migration not run), return helpful error
+        if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
+            log(f"user_menu_items table not found - migration not applied yet")
+            return jsonify({
+                'success': False,
+                'error': 'Database migration required. Please run user_menu_assignments.sql migration first.'
+            }), 500
+        else:
+            log(f"Error assigning menu item to user: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
     except Exception as e:
         log(f"Error assigning menu item to user: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1356,6 +1376,17 @@ def api_unassign_menu_item_from_user(user_id, menu_item_id):
             if cursor.rowcount > 0:
                 return jsonify({'success': True, 'message': 'Menu item unassigned successfully'})
             return jsonify({'success': False, 'error': 'Assignment not found'}), 404
+    except pymysql.Error as e:
+        # If table doesn't exist yet (migration not run), return helpful error
+        if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
+            log(f"user_menu_items table not found - migration not applied yet")
+            return jsonify({
+                'success': False,
+                'error': 'Database migration required. Please run user_menu_assignments.sql migration first.'
+            }), 500
+        else:
+            log(f"Error unassigning menu item from user: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
     except Exception as e:
         log(f"Error unassigning menu item from user: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
@@ -1385,6 +1416,17 @@ def api_bulk_assign_menu_items(user_id):
 
             conn.commit()
             return jsonify({'success': True, 'message': 'Menu items assigned successfully'})
+    except pymysql.Error as e:
+        # If table doesn't exist yet (migration not run), return helpful error
+        if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
+            log(f"user_menu_items table not found - migration not applied yet")
+            return jsonify({
+                'success': False,
+                'error': 'Database migration required. Please run user_menu_assignments.sql migration first.'
+            }), 500
+        else:
+            log(f"Error bulk assigning menu items: {e}")
+            return jsonify({'success': False, 'error': str(e)}), 500
     except Exception as e:
         log(f"Error bulk assigning menu items: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
