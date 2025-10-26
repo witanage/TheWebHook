@@ -138,6 +138,21 @@
         <div id="usersData">Loading...</div>
     </div>
 
+    <div class="status-card">
+        <h2>Test User Menu View</h2>
+        <p>See what a specific user would see when they log in:</p>
+        <div style="margin: 1rem 0;">
+            <label for="testUserId" style="margin-right: 1rem;">Select User:</label>
+            <select id="testUserId" style="padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px;">
+                <option value="">-- Select a user --</option>
+            </select>
+            <button onclick="testUserMenu()" style="padding: 0.5rem 1rem; margin-left: 1rem; background: #2196F3; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                Test User View
+            </button>
+        </div>
+        <div id="userMenuTest"></div>
+    </div>
+
     <button class="refresh-btn" onclick="loadDiagnostics()">🔄 Refresh Data</button>
 </div>
 
@@ -248,6 +263,16 @@ async function loadDiagnostics() {
 
             tableHTML += '</tbody></table>';
             usersDiv.innerHTML = tableHTML;
+
+            // Populate user dropdown for testing
+            const userSelect = document.getElementById('testUserId');
+            userSelect.innerHTML = '<option value="">-- Select a user --</option>';
+            data.all_users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = `${user.username} (ID: ${user.id}) - ${user.is_admin ? 'Admin' : 'User'}`;
+                userSelect.appendChild(option);
+            });
         } else {
             usersDiv.innerHTML = '<p>No users found.</p>';
         }
@@ -262,6 +287,77 @@ async function loadDiagnostics() {
         console.error('Failed to load diagnostics:', error);
         document.getElementById('migrationStatus').innerHTML =
             '<div class="status-indicator status-error">Failed to load diagnostic data</div>';
+    }
+}
+
+// Test what a specific user would see
+async function testUserMenu() {
+    const userId = document.getElementById('testUserId').value;
+    const testDiv = document.getElementById('userMenuTest');
+
+    if (!userId) {
+        testDiv.innerHTML = '<p style="color: #f44336;">Please select a user</p>';
+        return;
+    }
+
+    testDiv.innerHTML = '<p>Loading...</p>';
+
+    try {
+        const response = await fetch(`/api/debug/user-menu/${userId}`);
+        const data = await response.json();
+
+        if (!data.user_exists) {
+            testDiv.innerHTML = '<div class="status-indicator status-error">User not found</div>';
+            return;
+        }
+
+        let html = `
+            <div style="margin-top: 1rem; padding: 1rem; background: #f5f5f5; border-radius: 4px;">
+                <h3 style="margin-top: 0;">User: ${data.user_info.username}</h3>
+                <p><strong>User ID:</strong> ${data.user_id}</p>
+                <p><strong>Role:</strong> ${data.is_admin ? 'Admin' : 'Regular User'}</p>
+                <p><strong>Assignments in Database:</strong> ${data.assignment_count}</p>
+                <div class="status-indicator ${data.assigned_items.length > 0 ? 'status-ok' : 'status-warning'}" style="margin: 1rem 0;">
+                    ${data.logic}
+                </div>
+        `;
+
+        if (data.assignment_count > 0) {
+            html += `
+                <h4>Assigned Menu Items (${data.assigned_items.length}):</h4>
+                <ul style="margin: 0.5rem 0;">
+            `;
+            data.assigned_items.forEach(item => {
+                html += `<li>${item.title}</li>`;
+            });
+            html += '</ul>';
+        }
+
+        html += `
+            <h4>What User Will See (${data.would_see.length} items):</h4>
+            <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+        `;
+        data.would_see.forEach(item => {
+            html += `<li><strong>${item.title}</strong></li>`;
+        });
+        html += '</ul>';
+
+        if (!data.is_admin && data.assignment_count === 0) {
+            html += `
+                <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 1rem; border-radius: 4px; margin-top: 1rem;">
+                    <strong>⚠️ Note:</strong> This user has no assignments, so they see ALL menu items (default behavior).
+                    To restrict their access, assign specific menu items to them.
+                </div>
+            `;
+        }
+
+        html += '</div>';
+
+        testDiv.innerHTML = html;
+
+    } catch (error) {
+        console.error('Failed to test user menu:', error);
+        testDiv.innerHTML = '<div class="status-indicator status-error">Failed to load test data</div>';
     }
 }
 
