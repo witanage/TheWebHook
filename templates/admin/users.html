@@ -8,6 +8,10 @@
 <link href="{{ url_for('static', filename='css/admin-users.css') }}" rel="stylesheet">
 {% endblock %}
 
+{% block header_left %}
+<!-- Empty - Admin pages use tabs for navigation -->
+{% endblock %}
+
 {% block content %}
 <div class="admin-container">
     <!-- Admin Navigation Tabs -->
@@ -21,7 +25,7 @@
             </svg>
             User Management
         </a>
-        <a href="/admin/menu_items" class="admin-tab">
+        <a href="/admin/menu-items" class="admin-tab">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="8" y1="6" x2="21" y2="6"></line>
                 <line x1="8" y1="12" x2="21" y2="12"></line>
