@@ -8,6 +8,16 @@
 <link href="{{ url_for('static', filename='css/admin-menu-items.css') }}" rel="stylesheet">
 {% endblock %}
 
+{% block header_left %}
+<button class="back-button" onclick="window.location.href='/menu'" title="Back to Menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Back
+</button>
+{% endblock %}
+
 {% block content %}
 <div class="admin-container">
     <!-- Admin Navigation Tabs -->
@@ -21,7 +31,7 @@
             </svg>
             User Management
         </a>
-        <a href="/admin/menu_items" class="admin-tab active">
+        <a href="/admin/menu-items" class="admin-tab active">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="8" y1="6" x2="21" y2="6"></line>
                 <line x1="8" y1="12" x2="21" y2="12"></line>
