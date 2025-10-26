@@ -371,7 +371,7 @@ def webhook_viewer():
         if conn is not None and conn.open:
             conn.close()
 
-    return render_template("index.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
+    return render_template("webhook-viewer.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
 
 
 @app.route("/logout")
