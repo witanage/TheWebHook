@@ -116,6 +116,14 @@ def get_user_menu_items(user_id):
             """
             cursor.execute(sql, (user_id,))
             return cursor.fetchall()
+    except pymysql.Error as e:
+        # If table doesn't exist yet (migration not run), return empty list
+        # This allows the system to work before migration is applied
+        if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
+            log(f"user_menu_items table not found - migration may not be applied yet")
+        else:
+            log(f"Error loading user menu items: {e}")
+        return []
     except Exception as e:
         log(f"Error loading user menu items: {e}")
         return []
@@ -129,11 +137,19 @@ def inject_menu_items():
     is_admin = session.get('is_admin', 0)
     user_id = session.get('user_id')
 
-    # Admins see all menu items, regular users see only assigned items
+    # Admins always see all menu items
     if is_admin:
         menu_items = get_all_menu_items()
     elif user_id:
-        menu_items = get_user_menu_items(user_id)
+        # Get user's assigned items
+        assigned_items = get_user_menu_items(user_id)
+
+        # If user has no assignments, show all items (default behavior)
+        # This allows the system to work without configuration
+        if assigned_items:
+            menu_items = assigned_items
+        else:
+            menu_items = get_all_menu_items()
     else:
         menu_items = []
 
