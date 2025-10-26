@@ -107,14 +107,6 @@ def get_user_menu_items(user_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            # First check if user has any assignments
-            check_sql = "SELECT COUNT(*) as count FROM user_menu_items WHERE user_id = %s"
-            cursor.execute(check_sql, (user_id,))
-            count_result = cursor.fetchone()
-            assignment_count = count_result['count'] if count_result else 0
-            log(f"get_user_menu_items: User {user_id} has {assignment_count} assignments in database")
-
-            # Get the assigned menu items
             sql = """
                 SELECT DISTINCT m.id, m.title, m.description, m.icon, m.route, m.display_order
                 FROM menu_items m
@@ -123,25 +115,17 @@ def get_user_menu_items(user_id):
                 ORDER BY m.display_order ASC, m.title ASC
             """
             cursor.execute(sql, (user_id,))
-            results = cursor.fetchall()
-            log(f"get_user_menu_items: Query returned {len(results)} menu items for user {user_id}")
-
-            if results:
-                log(f"get_user_menu_items: User {user_id} menu items: {[item['title'] for item in results]}")
-
-            return results
+            return cursor.fetchall()
     except pymysql.Error as e:
         # If table doesn't exist yet (migration not run), return empty list
         # This allows the system to work before migration is applied
         if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
-            log(f"get_user_menu_items: user_menu_items table not found - migration may not be applied yet")
+            log(f"user_menu_items table not found - migration may not be applied yet")
         else:
-            log(f"get_user_menu_items: Database error for user {user_id}: {e}")
+            log(f"Error loading user menu items for user {user_id}: {e}")
         return []
     except Exception as e:
-        log(f"get_user_menu_items: Unexpected error for user {user_id}: {e}")
-        import traceback
-        log(f"get_user_menu_items: Traceback: {traceback.format_exc()}")
+        log(f"Error loading user menu items for user {user_id}: {e}")
         return []
     finally:
         conn.close()
@@ -156,23 +140,18 @@ def inject_menu_items():
     # Admins always see all menu items
     if is_admin:
         menu_items = get_all_menu_items()
-        log(f"inject_menu_items: Admin user {user_id} - showing all {len(menu_items)} menu items")
     elif user_id:
         # Get user's assigned items
         assigned_items = get_user_menu_items(user_id)
-        log(f"inject_menu_items: User {user_id} has {len(assigned_items)} assigned items")
 
         # If user has no assignments, show all items (default behavior)
         # This allows the system to work without configuration
         if assigned_items:
             menu_items = assigned_items
-            log(f"inject_menu_items: User {user_id} - showing {len(menu_items)} assigned menu items")
         else:
             menu_items = get_all_menu_items()
-            log(f"inject_menu_items: User {user_id} - no assignments, showing all {len(menu_items)} menu items")
     else:
         menu_items = []
-        log("inject_menu_items: No user session - showing 0 menu items")
 
     return {'menu_items': menu_items, 'is_admin': is_admin}
 
@@ -1456,129 +1435,6 @@ def api_bulk_assign_menu_items(user_id):
 
 
 # ==================== END USER MENU ITEMS ASSIGNMENT API ROUTES ====================
-
-# Debug endpoint to check assignment system status
-@app.route('/api/debug/assignment-status', methods=['GET'])
-@admin_required
-def api_debug_assignment_status():
-    """Debug endpoint to check if assignment system is working"""
-    conn = get_db_connection()
-    status = {
-        'table_exists': False,
-        'total_assignments': 0,
-        'assignments': [],
-        'all_users': [],
-        'error': None
-    }
-
-    try:
-        with conn.cursor() as cursor:
-            # Check if table exists
-            cursor.execute("SHOW TABLES LIKE 'user_menu_items'")
-            if cursor.fetchone():
-                status['table_exists'] = True
-
-                # Get count
-                cursor.execute("SELECT COUNT(*) as count FROM user_menu_items")
-                status['total_assignments'] = cursor.fetchone()['count']
-
-                # Get all assignments
-                cursor.execute("""
-                    SELECT umi.id, umi.user_id, u.username, umi.menu_item_id, m.title
-                    FROM user_menu_items umi
-                    JOIN users u ON umi.user_id = u.id
-                    JOIN menu_items m ON umi.menu_item_id = m.id
-                    ORDER BY u.username, m.title
-                """)
-                status['assignments'] = cursor.fetchall()
-
-            # Get all users
-            cursor.execute("SELECT id, username, is_admin FROM users ORDER BY username")
-            status['all_users'] = cursor.fetchall()
-
-    except Exception as e:
-        status['error'] = str(e)
-        log(f"Debug assignment status error: {e}")
-    finally:
-        conn.close()
-
-    return jsonify(status)
-
-
-# Debug endpoint to test what a specific user would see
-@app.route('/api/debug/user-menu/<int:user_id>', methods=['GET'])
-@admin_required
-def api_debug_user_menu(user_id):
-    """Debug endpoint to check what menu items a specific user would see"""
-    conn = get_db_connection()
-    debug_info = {
-        'user_id': user_id,
-        'user_exists': False,
-        'user_info': None,
-        'is_admin': False,
-        'assignment_count': 0,
-        'assigned_items': [],
-        'all_items': [],
-        'would_see': [],
-        'logic': '',
-        'error': None
-    }
-
-    try:
-        with conn.cursor() as cursor:
-            # Get user info
-            cursor.execute("SELECT id, username, is_admin FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
-
-            if user:
-                debug_info['user_exists'] = True
-                debug_info['user_info'] = user
-                debug_info['is_admin'] = bool(user['is_admin'])
-
-                # Get all menu items
-                cursor.execute("SELECT id, title FROM menu_items WHERE is_active = TRUE ORDER BY display_order, title")
-                debug_info['all_items'] = cursor.fetchall()
-
-                # Check for assignments
-                cursor.execute("SELECT COUNT(*) as count FROM user_menu_items WHERE user_id = %s", (user_id,))
-                count_result = cursor.fetchone()
-                debug_info['assignment_count'] = count_result['count'] if count_result else 0
-
-                # Get assigned items
-                cursor.execute("""
-                    SELECT m.id, m.title
-                    FROM menu_items m
-                    INNER JOIN user_menu_items umi ON m.id = umi.menu_item_id
-                    WHERE m.is_active = TRUE AND umi.user_id = %s
-                    ORDER BY m.display_order ASC, m.title ASC
-                """, (user_id,))
-                debug_info['assigned_items'] = cursor.fetchall()
-
-                # Determine what user would see (matching inject_menu_items logic)
-                if debug_info['is_admin']:
-                    debug_info['would_see'] = debug_info['all_items']
-                    debug_info['logic'] = 'Admin user - sees ALL menu items'
-                elif debug_info['assigned_items']:
-                    debug_info['would_see'] = debug_info['assigned_items']
-                    debug_info['logic'] = f'User has {len(debug_info["assigned_items"])} assignments - sees ONLY assigned items'
-                else:
-                    debug_info['would_see'] = debug_info['all_items']
-                    debug_info['logic'] = 'User has NO assignments - sees ALL menu items (default)'
-
-            else:
-                debug_info['error'] = 'User not found'
-
-    except Exception as e:
-        debug_info['error'] = str(e)
-        log(f"Debug user menu error: {e}")
-        import traceback
-        log(f"Debug user menu traceback: {traceback.format_exc()}")
-
-    finally:
-        conn.close()
-
-    return jsonify(debug_info)
-
 # ==================== END MENU ITEMS API ROUTES ====================
 # ==================== ADMIN USER MANAGEMENT ROUTES ====================
 # Add these routes to app.py after the menu items routes
@@ -1603,13 +1459,6 @@ def admin_users():
                                    username=session.get('username'))
     finally:
         conn.close()
-
-
-@app.route('/admin/diagnostic')
-@admin_required
-def admin_diagnostic():
-    """Diagnostic page for assignment system"""
-    return render_template('admin/diagnostic.html', username=session.get('username'))
 
 
 @admin_required
