@@ -83,7 +83,7 @@ sys.excepthook = handle_uncaught_exception
 # ==================== MENU ITEMS FUNCTIONS ====================
 
 def get_all_menu_items():
-    """Get all active menu items from database"""
+    """Get all active menu items from database (for admin use)"""
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -102,11 +102,57 @@ def get_all_menu_items():
         conn.close()
 
 
+def get_user_menu_items(user_id):
+    """Get menu items assigned to a specific user"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT DISTINCT m.id, m.title, m.description, m.icon, m.route, m.display_order
+                FROM menu_items m
+                INNER JOIN user_menu_items umi ON m.id = umi.menu_item_id
+                WHERE m.is_active = TRUE AND umi.user_id = %s
+                ORDER BY m.display_order ASC, m.title ASC
+            """
+            cursor.execute(sql, (user_id,))
+            return cursor.fetchall()
+    except pymysql.Error as e:
+        # If table doesn't exist yet (migration not run), return empty list
+        # This allows the system to work before migration is applied
+        if "doesn't exist" in str(e).lower() or "table" in str(e).lower():
+            log(f"user_menu_items table not found - migration may not be applied yet")
+        else:
+            log(f"Error loading user menu items: {e}")
+        return []
+    except Exception as e:
+        log(f"Error loading user menu items: {e}")
+        return []
+    finally:
+        conn.close()
+
+
 @app.context_processor
 def inject_menu_items():
     """Make menu items available to all templates"""
-    menu_items = get_all_menu_items()
     is_admin = session.get('is_admin', 0)
+    user_id = session.get('user_id')
+
+    # Admins always see all menu items
+    if is_admin:
+        menu_items = get_all_menu_items()
+    elif user_id:
+        # Get user's assigned items
+        assigned_items = get_user_menu_items(user_id)
+
+        # If user has no assignments, show all items (default behavior)
+        # This allows the system to work without configuration
+        if assigned_items:
+            menu_items = assigned_items
+        else:
+            menu_items = get_all_menu_items()
+    else:
+        menu_items = []
+
     return {'menu_items': menu_items, 'is_admin': is_admin}
 
 
@@ -325,7 +371,7 @@ def webhook_viewer():
         if conn is not None and conn.open:
             conn.close()
 
-    return render_template("index.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
+    return render_template("webhook-viewer.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
 
 
 @app.route("/logout")
@@ -1237,6 +1283,116 @@ def admin_menu_items():
         conn.close()
 
 
+# ==================== USER MENU ITEMS ASSIGNMENT API ROUTES ====================
+
+@app.route('/api/users/<int:user_id>/menu-items', methods=['GET'])
+@admin_required
+def api_get_user_menu_assignments(user_id):
+    """Get menu items assigned to a specific user"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = """
+                SELECT m.id, m.title, m.icon
+                FROM menu_items m
+                INNER JOIN user_menu_items umi ON m.id = umi.menu_item_id
+                WHERE umi.user_id = %s AND m.is_active = TRUE
+                ORDER BY m.display_order ASC
+            """
+            cursor.execute(sql, (user_id,))
+            assigned_items = cursor.fetchall()
+            return jsonify({'success': True, 'menu_items': assigned_items})
+    except Exception as e:
+        log(f"Error getting user menu assignments: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/users/<int:user_id>/menu-items', methods=['POST'])
+@admin_required
+def api_assign_menu_item_to_user(user_id):
+    """Assign a menu item to a user"""
+    data = request.json
+    menu_item_id = data.get('menu_item_id')
+
+    if not menu_item_id:
+        return jsonify({'success': False, 'error': 'menu_item_id is required'}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Check if assignment already exists
+            check_sql = "SELECT id FROM user_menu_items WHERE user_id = %s AND menu_item_id = %s"
+            cursor.execute(check_sql, (user_id, menu_item_id))
+            existing = cursor.fetchone()
+
+            if existing:
+                return jsonify({'success': True, 'message': 'Menu item already assigned to user'})
+
+            # Create new assignment
+            sql = "INSERT INTO user_menu_items (user_id, menu_item_id) VALUES (%s, %s)"
+            cursor.execute(sql, (user_id, menu_item_id))
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Menu item assigned successfully'})
+    except Exception as e:
+        log(f"Error assigning menu item to user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/users/<int:user_id>/menu-items/<int:menu_item_id>', methods=['DELETE'])
+@admin_required
+def api_unassign_menu_item_from_user(user_id, menu_item_id):
+    """Unassign a menu item from a user"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            sql = "DELETE FROM user_menu_items WHERE user_id = %s AND menu_item_id = %s"
+            cursor.execute(sql, (user_id, menu_item_id))
+            conn.commit()
+
+            if cursor.rowcount > 0:
+                return jsonify({'success': True, 'message': 'Menu item unassigned successfully'})
+            return jsonify({'success': False, 'error': 'Assignment not found'}), 404
+    except Exception as e:
+        log(f"Error unassigning menu item from user: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/api/users/<int:user_id>/menu-items/bulk', methods=['POST'])
+@admin_required
+def api_bulk_assign_menu_items(user_id):
+    """Bulk assign menu items to a user (replaces all existing assignments)"""
+    data = request.json
+    menu_item_ids = data.get('menu_item_ids', [])
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Delete all existing assignments for this user
+            delete_sql = "DELETE FROM user_menu_items WHERE user_id = %s"
+            cursor.execute(delete_sql, (user_id,))
+
+            # Insert new assignments
+            if menu_item_ids:
+                insert_sql = "INSERT INTO user_menu_items (user_id, menu_item_id) VALUES (%s, %s)"
+                for menu_item_id in menu_item_ids:
+                    cursor.execute(insert_sql, (user_id, menu_item_id))
+
+            conn.commit()
+            return jsonify({'success': True, 'message': 'Menu items assigned successfully'})
+    except Exception as e:
+        log(f"Error bulk assigning menu items: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ==================== END USER MENU ITEMS ASSIGNMENT API ROUTES ====================
 # ==================== END MENU ITEMS API ROUTES ====================
 # ==================== ADMIN USER MANAGEMENT ROUTES ====================
 # Add these routes to app.py after the menu items routes

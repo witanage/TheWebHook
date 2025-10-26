@@ -122,6 +122,9 @@
                         <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else 'N/A' }}</td>
                         <td>
                             <div class="action-buttons">
+                                <button class="btn-icon" onclick="openMenuAssignmentModal({{ user.id }}, '{{ user.username }}')" title="Manage Apps">
+                                    📱
+                                </button>
                                 <button class="btn-icon" onclick="openEditUserModal({{ user.id }}, '{{ user.username }}', {{ user.status }}, {{ user.is_admin }})" title="Edit User">
                                     ✏️
                                 </button>
@@ -237,6 +240,27 @@
                 <button type="submit" class="btn-primary">Update User</button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Menu Assignment Modal -->
+<div class="modal-overlay" id="menuAssignmentModal">
+    <div class="modal modal-large">
+        <div class="modal-header">
+            <h3>Manage App Assignments</h3>
+            <button class="modal-close" onclick="closeMenuAssignmentModal()">✕</button>
+        </div>
+        <div class="modal-content">
+            <p style="margin-bottom: 1rem;">Select which applications <strong id="assignmentUsername"></strong> can access:</p>
+            <input type="hidden" id="assignmentUserId">
+            <div id="menuItemsList" class="menu-items-list">
+                <!-- Menu items will be loaded here dynamically -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" onclick="closeMenuAssignmentModal()">Cancel</button>
+            <button class="btn-primary" onclick="saveMenuAssignments()">Save Assignments</button>
+        </div>
     </div>
 </div>
 

@@ -216,7 +216,7 @@ async function deleteUser(userId, username) {
 
 // Close modals on outside click
 document.addEventListener('DOMContentLoaded', function() {
-    const modals = ['createUserModal', 'resetPasswordModal', 'editUserModal', 'successModal', 'errorModal'];
+    const modals = ['createUserModal', 'resetPasswordModal', 'editUserModal', 'successModal', 'errorModal', 'menuAssignmentModal'];
 
     modals.forEach(modalId => {
         const modal = document.getElementById(modalId);
@@ -237,5 +237,85 @@ document.addEventListener('keydown', function(e) {
         closeResetPasswordModal();
         closeEditUserModal();
         closeErrorModal();
+        closeMenuAssignmentModal();
     }
 });
+
+// ==================== MENU ASSIGNMENT FUNCTIONS ====================
+
+// Open menu assignment modal
+async function openMenuAssignmentModal(userId, username) {
+    document.getElementById('assignmentUserId').value = userId;
+    document.getElementById('assignmentUsername').textContent = username;
+
+    try {
+        // Load all menu items
+        const allItemsResponse = await fetch('/api/menu-items');
+        const allItemsData = await allItemsResponse.json();
+
+        // Load user's assigned menu items
+        const userItemsResponse = await fetch(`/api/users/${userId}/menu-items`);
+        const userItemsData = await userItemsResponse.json();
+
+        if (allItemsData.success && userItemsData.success) {
+            const allItems = allItemsData.menu_items;
+            const userItems = userItemsData.menu_items;
+            const userItemIds = userItems.map(item => item.id);
+
+            // Build checkbox list
+            const menuItemsList = document.getElementById('menuItemsList');
+            menuItemsList.innerHTML = '';
+
+            allItems.forEach(item => {
+                const isChecked = userItemIds.includes(item.id);
+                const checkboxItem = document.createElement('div');
+                checkboxItem.className = 'menu-item-checkbox';
+                checkboxItem.innerHTML = `
+                    <label>
+                        <input type="checkbox" value="${item.id}" ${isChecked ? 'checked' : ''}>
+                        <span class="menu-item-icon">${item.icon}</span>
+                        <span class="menu-item-title">${item.title}</span>
+                    </label>
+                `;
+                menuItemsList.appendChild(checkboxItem);
+            });
+
+            document.getElementById('menuAssignmentModal').classList.add('active');
+        }
+    } catch (error) {
+        console.error('Error loading menu assignments:', error);
+        showError('Failed to load menu items');
+    }
+}
+
+// Close menu assignment modal
+function closeMenuAssignmentModal() {
+    document.getElementById('menuAssignmentModal').classList.remove('active');
+}
+
+// Save menu assignments
+async function saveMenuAssignments() {
+    const userId = document.getElementById('assignmentUserId').value;
+    const checkboxes = document.querySelectorAll('#menuItemsList input[type="checkbox"]:checked');
+    const menuItemIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+    try {
+        const response = await fetch(`/api/users/${userId}/menu-items/bulk`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ menu_item_ids: menuItemIds })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closeMenuAssignmentModal();
+            showSuccess(result.message);
+        } else {
+            showError(result.error);
+        }
+    } catch (error) {
+        console.error('Error saving menu assignments:', error);
+        showError('Failed to save menu assignments');
+    }
+}
