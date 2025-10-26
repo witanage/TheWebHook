@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}Assignment System Diagnostic{% endblock %}
+
+{% block page_title %}🔧 Assignment System Diagnostic{% endblock %}
+
+{% block extra_head %}
+<style>
+    .diagnostic-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+    }
+
+    .status-card {
+        background: white;
+        border-radius: 8px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-card h2 {
+        margin-top: 0;
+        color: #333;
+        border-bottom: 2px solid #4CAF50;
+        padding-bottom: 0.5rem;
+    }
+
+    .status-indicator {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-weight: bold;
+        margin: 1rem 0;
+    }
+
+    .status-ok {
+        background: #4CAF50;
+        color: white;
+    }
+
+    .status-error {
+        background: #f44336;
+        color: white;
+    }
+
+    .status-warning {
+        background: #ff9800;
+        color: white;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .data-table th {
+        background: #f5f5f5;
+        font-weight: bold;
+    }
+
+    .migration-box {
+        background: #fff3cd;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+
+    .migration-box h3 {
+        margin-top: 0;
+        color: #856404;
+    }
+
+    .migration-box pre {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 4px;
+        overflow-x: auto;
+    }
+
+    .refresh-btn {
+        background: #4CAF50;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        margin-top: 1rem;
+    }
+
+    .refresh-btn:hover {
+        background: #45a049;
+    }
+
+    .back-button {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        background: #666;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+    }
+
+    .back-button:hover {
+        background: #555;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="diagnostic-container">
+    <a href="/admin/users" class="back-button">← Back to User Management</a>
+
+    <div class="status-card">
+        <h2>Database Migration Status</h2>
+        <div id="migrationStatus">Loading...</div>
+    </div>
+
+    <div class="status-card">
+        <h2>Current Assignments</h2>
+        <div id="assignmentsData">Loading...</div>
+    </div>
+
+    <div class="status-card">
+        <h2>All Users</h2>
+        <div id="usersData">Loading...</div>
+    </div>
+
+    <button class="refresh-btn" onclick="loadDiagnostics()">🔄 Refresh Data</button>
+</div>
+
+<script>
+async function loadDiagnostics() {
+    try {
+        const response = await fetch('/api/debug/assignment-status');
+        const data = await response.json();
+
+        // Migration Status
+        const migrationDiv = document.getElementById('migrationStatus');
+        if (data.table_exists) {
+            migrationDiv.innerHTML = `
+                <div class="status-indicator status-ok">✅ Migration Applied</div>
+                <p>The <code>user_menu_items</code> table exists in the database.</p>
+                <p><strong>Total Assignments:</strong> ${data.total_assignments}</p>
+            `;
+        } else {
+            migrationDiv.innerHTML = `
+                <div class="status-indicator status-error">❌ Migration Not Applied</div>
+                <p>The <code>user_menu_items</code> table does not exist in the database.</p>
+
+                <div class="migration-box">
+                    <h3>⚠️ Migration Required</h3>
+                    <p>To enable user-specific application assignments, you need to run the database migration:</p>
+                    <pre>mysql -u your_username -p your_database < user_menu_assignments.sql</pre>
+                    <p>Or manually run the SQL commands in the <code>user_menu_assignments.sql</code> file.</p>
+                </div>
+            `;
+        }
+
+        // Assignments Data
+        const assignmentsDiv = document.getElementById('assignmentsData');
+        if (data.assignments && data.assignments.length > 0) {
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Assignment ID</th>
+                            <th>User ID</th>
+                            <th>Username</th>
+                            <th>Menu Item ID</th>
+                            <th>Menu Item Title</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.assignments.forEach(assignment => {
+                tableHTML += `
+                    <tr>
+                        <td>${assignment.id}</td>
+                        <td>${assignment.user_id}</td>
+                        <td><strong>${assignment.username}</strong></td>
+                        <td>${assignment.menu_item_id}</td>
+                        <td>${assignment.title}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            assignmentsDiv.innerHTML = tableHTML;
+        } else if (data.table_exists) {
+            assignmentsDiv.innerHTML = `
+                <div class="status-indicator status-warning">⚠️ No Assignments</div>
+                <p>The table exists but no menu items have been assigned to any users yet.</p>
+                <p>All users will see all menu items (default behavior).</p>
+            `;
+        } else {
+            assignmentsDiv.innerHTML = `
+                <div class="status-indicator status-error">❌ Cannot Load Assignments</div>
+                <p>Migration must be applied first.</p>
+            `;
+        }
+
+        // Users Data
+        const usersDiv = document.getElementById('usersData');
+        if (data.all_users && data.all_users.length > 0) {
+            let tableHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Username</th>
+                            <th>Role</th>
+                            <th>Assigned Apps</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.all_users.forEach(user => {
+                const userAssignments = data.assignments ?
+                    data.assignments.filter(a => a.user_id === user.id).length : 0;
+                const role = user.is_admin ? 'Admin' : 'User';
+                const assignmentText = user.is_admin ? 'All (Admin)' :
+                    (userAssignments > 0 ? userAssignments : 'All (No restrictions)');
+
+                tableHTML += `
+                    <tr>
+                        <td>${user.id}</td>
+                        <td><strong>${user.username}</strong></td>
+                        <td>${role}</td>
+                        <td>${assignmentText}</td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody></table>';
+            usersDiv.innerHTML = tableHTML;
+        } else {
+            usersDiv.innerHTML = '<p>No users found.</p>';
+        }
+
+        // Error handling
+        if (data.error) {
+            console.error('Error:', data.error);
+            migrationDiv.innerHTML += `<div class="status-indicator status-error">Error: ${data.error}</div>`;
+        }
+
+    } catch (error) {
+        console.error('Failed to load diagnostics:', error);
+        document.getElementById('migrationStatus').innerHTML =
+            '<div class="status-indicator status-error">Failed to load diagnostic data</div>';
+    }
+}
+
+// Load on page load
+document.addEventListener('DOMContentLoaded', loadDiagnostics);
+</script>
+{% endblock %}
