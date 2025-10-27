@@ -931,6 +931,16 @@ def json_compare():
     return render_template("json-compare.html", username=username)
 
 
+@app.route("/aws-log-compare")
+@login_required
+def aws_log_compare():
+    """AWS Log CSV Comparison tool page"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    log(f"User {user_id} accessed AWS Log comparison tool")
+    return render_template("aws-log-compare.html", username=username)
+
+
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def http_status_test(code):
     """
