@@ -610,10 +610,6 @@ class WebhookViewer {
 
         this.eventSource.onopen = () => {
             console.log('SSE connection established');
-            const refreshIndicator = document.getElementById("refreshIndicator");
-            if (refreshIndicator) {
-                refreshIndicator.src = "static/animated.gif";
-            }
             this.updateConnectionStatus(true); // This will now show "Connected"
         };
 
@@ -622,17 +618,6 @@ class WebhookViewer {
             this.checkConnectionHealth();
         }, 60000);
 
-        // Set up Server-Sent Events for real-time updates
-        this.eventSource = new EventSource(`/events/${this.userId}`);
-
-        this.eventSource.onopen = () => {
-            console.log('SSE connection established');
-            const refreshIndicator = document.getElementById("refreshIndicator");
-            if (refreshIndicator) {
-                refreshIndicator.src = "static/animated.gif";
-            }
-            this.updateConnectionStatus(true);
-        };
 
         this.eventSource.onmessage = (event) => {
             try {
@@ -672,10 +657,6 @@ class WebhookViewer {
 
         this.eventSource.onerror = (error) => {
             console.error('SSE error:', error);
-            const refreshIndicator = document.getElementById("refreshIndicator");
-            if (refreshIndicator) {
-                refreshIndicator.src = "static/normal.gif";
-            }
             this.updateConnectionStatus(false);
 
             // Attempt to reconnect after 5 seconds
