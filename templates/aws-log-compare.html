@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}AWS Log Comparison Tool{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/aws-log-compare-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="aws-log-compare-container">
+    <div class="page-header">
+        <p class="page-description">Compare two AWS CloudWatch log exports and identify changes</p>
+    </div>
+
+    <div class="upload-section">
+        <div class="upload-box" id="upload1">
+            <h3>Original Log Data</h3>
+            <input type="file" id="file1" accept=".csv,.tsv">
+            <label for="file1" class="upload-label">Choose File</label>
+            <button class="paste-btn" onclick="showPasteArea(1)">Or Paste CSV</button>
+            <div class="file-name" id="fileName1"></div>
+            <div class="paste-area" id="pasteArea1" style="display: none;">
+                <textarea placeholder="Paste your CSV data here..." id="pasteText1"></textarea>
+                <div class="paste-actions">
+                    <button class="btn-small btn-apply" onclick="applyPastedData(1)">Apply</button>
+                    <button class="btn-small btn-cancel" onclick="cancelPaste(1)">Cancel</button>
+                </div>
+            </div>
+        </div>
+        <div class="upload-box" id="upload2">
+            <h3>New Log Data</h3>
+            <input type="file" id="file2" accept=".csv,.tsv">
+            <label for="file2" class="upload-label">Choose File</label>
+            <button class="paste-btn" onclick="showPasteArea(2)">Or Paste CSV</button>
+            <div class="file-name" id="fileName2"></div>
+            <div class="paste-area" id="pasteArea2" style="display: none;">
+                <textarea placeholder="Paste your CSV data here..." id="pasteText2"></textarea>
+                <div class="paste-actions">
+                    <button class="btn-small btn-apply" onclick="applyPastedData(2)">Apply</button>
+                    <button class="btn-small btn-cancel" onclick="cancelPaste(2)">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-primary" id="compareBtn" disabled>
+            Compare Logs
+        </button>
+        <button class="btn-secondary" id="clearBtn">
+            Clear All
+        </button>
+
+        <select class="key-column-selector" id="keyColumn" title="Select the column to use as unique identifier">
+            <option value="auto">Auto-detect Key Column</option>
+        </select>
+
+        <div class="filter-options">
+            <label>
+                <input type="checkbox" id="showAdded" checked>
+                <span>Added</span>
+            </label>
+            <label>
+                <input type="checkbox" id="showRemoved" checked>
+                <span>Removed</span>
+            </label>
+            <label>
+                <input type="checkbox" id="showModified" checked>
+                <span>Modified</span>
+            </label>
+            <label>
+                <input type="checkbox" id="showUnchanged">
+                <span>Unchanged</span>
+            </label>
+        </div>
+    </div>
+
+    <div class="stats" id="stats">
+        <div class="stat-item">
+            <div class="stat-value added" id="addedCount">0</div>
+            <div class="stat-label">Added</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value removed" id="removedCount">0</div>
+            <div class="stat-label">Removed</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value modified" id="modifiedCount">0</div>
+            <div class="stat-label">Modified</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-value unchanged" id="unchangedCount">0</div>
+            <div class="stat-label">Unchanged</div>
+        </div>
+    </div>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Comparing log files...</p>
+    </div>
+
+    <div class="results" id="results"></div>
+
+    <div class="export-section" id="exportSection">
+        <button class="btn-primary" id="exportBtn">
+            Export Comparison Results as CSV
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/aws-log-compare.js') }}"></script>
+{% endblock %}
