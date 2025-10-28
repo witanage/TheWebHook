@@ -24,8 +24,7 @@
                        name="defaultApp"
                        id="default_{{ loop.index }}"
                        value="{{ item.route }}"
-                       onclick="event.stopPropagation();"
-                       onchange="setDefaultApp('{{ item.route }}')">
+                       onclick="handleRadioClick(event, '{{ item.route }}')">
                 <label for="default_{{ loop.index }}" title="Set as default application"></label>
             </div>
             <span class="tool-icon">{{ item.icon }}</span>
@@ -39,6 +38,9 @@
 
 {% block extra_scripts %}
 <script>
+    // Track the currently selected radio button value
+    let currentlySelected = null;
+
     // Load and set the default app radio button on page load
     document.addEventListener('DOMContentLoaded', function() {
         // Get default app from server-side template variable
@@ -49,9 +51,28 @@
             const radioButton = document.querySelector(`input[name="defaultApp"][value="${defaultApp}"]`);
             if (radioButton) {
                 radioButton.checked = true;
+                currentlySelected = defaultApp;
             }
         }
     });
+
+    // Function to handle radio button clicks (allows toggle on/off)
+    function handleRadioClick(event, route) {
+        event.stopPropagation();
+
+        const radioButton = event.target;
+
+        // If clicking the already selected radio button, deselect it
+        if (currentlySelected === route && radioButton.checked) {
+            radioButton.checked = false;
+            currentlySelected = null;
+            setDefaultApp('');  // Clear the default app
+        } else {
+            // Select the new radio button
+            currentlySelected = route;
+            setDefaultApp(route);
+        }
+    }
 
     // Function to set default application (saves to database)
     function setDefaultApp(route) {
@@ -65,7 +86,11 @@
         .then(response => response.json())
         .then(data => {
             if (data.message) {
-                console.log('Default app set to:', route);
+                if (route) {
+                    console.log('Default app set to:', route);
+                } else {
+                    console.log('Default app cleared');
+                }
             } else if (data.error) {
                 console.error('Error setting default app:', data.error);
                 alert('Failed to set default app: ' + data.error);
