@@ -41,15 +41,8 @@
 <script>
     // Load and set the default app radio button on page load
     document.addEventListener('DOMContentLoaded', function() {
-        const defaultApp = localStorage.getItem('defaultApp');
-        const justLoggedIn = sessionStorage.getItem('justLoggedIn');
-
-        // Auto-redirect to default app on fresh login
-        if (defaultApp && justLoggedIn === 'true') {
-            sessionStorage.removeItem('justLoggedIn');
-            window.location.href = defaultApp;
-            return;
-        }
+        // Get default app from server-side template variable
+        const defaultApp = {{ default_app|tojson }};
 
         // Set radio button if default app is selected
         if (defaultApp) {
@@ -60,10 +53,28 @@
         }
     });
 
-    // Function to set default application
+    // Function to set default application (saves to database)
     function setDefaultApp(route) {
-        localStorage.setItem('defaultApp', route);
-        console.log('Default app set to:', route);
+        fetch('/api/set-default-app', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ default_app: route })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                console.log('Default app set to:', route);
+            } else if (data.error) {
+                console.error('Error setting default app:', data.error);
+                alert('Failed to set default app: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to set default app. Please try again.');
+        });
     }
 
     // Function to navigate to card (handles card click without interfering with radio button)
