@@ -18,7 +18,16 @@
 
     <div class="tools-grid">
         {% for item in menu_items %}
-        <div class="tool-card" onclick="window.location.href='{{ item.route }}'">
+        <div class="tool-card" data-route="{{ item.route }}" onclick="navigateToCard(event, '{{ item.route }}')">
+            <div class="default-app-selector">
+                <input type="radio"
+                       name="defaultApp"
+                       id="default_{{ loop.index }}"
+                       value="{{ item.route }}"
+                       onclick="event.stopPropagation();"
+                       onchange="setDefaultApp('{{ item.route }}')">
+                <label for="default_{{ loop.index }}" title="Set as default application"></label>
+            </div>
             <span class="tool-icon">{{ item.icon }}</span>
             <h2 class="tool-title">{{ item.title }}</h2>
             <p class="tool-description">{{ item.description }}</p>
@@ -26,4 +35,55 @@
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Load and set the default app radio button on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get default app from server-side template variable
+        const defaultApp = {{ default_app|tojson }};
+
+        // Set radio button if default app is selected
+        if (defaultApp) {
+            const radioButton = document.querySelector(`input[name="defaultApp"][value="${defaultApp}"]`);
+            if (radioButton) {
+                radioButton.checked = true;
+            }
+        }
+    });
+
+    // Function to set default application (saves to database)
+    function setDefaultApp(route) {
+        fetch('/api/set-default-app', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ default_app: route })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                console.log('Default app set to:', route);
+            } else if (data.error) {
+                console.error('Error setting default app:', data.error);
+                alert('Failed to set default app: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to set default app. Please try again.');
+        });
+    }
+
+    // Function to navigate to card (handles card click without interfering with radio button)
+    function navigateToCard(event, route) {
+        // Don't navigate if clicking on radio button or its label
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') {
+            return;
+        }
+        window.location.href = route;
+    }
+</script>
 {% endblock %}

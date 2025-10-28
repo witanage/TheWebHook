@@ -239,8 +239,8 @@ def login():
     try:
         log("Entering login route")
         if "user_id" in session:
-            log(f"User {session['user_id']} already logged in, redirecting to dashboard")
-            return redirect(url_for("dashboard"))
+            log(f"User {session['user_id']} already logged in, redirecting to menu")
+            return redirect(url_for("menu"))
 
         if request.method == "POST":
             log("Processing POST request")
@@ -292,7 +292,14 @@ def login():
                     session["username"] = username
                     session["is_admin"] = user.get("is_admin", 0)
                     log(f"Login successful for user {username} (ID: {user['id']}, Admin: {user.get('is_admin', 0)})")
-                    return redirect(url_for("menu"))
+
+                    # Redirect to default app if set, otherwise to menu
+                    default_app = user.get("default_app")
+                    if default_app:
+                        log(f"Redirecting user {username} to default app: {default_app}")
+                        return redirect(default_app)
+                    else:
+                        return redirect(url_for("menu"))
                 else:
                     log(f"Login failed: Incorrect password for {username}")
                     return render_template("login.html", error="Invalid username or password")
@@ -319,27 +326,32 @@ def login():
 def menu():
     user_id = session["user_id"]
     username = session.get("username")
+    default_app = None
 
-    # If username not in session, fetch from database
-    if not username:
-        conn = None
-        cursor = None
-        try:
-            conn = pymysql.connect(**db_config)
-            cursor = conn.cursor()
-            cursor.execute("SELECT username FROM users WHERE id = %s", (user_id,))
-            result = cursor.fetchone()
-            username = result[0] if result else "User"
+    # Fetch username and default_app from database if needed
+    conn = None
+    cursor = None
+    try:
+        conn = pymysql.connect(**db_config)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT username, default_app FROM users WHERE id = %s", (user_id,))
+        result = cursor.fetchone()
+        if result:
+            username = result["username"]
+            default_app = result.get("default_app")
             session["username"] = username
-        except:
+        else:
             username = "User"
-        finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
+    except Exception as e:
+        log(f"Error fetching user data: {str(e)}")
+        username = username or "User"
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
 
-    return render_template("menu.html", username=username)
+    return render_template("menu.html", username=username, default_app=default_app)
 
 
 @app.route("/webhook-viewer")
@@ -600,6 +612,48 @@ def change_password():
         return jsonify({"error": "Database error occurred"}), 500
     except Exception as e:
         log(f"Unexpected error during password change: {str(e)}")
+        return jsonify({"error": "An unexpected error occurred"}), 500
+    finally:
+        if cursor is not None:
+            cursor.close()
+        if conn is not None and conn.open:
+            conn.close()
+
+
+@app.route("/api/set-default-app", methods=["POST"])
+@login_required
+def set_default_app():
+    """Set the user's default application"""
+    user_id = session["user_id"]
+    data = request.get_json()
+
+    default_app = data.get("default_app")
+
+    # Allow null/empty to clear the default app
+    if default_app == "":
+        default_app = None
+
+    log(f"Setting default app for user {user_id} to: {default_app}")
+
+    conn = None
+    cursor = None
+    try:
+        conn = pymysql.connect(**db_config)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+
+        # Update user's default app
+        cursor.execute("UPDATE users SET default_app = %s WHERE id = %s",
+                      (default_app, user_id))
+        conn.commit()
+
+        log(f"Default app updated successfully for user {user_id}")
+        return jsonify({"message": "Default app updated successfully", "default_app": default_app}), 200
+
+    except pymysql.MySQLError as err:
+        log(f"Database error during default app update: {str(err)}")
+        return jsonify({"error": "Database error occurred"}), 500
+    except Exception as e:
+        log(f"Unexpected error during default app update: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
     finally:
         if cursor is not None:
