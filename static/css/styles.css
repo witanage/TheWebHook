@@ -150,32 +150,6 @@ body {
     justify-content: flex-end;
 }
 
-.refresh-indicator {
-    height: 32px;
-    width: auto;
-    border-radius: var(--radius);
-    transition: var(--transition);
-    display: block;
-}
-
-.refresh-indicator-container {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 1rem;
-}
-
-#refreshIndicatorLink {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-}
-
-.refresh-indicator:hover {
-    transform: scale(1.05);
-}
-
 .notification-icon {
     position: relative;
     cursor: pointer;
