@@ -18,7 +18,16 @@
 
     <div class="tools-grid">
         {% for item in menu_items %}
-        <div class="tool-card" onclick="window.location.href='{{ item.route }}'">
+        <div class="tool-card" data-route="{{ item.route }}" onclick="navigateToCard(event, '{{ item.route }}')">
+            <div class="default-app-selector">
+                <input type="radio"
+                       name="defaultApp"
+                       id="default_{{ loop.index }}"
+                       value="{{ item.route }}"
+                       onclick="event.stopPropagation();"
+                       onchange="setDefaultApp('{{ item.route }}')">
+                <label for="default_{{ loop.index }}" title="Set as default application"></label>
+            </div>
             <span class="tool-icon">{{ item.icon }}</span>
             <h2 class="tool-title">{{ item.title }}</h2>
             <p class="tool-description">{{ item.description }}</p>
@@ -26,4 +35,44 @@
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Load and set the default app radio button on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        const defaultApp = localStorage.getItem('defaultApp');
+        const justLoggedIn = sessionStorage.getItem('justLoggedIn');
+
+        // Auto-redirect to default app on fresh login
+        if (defaultApp && justLoggedIn === 'true') {
+            sessionStorage.removeItem('justLoggedIn');
+            window.location.href = defaultApp;
+            return;
+        }
+
+        // Set radio button if default app is selected
+        if (defaultApp) {
+            const radioButton = document.querySelector(`input[name="defaultApp"][value="${defaultApp}"]`);
+            if (radioButton) {
+                radioButton.checked = true;
+            }
+        }
+    });
+
+    // Function to set default application
+    function setDefaultApp(route) {
+        localStorage.setItem('defaultApp', route);
+        console.log('Default app set to:', route);
+    }
+
+    // Function to navigate to card (handles card click without interfering with radio button)
+    function navigateToCard(event, route) {
+        // Don't navigate if clicking on radio button or its label
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') {
+            return;
+        }
+        window.location.href = route;
+    }
+</script>
 {% endblock %}

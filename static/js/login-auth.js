@@ -11,6 +11,9 @@ document.getElementById('loginForm').addEventListener('submit', function(e) {
     const btnText = document.getElementById('btnText');
     btnText.innerHTML = '<div class="loading"></div>';
     btn.style.pointerEvents = 'none';
+
+    // Set flag to indicate fresh login (for default app redirect)
+    sessionStorage.setItem('justLoggedIn', 'true');
 });
 
 // Input focus animations
