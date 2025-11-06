@@ -29,6 +29,60 @@
             about the request, response, and headers.
         </p>
 
+        <!-- Special Endpoints Management Section -->
+        <div class="card special-endpoints-section">
+            <h2 class="card-title">⚡ Special Endpoints - Custom Delays & HTTP Codes</h2>
+            <p class="card-text">
+                Create custom endpoints with specific HTTP status codes and response delays.
+                These endpoints are user-specific and can be used to test timeout scenarios,
+                rate limiting, and various HTTP status responses with configurable delays.
+            </p>
+
+            <!-- Create New Special Endpoint Form -->
+            <div class="special-endpoint-form">
+                <h3>Create New Special Endpoint</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="endpointName">Endpoint Name *</label>
+                        <input type="text" id="endpointName" placeholder="e.g., slow-response" class="form-input">
+                        <small class="hint-text">Use lowercase letters, numbers, and hyphens only</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="httpCode">HTTP Status Code *</label>
+                        <input type="number" id="httpCode" min="100" max="599" value="200" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label for="delayMs">Delay (ms) *</label>
+                        <input type="number" id="delayMs" min="0" value="1000" class="form-input">
+                        <small class="hint-text">Response delay in milliseconds</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="description">Description (Optional)</label>
+                        <input type="text" id="description" placeholder="e.g., Simulate slow server response" class="form-input">
+                    </div>
+                </div>
+                <button onclick="createSpecialEndpoint()" class="test-button">Create Endpoint</button>
+                <div id="createMessage" class="message" style="display:none;"></div>
+            </div>
+
+            <!-- List of Special Endpoints -->
+            <div class="special-endpoints-list">
+                <h3>Your Special Endpoints</h3>
+                <div id="endpointsList" class="endpoints-container">
+                    <div class="loading-message">Loading endpoints...</div>
+                </div>
+            </div>
+
+            <!-- Usage Instructions -->
+            <div class="usage-instructions">
+                <h3>Usage</h3>
+                <p class="card-text">Your special endpoints will be available at:</p>
+                <pre class="code-block"><code>/special-endpoint/{{ username }}/<span class="highlight">endpoint_name</span></code></pre>
+                <p class="hint-text">Example: <code class="inline-code">/special-endpoint/{{ username }}/slow-response</code></p>
+                <p class="card-text">Supports all HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</p>
+            </div>
+        </div>
+
         <div class="card">
             <h2 class="card-title">🔍 Endpoint</h2>
             <pre class="code-block"><code>/httpcode/&lt;int:code&gt;</code></pre>
@@ -121,6 +175,10 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script>
+    // Pass username to JavaScript
+    window.username = "{{ username }}";
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
