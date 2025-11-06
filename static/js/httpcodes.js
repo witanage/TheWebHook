@@ -326,19 +326,19 @@ async function loadRotatingEndpoints() {
         const data = await response.json();
 
         if (data.success && data.endpoints.length > 0) {
-            endpointsList.innerHTML = data.endpoints.map(endpoint => createRotatingEndpointCard(endpoint)).join('');
+            endpointsList.innerHTML = data.endpoints.map(endpoint => createRotatingEndpointRow(endpoint)).join('');
         } else if (data.success && data.endpoints.length === 0) {
-            endpointsList.innerHTML = '<div class="empty-message">No rotating endpoints yet. Create one above!</div>';
+            endpointsList.innerHTML = '<tr><td colspan="7" class="empty-message">No rotating endpoints yet. Create one above!</td></tr>';
         } else {
-            endpointsList.innerHTML = `<div class="error-message">Error: ${data.error || 'Failed to load endpoints'}</div>`;
+            endpointsList.innerHTML = `<tr><td colspan="7" class="error-message">Error: ${data.error || 'Failed to load endpoints'}</td></tr>`;
         }
     } catch (error) {
-        endpointsList.innerHTML = `<div class="error-message">Error loading rotating endpoints: ${error.message}</div>`;
+        endpointsList.innerHTML = `<tr><td colspan="7" class="error-message">Error loading rotating endpoints: ${error.message}</td></tr>`;
     }
 }
 
-// Create HTML card for a rotating endpoint
-function createRotatingEndpointCard(endpoint) {
+// Create HTML table row for a rotating endpoint
+function createRotatingEndpointRow(endpoint) {
     const isActive = endpoint.is_active === 1;
     const statusClass = isActive ? 'active' : 'inactive';
     const fullUrl = `${window.location.origin}/rotating-endpoint/${window.userId || 'USER_ID'}/${endpoint.endpoint_name}`;
@@ -350,43 +350,28 @@ function createRotatingEndpointCard(endpoint) {
     const nextCode = httpCodes[currentIndex];
 
     return `
-        <div class="rotating-endpoint-card ${statusClass}" data-id="${endpoint.id}">
-            <div class="card-header">
-                <div class="card-title-row">
-                    <span class="status-badge badge-${statusClass}">${isActive ? 'Active' : 'Inactive'}</span>
-                    <strong class="endpoint-title">${endpoint.endpoint_name}</strong>
-                </div>
-                <div class="card-actions">
-                    <button class="icon-btn" onclick="copyRotatingEndpointUrl('${fullUrl}')" title="Copy URL">📋</button>
-                    <button class="icon-btn" onclick="resetRotatingEndpoint(${endpoint.id})" title="Reset Counter">🔄</button>
-                    <button class="icon-btn" onclick="toggleRotatingEndpointStatus(${endpoint.id}, ${endpoint.is_active})" title="Toggle Active/Inactive">
-                        ${isActive ? '⏸️' : '▶️'}
-                    </button>
-                    <button class="icon-btn edit-btn" onclick="editRotatingEndpoint(${endpoint.id})" title="Edit">✏️</button>
-                    <button class="icon-btn delete-btn" onclick="deleteRotatingEndpoint(${endpoint.id}, '${endpoint.endpoint_name}')" title="Delete">🗑️</button>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="detail-item">
-                    <span class="detail-label">HTTP Codes Sequence:</span>
-                    <div class="codes-sequence">${codesDisplay}</div>
-                </div>
-                <div class="detail-item">
-                    <span class="detail-label">Next Code:</span>
-                    <code class="inline-code highlight-code">${nextCode}</code>
-                    <span class="hint-text">(Position ${currentIndex + 1} of ${httpCodes.length})</span>
-                </div>
-                ${endpoint.description ? `
-                <div class="detail-item">
-                    <span class="detail-label">Description:</span>
-                    <span>${endpoint.description}</span>
-                </div>` : ''}
-                <div class="detail-item">
-                    <span class="detail-label">URL:</span>
-                    <code class="inline-code url-display">${fullUrl}</code>
-                </div>
-            </div>
-        </div>
+        <tr class="endpoint-row ${statusClass}" data-id="${endpoint.id}">
+            <td>
+                <span class="status-badge badge-${statusClass}">${isActive ? 'Active' : 'Inactive'}</span>
+            </td>
+            <td><strong>${endpoint.endpoint_name}</strong></td>
+            <td><code class="codes-sequence-inline">${codesDisplay}</code></td>
+            <td>
+                <code class="inline-code highlight-code">${nextCode}</code>
+                <span class="hint-text">(${currentIndex + 1}/${httpCodes.length})</span>
+            </td>
+            <td>${endpoint.description || '-'}</td>
+            <td><code class="inline-code url-cell">${fullUrl}</code></td>
+            <td class="actions-cell">
+                <button class="icon-btn" onclick="copyRotatingEndpointUrl('${fullUrl}')" title="Copy URL">📋</button>
+                <button class="icon-btn" onclick="resetRotatingEndpoint(${endpoint.id})" title="Reset Counter">🔄</button>
+                <button class="icon-btn" onclick="toggleRotatingEndpointStatus(${endpoint.id}, ${endpoint.is_active})" title="Toggle Active/Inactive">
+                    ${isActive ? '⏸️' : '▶️'}
+                </button>
+                <button class="icon-btn edit-btn" onclick="editRotatingEndpoint(${endpoint.id})" title="Edit">✏️</button>
+                <button class="icon-btn delete-btn" onclick="deleteRotatingEndpoint(${endpoint.id}, '${endpoint.endpoint_name}')" title="Delete">🗑️</button>
+            </td>
+        </tr>
     `;
 }
 
@@ -510,17 +495,17 @@ async function resetRotatingEndpoint(endpointId) {
 
 // Edit a rotating endpoint
 async function editRotatingEndpoint(endpointId) {
-    const card = document.querySelector(`.rotating-endpoint-card[data-id="${endpointId}"]`);
-    if (!card) return;
+    const row = document.querySelector(`tr[data-id="${endpointId}"]`);
+    if (!row) return;
 
-    // Get current values
-    const currentCodes = card.querySelector('.codes-sequence').textContent.replace(/\s*→\s*/g, ',');
-    const currentDescription = card.querySelector('.detail-item:nth-child(3) span:last-child')?.textContent || '';
+    // Get current values from the table row
+    const currentCodes = row.cells[2].textContent.replace(/\s*→\s*/g, ',');
+    const currentDescription = row.cells[4].textContent;
 
     const newCodes = prompt('Enter new HTTP codes (comma-separated):', currentCodes);
     if (newCodes === null) return;
 
-    const newDescription = prompt('Enter new description (optional):', currentDescription);
+    const newDescription = prompt('Enter new description (optional):', currentDescription === '-' ? '' : currentDescription);
 
     // Validate codes
     const httpCodes = newCodes.split(',').map(code => code.trim()).filter(code => code);

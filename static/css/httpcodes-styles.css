@@ -207,28 +207,27 @@
 
 .special-endpoints-section {
     border: 2px solid var(--accent-color);
-    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
 }
 
 .special-endpoint-form {
     background: var(--bg-tertiary);
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 8px;
-    margin: 1.5rem 0;
+    margin: 1rem 0;
     border: 1px solid var(--border-color);
 }
 
 .special-endpoint-form h3 {
     color: var(--accent-color);
-    margin-bottom: 1rem;
-    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
 }
 
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .form-group {
@@ -283,13 +282,13 @@
 }
 
 .special-endpoints-list {
-    margin: 2rem 0;
+    margin: 1rem 0;
 }
 
 .special-endpoints-list h3 {
     color: var(--accent-color);
-    margin-bottom: 1rem;
-    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
 }
 
 #endpointsTableContainer {
@@ -419,16 +418,16 @@
 
 .usage-instructions {
     background: var(--bg-tertiary);
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 8px;
-    margin-top: 2rem;
+    margin-top: 1rem;
     border: 1px solid var(--border-color);
 }
 
 .usage-instructions h3 {
     color: var(--accent-color);
-    margin-bottom: 1rem;
-    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
 }
 
 .usage-instructions .highlight {
@@ -468,146 +467,62 @@
 
 .rotating-endpoints-section {
     border: 2px solid #10b981;
-    background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
 }
 
 .rotating-endpoint-form {
     background: var(--bg-tertiary);
-    padding: 1.5rem;
+    padding: 1rem;
     border-radius: 8px;
-    margin: 1.5rem 0;
+    margin: 1rem 0;
     border: 1px solid var(--border-color);
 }
 
 .rotating-endpoint-form h3 {
     color: #10b981;
-    margin-bottom: 1rem;
-    font-size: 1.2rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
 }
 
 .form-grid-rotating {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .rotating-endpoints-list {
-    margin: 2rem 0;
+    margin: 1rem 0;
 }
 
 .rotating-endpoints-list h3 {
     color: #10b981;
-    margin-bottom: 1rem;
-    font-size: 1.2rem;
-}
-
-.rotating-endpoints-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 1.5rem;
-}
-
-.rotating-endpoint-card {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 1.25rem;
-    transition: all 0.3s ease;
-}
-
-.rotating-endpoint-card:hover {
-    border-color: #10b981;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
-    transform: translateY(-2px);
-}
-
-.rotating-endpoint-card.inactive {
-    opacity: 0.6;
-    background: var(--bg-quaternary);
-}
-
-.card-header {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.card-title-row {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.endpoint-title {
-    color: var(--text-primary);
+    margin-bottom: 0.75rem;
     font-size: 1.1rem;
 }
 
-.card-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
+#rotatingEndpointsTableContainer {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
 }
 
-.card-body {
-    display: grid;
-    gap: 0.75rem;
-}
-
-.detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.detail-item .detail-label {
-    color: var(--text-secondary);
-    font-weight: 500;
-    font-size: 0.85rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.codes-sequence {
-    background: var(--bg-secondary);
-    padding: 0.75rem;
-    border-radius: 6px;
+.codes-sequence-inline {
     font-family: 'Consolas', 'Monaco', monospace;
     color: var(--accent-color);
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 600;
-    word-break: break-word;
 }
 
 .highlight-code {
     background: rgba(16, 185, 129, 0.2);
     color: #10b981;
-    padding: 0.25rem 0.5rem;
+    padding: 0.2rem 0.4rem;
     border-radius: 4px;
     font-weight: 600;
 }
 
 /* Responsive adjustments for rotating endpoints */
 @media (max-width: 768px) {
-    .rotating-endpoints-container {
-        grid-template-columns: 1fr;
-    }
-
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .card-actions {
-        width: 100%;
-        justify-content: flex-start;
-    }
-
     .form-grid-rotating {
         grid-template-columns: 1fr;
     }
