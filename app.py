@@ -1285,8 +1285,8 @@ def special_endpoint_handler(user_id, endpoint_name):
             # Prepare response
             http_code = endpoint["http_code"]
 
-            # Use custom payload if provided, otherwise use default response
-            if endpoint["response_payload"]:
+            # Use custom payload only if provided and HTTP code is 200, otherwise use default response
+            if endpoint["response_payload"] and http_code == 200:
                 response_payload = json.loads(endpoint["response_payload"]) if isinstance(endpoint["response_payload"], str) else endpoint["response_payload"]
                 response_data = response_payload
             else:
@@ -1303,7 +1303,7 @@ def special_endpoint_handler(user_id, endpoint_name):
                 }
 
             # Include request data if present (only for default response, not custom payload)
-            if not endpoint["response_payload"] and request.method in ["POST", "PUT", "PATCH"]:
+            if not (endpoint["response_payload"] and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
                 if request.is_json:
                     response_data["received_data"] = request.get_json()
                 elif request.form:
@@ -1626,8 +1626,8 @@ def rotating_endpoint_handler(user_id, endpoint_name):
             conn.commit()
 
             # Prepare response
-            # Use custom payload if provided, otherwise use default response
-            if endpoint["response_payload"]:
+            # Use custom payload only if provided and HTTP code is 200, otherwise use default response
+            if endpoint["response_payload"] and http_code == 200:
                 response_payload = json.loads(endpoint["response_payload"]) if isinstance(endpoint["response_payload"], str) else endpoint["response_payload"]
                 response_data = response_payload
             else:
@@ -1647,7 +1647,7 @@ def rotating_endpoint_handler(user_id, endpoint_name):
                 }
 
             # Include request data if present (only for default response, not custom payload)
-            if not endpoint["response_payload"] and request.method in ["POST", "PUT", "PATCH"]:
+            if not (endpoint["response_payload"] and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
                 if request.is_json:
                     response_data["received_data"] = request.get_json()
                 elif request.form:
