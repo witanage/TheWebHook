@@ -1105,14 +1105,24 @@ def create_special_endpoint():
     if delay_ms < 0:
         return jsonify({"success": False, "error": "Delay must be a positive number"}), 400
 
+    # Validate response_payload if provided
+    response_payload = data.get("response_payload")
+    if response_payload:
+        # Validate it's valid JSON if provided as string
+        if isinstance(response_payload, str):
+            try:
+                response_payload = json.loads(response_payload)
+            except json.JSONDecodeError:
+                return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO special_endpoints (user_id, endpoint_name, http_code, delay_ms, description, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO special_endpoints (user_id, endpoint_name, http_code, delay_ms, description, response_payload, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (user_id, data.get("endpoint_name"), http_code, delay_ms,
-                  data.get("description", ""), data.get("is_active", 1)))
+                  data.get("description", ""), json.dumps(response_payload) if response_payload else None, data.get("is_active", 1)))
             conn.commit()
             endpoint_id = cursor.lastrowid
             return jsonify({"success": True, "id": endpoint_id})
@@ -1145,6 +1155,19 @@ def update_special_endpoint(endpoint_id):
         if delay_ms < 0:
             return jsonify({"success": False, "error": "Delay must be a positive number"}), 400
 
+    # Validate response_payload if provided
+    if "response_payload" in data:
+        response_payload = data.get("response_payload")
+        if response_payload:
+            # Validate it's valid JSON if provided as string
+            if isinstance(response_payload, str):
+                try:
+                    response_payload = json.loads(response_payload)
+                except json.JSONDecodeError:
+                    return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+        else:
+            response_payload = None
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -1164,6 +1187,9 @@ def update_special_endpoint(endpoint_id):
             if data.get("description") is not None:
                 update_fields.append("description = %s")
                 params.append(data.get("description"))
+            if "response_payload" in data:
+                update_fields.append("response_payload = %s")
+                params.append(json.dumps(response_payload) if response_payload else None)
             if data.get("is_active") is not None:
                 update_fields.append("is_active = %s")
                 params.append(data.get("is_active"))
@@ -1239,7 +1265,7 @@ def special_endpoint_handler(user_id, endpoint_name):
 
             # Get special endpoint configuration
             cursor.execute("""
-                SELECT http_code, delay_ms, description
+                SELECT http_code, delay_ms, description, response_payload
                 FROM special_endpoints
                 WHERE user_id = %s AND endpoint_name = %s AND is_active = 1
             """, (user_id, endpoint_name))
@@ -1258,20 +1284,26 @@ def special_endpoint_handler(user_id, endpoint_name):
 
             # Prepare response
             http_code = endpoint["http_code"]
-            response_data = {
-                "status": http_code,
-                "message": get_http_status_message(http_code),
-                "endpoint_name": endpoint_name,
-                "user_id": user_id,
-                "description": endpoint["description"],
-                "delay_ms": endpoint["delay_ms"],
-                "method": request.method,
-                "path": request.path,
-                "timestamp": datetime.now().isoformat()
-            }
 
-            # Include request data if present
-            if request.method in ["POST", "PUT", "PATCH"]:
+            # Use custom payload only if provided and HTTP code is 200, otherwise use default response
+            if endpoint["response_payload"] and http_code == 200:
+                response_payload = json.loads(endpoint["response_payload"]) if isinstance(endpoint["response_payload"], str) else endpoint["response_payload"]
+                response_data = response_payload
+            else:
+                response_data = {
+                    "status": http_code,
+                    "message": get_http_status_message(http_code),
+                    "endpoint_name": endpoint_name,
+                    "user_id": user_id,
+                    "description": endpoint["description"],
+                    "delay_ms": endpoint["delay_ms"],
+                    "method": request.method,
+                    "path": request.path,
+                    "timestamp": datetime.now().isoformat()
+                }
+
+            # Include request data if present (only for default response, not custom payload)
+            if not (endpoint["response_payload"] and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
                 if request.is_json:
                     response_data["received_data"] = request.get_json()
                 elif request.form:
@@ -1373,14 +1405,24 @@ def create_rotating_endpoint():
         except (ValueError, TypeError):
             return jsonify({"success": False, "error": f"Invalid HTTP code: {code}"}), 400
 
+    # Validate response_payload if provided
+    response_payload = data.get("response_payload")
+    if response_payload:
+        # Validate it's valid JSON if provided as string
+        if isinstance(response_payload, str):
+            try:
+                response_payload = json.loads(response_payload)
+            except json.JSONDecodeError:
+                return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO rotating_endpoints (user_id, endpoint_name, http_codes, current_index, description, is_active)
-                VALUES (%s, %s, %s, 0, %s, %s)
+                INSERT INTO rotating_endpoints (user_id, endpoint_name, http_codes, current_index, description, response_payload, is_active)
+                VALUES (%s, %s, %s, 0, %s, %s, %s)
             """, (user_id, data.get("endpoint_name"), json.dumps(http_codes),
-                  data.get("description", ""), data.get("is_active", 1)))
+                  data.get("description", ""), json.dumps(response_payload) if response_payload else None, data.get("is_active", 1)))
             conn.commit()
             endpoint_id = cursor.lastrowid
             return jsonify({"success": True, "id": endpoint_id})
@@ -1416,6 +1458,19 @@ def update_rotating_endpoint(endpoint_id):
             except (ValueError, TypeError):
                 return jsonify({"success": False, "error": f"Invalid HTTP code: {code}"}), 400
 
+    # Validate response_payload if provided
+    if "response_payload" in data:
+        response_payload = data.get("response_payload")
+        if response_payload:
+            # Validate it's valid JSON if provided as string
+            if isinstance(response_payload, str):
+                try:
+                    response_payload = json.loads(response_payload)
+                except json.JSONDecodeError:
+                    return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+        else:
+            response_payload = None
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -1434,6 +1489,9 @@ def update_rotating_endpoint(endpoint_id):
             if data.get("description") is not None:
                 update_fields.append("description = %s")
                 params.append(data.get("description"))
+            if "response_payload" in data:
+                update_fields.append("response_payload = %s")
+                params.append(json.dumps(response_payload) if response_payload else None)
             if data.get("is_active") is not None:
                 update_fields.append("is_active = %s")
                 params.append(data.get("is_active"))
@@ -1535,7 +1593,7 @@ def rotating_endpoint_handler(user_id, endpoint_name):
 
             # Get rotating endpoint configuration with row lock for atomic update
             cursor.execute("""
-                SELECT id, http_codes, current_index, description
+                SELECT id, http_codes, current_index, description, response_payload
                 FROM rotating_endpoints
                 WHERE user_id = %s AND endpoint_name = %s AND is_active = 1
                 FOR UPDATE
@@ -1568,23 +1626,28 @@ def rotating_endpoint_handler(user_id, endpoint_name):
             conn.commit()
 
             # Prepare response
-            response_data = {
-                "status": http_code,
-                "message": get_http_status_message(http_code),
-                "endpoint_name": endpoint_name,
-                "user_id": user_id,
-                "description": endpoint["description"],
-                "current_code_index": current_index,
-                "total_codes": len(http_codes),
-                "next_code": int(http_codes[next_index]),
-                "all_codes": http_codes,
-                "method": request.method,
-                "path": request.path,
-                "timestamp": datetime.now().isoformat()
-            }
+            # Use custom payload only if provided and HTTP code is 200, otherwise use default response
+            if endpoint["response_payload"] and http_code == 200:
+                response_payload = json.loads(endpoint["response_payload"]) if isinstance(endpoint["response_payload"], str) else endpoint["response_payload"]
+                response_data = response_payload
+            else:
+                response_data = {
+                    "status": http_code,
+                    "message": get_http_status_message(http_code),
+                    "endpoint_name": endpoint_name,
+                    "user_id": user_id,
+                    "description": endpoint["description"],
+                    "current_code_index": current_index,
+                    "total_codes": len(http_codes),
+                    "next_code": int(http_codes[next_index]),
+                    "all_codes": http_codes,
+                    "method": request.method,
+                    "path": request.path,
+                    "timestamp": datetime.now().isoformat()
+                }
 
-            # Include request data if present
-            if request.method in ["POST", "PUT", "PATCH"]:
+            # Include request data if present (only for default response, not custom payload)
+            if not (endpoint["response_payload"] and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
                 if request.is_json:
                     response_data["received_data"] = request.get_json()
                 elif request.form:

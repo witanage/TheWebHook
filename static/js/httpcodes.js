@@ -136,6 +136,7 @@ async function createSpecialEndpoint() {
     const httpCode = parseInt(document.getElementById('httpCode').value);
     const delayMs = parseInt(document.getElementById('delayMs').value);
     const description = document.getElementById('description').value.trim();
+    const responsePayload = document.getElementById('responsePayload').value.trim();
     const messageDiv = document.getElementById('createMessage');
 
     // Validate endpoint name
@@ -161,6 +162,17 @@ async function createSpecialEndpoint() {
         return;
     }
 
+    // Validate JSON payload if provided
+    let parsedPayload = null;
+    if (responsePayload) {
+        try {
+            parsedPayload = JSON.parse(responsePayload);
+        } catch (e) {
+            showMessage(messageDiv, 'Invalid JSON payload format', 'error');
+            return;
+        }
+    }
+
     try {
         const response = await fetch('/api/special-endpoints', {
             method: 'POST',
@@ -172,6 +184,7 @@ async function createSpecialEndpoint() {
                 http_code: httpCode,
                 delay_ms: delayMs,
                 description: description,
+                response_payload: parsedPayload,
                 is_active: 1
             })
         });
@@ -185,6 +198,7 @@ async function createSpecialEndpoint() {
             document.getElementById('httpCode').value = '200';
             document.getElementById('delayMs').value = '1000';
             document.getElementById('description').value = '';
+            document.getElementById('responsePayload').value = '';
             // Reload list
             loadSpecialEndpoints();
         } else {
@@ -380,6 +394,7 @@ async function createRotatingEndpoint() {
     const endpointName = document.getElementById('rotatingEndpointName').value.trim();
     const httpCodesInput = document.getElementById('httpCodesInput').value.trim();
     const description = document.getElementById('rotatingDescription').value.trim();
+    const responsePayload = document.getElementById('rotatingResponsePayload').value.trim();
     const messageDiv = document.getElementById('rotatingCreateMessage');
 
     // Validate endpoint name
@@ -415,6 +430,17 @@ async function createRotatingEndpoint() {
         }
     }
 
+    // Validate JSON payload if provided
+    let parsedPayload = null;
+    if (responsePayload) {
+        try {
+            parsedPayload = JSON.parse(responsePayload);
+        } catch (e) {
+            showMessage(messageDiv, 'Invalid JSON payload format', 'error');
+            return;
+        }
+    }
+
     try {
         const response = await fetch('/api/rotating-endpoints', {
             method: 'POST',
@@ -425,6 +451,7 @@ async function createRotatingEndpoint() {
                 endpoint_name: endpointName,
                 http_codes: httpCodes.map(code => parseInt(code)),
                 description: description,
+                response_payload: parsedPayload,
                 is_active: 1
             })
         });
@@ -437,6 +464,7 @@ async function createRotatingEndpoint() {
             document.getElementById('rotatingEndpointName').value = '';
             document.getElementById('httpCodesInput').value = '';
             document.getElementById('rotatingDescription').value = '';
+            document.getElementById('rotatingResponsePayload').value = '';
             // Reload list
             loadRotatingEndpoints();
         } else {

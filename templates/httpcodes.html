@@ -60,6 +60,11 @@
                         <label for="description">Description (Optional)</label>
                         <input type="text" id="description" placeholder="e.g., Simulate slow server response" class="form-input">
                     </div>
+                    <div class="form-group full-width">
+                        <label for="responsePayload">Response JSON Payload (Optional)</label>
+                        <textarea id="responsePayload" placeholder='{"key": "value", "status": "success"}' class="form-input" rows="4"></textarea>
+                        <small class="hint-text">Custom JSON response body. Leave empty for default response format.</small>
+                    </div>
                 </div>
                 <button onclick="createSpecialEndpoint()" class="test-button">Create Endpoint</button>
                 <div id="createMessage" class="message" style="display:none;"></div>
@@ -114,6 +119,11 @@
                     <div class="form-group">
                         <label for="rotatingDescription">Description</label>
                         <input type="text" id="rotatingDescription" placeholder="Optional" class="form-input">
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="rotatingResponsePayload">Response JSON Payload (Optional)</label>
+                        <textarea id="rotatingResponsePayload" placeholder='{"key": "value", "status": "success"}' class="form-input" rows="4"></textarea>
+                        <small class="hint-text">Custom JSON response body. Leave empty for default response format.</small>
                     </div>
                 </div>
                 <button onclick="createRotatingEndpoint()" class="test-button">Create Endpoint</button>
