@@ -972,7 +972,7 @@ def http_codes():
     user_id = session["user_id"]
     username = session.get("username", "User")
     log(f"User {user_id} accessed HTTP codes tester")
-    return render_template("httpcodes.html", username=username)
+    return render_template("httpcodes.html", username=username, user_id=user_id)
 
 
 @app.route("/json-compare")
@@ -1219,25 +1219,23 @@ def delete_special_endpoint(endpoint_id):
         conn.close()
 
 
-@app.route("/special-endpoint/<username>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-def special_endpoint_handler(username, endpoint_name):
+@app.route("/special-endpoint/<int:user_id>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def special_endpoint_handler(user_id, endpoint_name):
     """Handle special endpoint requests with custom delay and HTTP code"""
     import time
 
-    # Get user ID from username
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+            # Verify user exists
+            cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
             user_result = cursor.fetchone()
 
             if not user_result:
                 return jsonify({
                     "error": "User not found",
-                    "username": username
+                    "user_id": user_id
                 }), 404
-
-            user_id = user_result["id"]
 
             # Get special endpoint configuration
             cursor.execute("""
@@ -1250,7 +1248,7 @@ def special_endpoint_handler(username, endpoint_name):
             if not endpoint:
                 return jsonify({
                     "error": "Special endpoint not found or inactive",
-                    "username": username,
+                    "user_id": user_id,
                     "endpoint_name": endpoint_name
                 }), 404
 
@@ -1264,7 +1262,7 @@ def special_endpoint_handler(username, endpoint_name):
                 "status": http_code,
                 "message": get_http_status_message(http_code),
                 "endpoint_name": endpoint_name,
-                "username": username,
+                "user_id": user_id,
                 "description": endpoint["description"],
                 "delay_ms": endpoint["delay_ms"],
                 "method": request.method,

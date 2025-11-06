@@ -68,8 +68,25 @@
             <!-- List of Special Endpoints -->
             <div class="special-endpoints-list">
                 <h3>Your Special Endpoints</h3>
-                <div id="endpointsList" class="endpoints-container">
-                    <div class="loading-message">Loading endpoints...</div>
+                <div id="endpointsTableContainer">
+                    <table id="endpointsTable" class="endpoints-table">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Endpoint Name</th>
+                                <th>HTTP Code</th>
+                                <th>Delay (ms)</th>
+                                <th>Description</th>
+                                <th>URL</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="endpointsList">
+                            <tr>
+                                <td colspan="7" class="loading-message">Loading endpoints...</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -77,8 +94,8 @@
             <div class="usage-instructions">
                 <h3>Usage</h3>
                 <p class="card-text">Your special endpoints will be available at:</p>
-                <pre class="code-block"><code>/special-endpoint/{{ username }}/<span class="highlight">endpoint_name</span></code></pre>
-                <p class="hint-text">Example: <code class="inline-code">/special-endpoint/{{ username }}/slow-response</code></p>
+                <pre class="code-block"><code>/special-endpoint/<span class="highlight">{{ user_id }}</span>/<span class="highlight">endpoint_name</span></code></pre>
+                <p class="hint-text">Example: <code class="inline-code">/special-endpoint/{{ user_id }}/slow-response</code></p>
                 <p class="card-text">Supports all HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</p>
             </div>
         </div>
@@ -176,8 +193,8 @@
 
 {% block extra_scripts %}
 <script>
-    // Pass username to JavaScript
-    window.username = "{{ username }}";
+    // Pass user_id to JavaScript
+    window.userId = {{ user_id }};
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>

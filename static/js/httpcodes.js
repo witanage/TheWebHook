@@ -90,59 +90,42 @@ async function loadSpecialEndpoints() {
         const data = await response.json();
 
         if (data.success && data.endpoints.length > 0) {
-            endpointsList.innerHTML = data.endpoints.map(endpoint => createEndpointCard(endpoint)).join('');
+            endpointsList.innerHTML = data.endpoints.map(endpoint => createEndpointRow(endpoint)).join('');
         } else if (data.success && data.endpoints.length === 0) {
-            endpointsList.innerHTML = '<div class="empty-message">No special endpoints yet. Create one above!</div>';
+            endpointsList.innerHTML = '<tr><td colspan="7" class="empty-message">No special endpoints yet. Create one above!</td></tr>';
         } else {
-            endpointsList.innerHTML = `<div class="error-message">Error: ${data.error || 'Failed to load endpoints'}</div>`;
+            endpointsList.innerHTML = `<tr><td colspan="7" class="error-message">Error: ${data.error || 'Failed to load endpoints'}</td></tr>`;
         }
     } catch (error) {
-        endpointsList.innerHTML = `<div class="error-message">Error loading endpoints: ${error.message}</div>`;
+        endpointsList.innerHTML = `<tr><td colspan="7" class="error-message">Error loading endpoints: ${error.message}</td></tr>`;
     }
 }
 
-// Create HTML card for an endpoint
-function createEndpointCard(endpoint) {
+// Create HTML table row for an endpoint
+function createEndpointRow(endpoint) {
     const isActive = endpoint.is_active === 1;
     const statusClass = isActive ? 'active' : 'inactive';
-    const fullUrl = `${window.location.origin}/special-endpoint/${window.username || 'USERNAME'}/${endpoint.endpoint_name}`;
+    const fullUrl = `${window.location.origin}/special-endpoint/${window.userId || 'USER_ID'}/${endpoint.endpoint_name}`;
 
     return `
-        <div class="endpoint-card ${statusClass}" data-id="${endpoint.id}">
-            <div class="endpoint-header">
-                <div class="endpoint-name">
-                    <span class="status-badge badge-${statusClass}">${isActive ? 'Active' : 'Inactive'}</span>
-                    <strong>${endpoint.endpoint_name}</strong>
-                </div>
-                <div class="endpoint-actions">
-                    <button class="icon-btn" onclick="copyEndpointUrl('${fullUrl}')" title="Copy URL">📋</button>
-                    <button class="icon-btn" onclick="toggleEndpointStatus(${endpoint.id}, ${endpoint.is_active})" title="Toggle Active/Inactive">
-                        ${isActive ? '⏸️' : '▶️'}
-                    </button>
-                    <button class="icon-btn edit-btn" onclick="editEndpoint(${endpoint.id})" title="Edit">✏️</button>
-                    <button class="icon-btn delete-btn" onclick="deleteEndpoint(${endpoint.id}, '${endpoint.endpoint_name}')" title="Delete">🗑️</button>
-                </div>
-            </div>
-            <div class="endpoint-details">
-                <div class="detail-row">
-                    <span class="detail-label">HTTP Code:</span>
-                    <code class="inline-code">${endpoint.http_code}</code>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">Delay:</span>
-                    <code class="inline-code">${endpoint.delay_ms}ms</code>
-                </div>
-                ${endpoint.description ? `
-                <div class="detail-row">
-                    <span class="detail-label">Description:</span>
-                    <span class="detail-value">${endpoint.description}</span>
-                </div>` : ''}
-                <div class="detail-row">
-                    <span class="detail-label">URL:</span>
-                    <code class="inline-code url-display">${fullUrl}</code>
-                </div>
-            </div>
-        </div>
+        <tr class="endpoint-row ${statusClass}" data-id="${endpoint.id}">
+            <td>
+                <span class="status-badge badge-${statusClass}">${isActive ? 'Active' : 'Inactive'}</span>
+            </td>
+            <td><strong>${endpoint.endpoint_name}</strong></td>
+            <td><code class="inline-code">${endpoint.http_code}</code></td>
+            <td><code class="inline-code">${endpoint.delay_ms}</code></td>
+            <td>${endpoint.description || '-'}</td>
+            <td><code class="inline-code url-cell">${fullUrl}</code></td>
+            <td class="actions-cell">
+                <button class="icon-btn" onclick="copyEndpointUrl('${fullUrl}')" title="Copy URL">📋</button>
+                <button class="icon-btn" onclick="toggleEndpointStatus(${endpoint.id}, ${endpoint.is_active})" title="Toggle Active/Inactive">
+                    ${isActive ? '⏸️' : '▶️'}
+                </button>
+                <button class="icon-btn edit-btn" onclick="editEndpoint(${endpoint.id})" title="Edit">✏️</button>
+                <button class="icon-btn delete-btn" onclick="deleteEndpoint(${endpoint.id}, '${endpoint.endpoint_name}')" title="Delete">🗑️</button>
+            </td>
+        </tr>
     `;
 }
 
@@ -240,12 +223,13 @@ async function toggleEndpointStatus(endpointId, currentStatus) {
 
 // Edit an endpoint (simplified version - shows prompt)
 async function editEndpoint(endpointId) {
-    const card = document.querySelector(`[data-id="${endpointId}"]`);
-    if (!card) return;
+    const row = document.querySelector(`tr[data-id="${endpointId}"]`);
+    if (!row) return;
 
-    // Get current values from the card
-    const currentHttpCode = card.querySelector('.detail-row:nth-child(1) code').textContent;
-    const currentDelay = card.querySelector('.detail-row:nth-child(2) code').textContent.replace('ms', '');
+    // Get current values from the table row
+    const currentHttpCode = row.cells[2].textContent;
+    const currentDelay = row.cells[3].textContent;
+    const currentDescription = row.cells[4].textContent;
 
     const newHttpCode = prompt('Enter new HTTP code:', currentHttpCode);
     if (!newHttpCode) return;
@@ -253,7 +237,7 @@ async function editEndpoint(endpointId) {
     const newDelay = prompt('Enter new delay (ms):', currentDelay);
     if (!newDelay) return;
 
-    const newDescription = prompt('Enter new description (optional):');
+    const newDescription = prompt('Enter new description (optional):', currentDescription === '-' ? '' : currentDescription);
 
     try {
         const response = await fetch(`/api/special-endpoints/${endpointId}`, {

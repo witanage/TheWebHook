@@ -292,48 +292,64 @@
     font-size: 1.2rem;
 }
 
-.endpoints-container {
-    display: grid;
-    gap: 1rem;
-}
-
-.endpoint-card {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+#endpointsTableContainer {
+    overflow-x: auto;
     border-radius: 8px;
-    padding: 1.25rem;
-    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
 }
 
-.endpoint-card:hover {
-    border-color: var(--accent-color);
-    box-shadow: 0 4px 12px rgba(139, 92, 246, 0.15);
-    transform: translateY(-2px);
+.endpoints-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-tertiary);
 }
 
-.endpoint-card.inactive {
-    opacity: 0.6;
+.endpoints-table thead {
+    background: var(--bg-quaternary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.endpoints-table th {
+    padding: 1rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--accent-color);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.endpoints-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.endpoints-table tbody tr {
+    transition: all 0.2s ease;
+}
+
+.endpoints-table tbody tr:hover {
     background: var(--bg-quaternary);
 }
 
-.endpoint-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid var(--border-color);
+.endpoints-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
-.endpoint-name {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
+.endpoint-row.inactive {
+    opacity: 0.5;
 }
 
-.endpoint-name strong {
-    color: var(--text-primary);
-    font-size: 1.1rem;
+.url-cell {
+    word-break: break-all;
+    font-size: 0.85rem;
+    max-width: 300px;
+}
+
+.actions-cell {
+    white-space: nowrap;
 }
 
 .status-badge {
@@ -354,23 +370,19 @@
     color: #9ca3af;
 }
 
-.endpoint-actions {
-    display: flex;
-    gap: 0.5rem;
-}
-
 .icon-btn {
     background: transparent;
     border: 1px solid var(--border-color);
     color: var(--text-secondary);
     cursor: pointer;
     font-size: 1rem;
-    padding: 0.5rem;
+    padding: 0.4rem 0.6rem;
     border-radius: 6px;
     transition: all 0.3s ease;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
+    margin: 0 0.15rem;
 }
 
 .icon-btn:hover {
@@ -390,34 +402,6 @@
     background: rgba(59, 130, 246, 0.1);
     border-color: #3b82f6;
     color: #3b82f6;
-}
-
-.endpoint-details {
-    display: grid;
-    gap: 0.75rem;
-}
-
-.detail-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-}
-
-.detail-label {
-    color: var(--text-secondary);
-    font-weight: 500;
-    min-width: 100px;
-    font-size: 0.9rem;
-}
-
-.detail-value {
-    color: var(--text-primary);
-    flex: 1;
-}
-
-.url-display {
-    word-break: break-all;
-    font-size: 0.85rem;
 }
 
 .loading-message,
@@ -458,23 +442,22 @@
         grid-template-columns: 1fr;
     }
 
-    .endpoint-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
+    .endpoints-table {
+        font-size: 0.85rem;
     }
 
-    .endpoint-actions {
-        width: 100%;
-        justify-content: flex-end;
+    .endpoints-table th,
+    .endpoints-table td {
+        padding: 0.75rem 0.5rem;
     }
 
-    .detail-row {
-        flex-direction: column;
-        gap: 0.25rem;
+    .url-cell {
+        max-width: 150px;
+        font-size: 0.75rem;
     }
 
-    .detail-label {
-        min-width: auto;
+    .icon-btn {
+        padding: 0.35rem 0.5rem;
+        font-size: 0.9rem;
     }
 }
