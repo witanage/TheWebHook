@@ -72,8 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
         attributeFilter: ['data-theme']
     });
 
-    // Load special endpoints on page load
+    // Load special endpoints and rotating endpoints on page load
     loadSpecialEndpoints();
+    loadRotatingEndpoints();
 });
 
 
@@ -309,4 +310,283 @@ function showMessage(element, message, type) {
     setTimeout(() => {
         element.style.display = 'none';
     }, 5000);
+}
+
+
+// ========================
+// Rotating Endpoints Management
+// ========================
+
+// Load all rotating endpoints for the current user
+async function loadRotatingEndpoints() {
+    const endpointsList = document.getElementById('rotatingEndpointsList');
+
+    try {
+        const response = await fetch('/api/rotating-endpoints');
+        const data = await response.json();
+
+        if (data.success && data.endpoints.length > 0) {
+            endpointsList.innerHTML = data.endpoints.map(endpoint => createRotatingEndpointCard(endpoint)).join('');
+        } else if (data.success && data.endpoints.length === 0) {
+            endpointsList.innerHTML = '<div class="empty-message">No rotating endpoints yet. Create one above!</div>';
+        } else {
+            endpointsList.innerHTML = `<div class="error-message">Error: ${data.error || 'Failed to load endpoints'}</div>`;
+        }
+    } catch (error) {
+        endpointsList.innerHTML = `<div class="error-message">Error loading rotating endpoints: ${error.message}</div>`;
+    }
+}
+
+// Create HTML card for a rotating endpoint
+function createRotatingEndpointCard(endpoint) {
+    const isActive = endpoint.is_active === 1;
+    const statusClass = isActive ? 'active' : 'inactive';
+    const fullUrl = `${window.location.origin}/rotating-endpoint/${window.userId || 'USER_ID'}/${endpoint.endpoint_name}`;
+
+    // Parse http_codes if it's a string
+    const httpCodes = typeof endpoint.http_codes === 'string' ? JSON.parse(endpoint.http_codes) : endpoint.http_codes;
+    const codesDisplay = httpCodes.join(' → ');
+    const currentIndex = endpoint.current_index || 0;
+    const nextCode = httpCodes[currentIndex];
+
+    return `
+        <div class="rotating-endpoint-card ${statusClass}" data-id="${endpoint.id}">
+            <div class="card-header">
+                <div class="card-title-row">
+                    <span class="status-badge badge-${statusClass}">${isActive ? 'Active' : 'Inactive'}</span>
+                    <strong class="endpoint-title">${endpoint.endpoint_name}</strong>
+                </div>
+                <div class="card-actions">
+                    <button class="icon-btn" onclick="copyRotatingEndpointUrl('${fullUrl}')" title="Copy URL">📋</button>
+                    <button class="icon-btn" onclick="resetRotatingEndpoint(${endpoint.id})" title="Reset Counter">🔄</button>
+                    <button class="icon-btn" onclick="toggleRotatingEndpointStatus(${endpoint.id}, ${endpoint.is_active})" title="Toggle Active/Inactive">
+                        ${isActive ? '⏸️' : '▶️'}
+                    </button>
+                    <button class="icon-btn edit-btn" onclick="editRotatingEndpoint(${endpoint.id})" title="Edit">✏️</button>
+                    <button class="icon-btn delete-btn" onclick="deleteRotatingEndpoint(${endpoint.id}, '${endpoint.endpoint_name}')" title="Delete">🗑️</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="detail-item">
+                    <span class="detail-label">HTTP Codes Sequence:</span>
+                    <div class="codes-sequence">${codesDisplay}</div>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Next Code:</span>
+                    <code class="inline-code highlight-code">${nextCode}</code>
+                    <span class="hint-text">(Position ${currentIndex + 1} of ${httpCodes.length})</span>
+                </div>
+                ${endpoint.description ? `
+                <div class="detail-item">
+                    <span class="detail-label">Description:</span>
+                    <span>${endpoint.description}</span>
+                </div>` : ''}
+                <div class="detail-item">
+                    <span class="detail-label">URL:</span>
+                    <code class="inline-code url-display">${fullUrl}</code>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Create a new rotating endpoint
+async function createRotatingEndpoint() {
+    const endpointName = document.getElementById('rotatingEndpointName').value.trim();
+    const httpCodesInput = document.getElementById('httpCodesInput').value.trim();
+    const description = document.getElementById('rotatingDescription').value.trim();
+    const messageDiv = document.getElementById('rotatingCreateMessage');
+
+    // Validate endpoint name
+    if (!endpointName) {
+        showMessage(messageDiv, 'Endpoint name is required', 'error');
+        return;
+    }
+
+    if (!/^[a-z0-9-]+$/.test(endpointName)) {
+        showMessage(messageDiv, 'Endpoint name can only contain lowercase letters, numbers, and hyphens', 'error');
+        return;
+    }
+
+    // Validate and parse HTTP codes
+    if (!httpCodesInput) {
+        showMessage(messageDiv, 'HTTP codes are required', 'error');
+        return;
+    }
+
+    const httpCodes = httpCodesInput.split(',').map(code => code.trim()).filter(code => code);
+
+    if (httpCodes.length === 0) {
+        showMessage(messageDiv, 'At least one HTTP code is required', 'error');
+        return;
+    }
+
+    // Validate each code
+    for (const code of httpCodes) {
+        const codeNum = parseInt(code);
+        if (isNaN(codeNum) || codeNum < 100 || codeNum > 599) {
+            showMessage(messageDiv, `Invalid HTTP code: ${code}. Must be between 100 and 599`, 'error');
+            return;
+        }
+    }
+
+    try {
+        const response = await fetch('/api/rotating-endpoints', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                endpoint_name: endpointName,
+                http_codes: httpCodes.map(code => parseInt(code)),
+                description: description,
+                is_active: 1
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showMessage(messageDiv, 'Rotating endpoint created successfully!', 'success');
+            // Clear form
+            document.getElementById('rotatingEndpointName').value = '';
+            document.getElementById('httpCodesInput').value = '';
+            document.getElementById('rotatingDescription').value = '';
+            // Reload list
+            loadRotatingEndpoints();
+        } else {
+            showMessage(messageDiv, `Error: ${data.error}`, 'error');
+        }
+    } catch (error) {
+        showMessage(messageDiv, `Error: ${error.message}`, 'error');
+    }
+}
+
+// Toggle rotating endpoint active/inactive status
+async function toggleRotatingEndpointStatus(endpointId, currentStatus) {
+    const newStatus = currentStatus === 1 ? 0 : 1;
+
+    try {
+        const response = await fetch(`/api/rotating-endpoints/${endpointId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                is_active: newStatus
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            loadRotatingEndpoints();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Reset rotating endpoint counter
+async function resetRotatingEndpoint(endpointId) {
+    try {
+        const response = await fetch(`/api/rotating-endpoints/${endpointId}/reset`, {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            loadRotatingEndpoints();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Edit a rotating endpoint
+async function editRotatingEndpoint(endpointId) {
+    const card = document.querySelector(`.rotating-endpoint-card[data-id="${endpointId}"]`);
+    if (!card) return;
+
+    // Get current values
+    const currentCodes = card.querySelector('.codes-sequence').textContent.replace(/\s*→\s*/g, ',');
+    const currentDescription = card.querySelector('.detail-item:nth-child(3) span:last-child')?.textContent || '';
+
+    const newCodes = prompt('Enter new HTTP codes (comma-separated):', currentCodes);
+    if (newCodes === null) return;
+
+    const newDescription = prompt('Enter new description (optional):', currentDescription);
+
+    // Validate codes
+    const httpCodes = newCodes.split(',').map(code => code.trim()).filter(code => code);
+    for (const code of httpCodes) {
+        const codeNum = parseInt(code);
+        if (isNaN(codeNum) || codeNum < 100 || codeNum > 599) {
+            alert(`Invalid HTTP code: ${code}`);
+            return;
+        }
+    }
+
+    try {
+        const response = await fetch(`/api/rotating-endpoints/${endpointId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                http_codes: httpCodes.map(code => parseInt(code)),
+                description: newDescription
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            loadRotatingEndpoints();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Delete a rotating endpoint
+async function deleteRotatingEndpoint(endpointId, endpointName) {
+    if (!confirm(`Are you sure you want to delete "${endpointName}"?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/rotating-endpoints/${endpointId}`, {
+            method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            loadRotatingEndpoints();
+        } else {
+            alert(`Error: ${data.error}`);
+        }
+    } catch (error) {
+        alert(`Error: ${error.message}`);
+    }
+}
+
+// Copy rotating endpoint URL to clipboard
+function copyRotatingEndpointUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        const btn = event.target;
+        const originalText = btn.textContent;
+        btn.textContent = '✅';
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 1200);
+    });
 }

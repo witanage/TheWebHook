@@ -100,6 +100,59 @@
             </div>
         </div>
 
+        <!-- Rotating Endpoints Section -->
+        <div class="card rotating-endpoints-section">
+            <h2 class="card-title">🔄 Rotating Endpoints - Cycle Through HTTP Codes</h2>
+            <p class="card-text">
+                Create endpoints that cycle through multiple HTTP status codes in sequence.
+                Each time you call the endpoint, it returns the next code in the list, rotating back to the beginning after the last one.
+                Perfect for testing retry logic, failover scenarios, and circuit breakers.
+            </p>
+
+            <!-- Create New Rotating Endpoint Form -->
+            <div class="rotating-endpoint-form">
+                <h3>Create New Rotating Endpoint</h3>
+                <div class="form-grid-rotating">
+                    <div class="form-group">
+                        <label for="rotatingEndpointName">Endpoint Name *</label>
+                        <input type="text" id="rotatingEndpointName" placeholder="e.g., retry-scenario" class="form-input">
+                        <small class="hint-text">Use lowercase letters, numbers, and hyphens only</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="httpCodesInput">HTTP Status Codes (comma-separated) *</label>
+                        <input type="text" id="httpCodesInput" placeholder="e.g., 503,503,200 or 500,502,503,200" class="form-input">
+                        <small class="hint-text">Enter codes in the order they should be returned</small>
+                    </div>
+                    <div class="form-group full-width">
+                        <label for="rotatingDescription">Description (Optional)</label>
+                        <input type="text" id="rotatingDescription" placeholder="e.g., Simulate service recovery after failures" class="form-input">
+                    </div>
+                </div>
+                <button onclick="createRotatingEndpoint()" class="test-button">Create Rotating Endpoint</button>
+                <div id="rotatingCreateMessage" class="message" style="display:none;"></div>
+            </div>
+
+            <!-- List of Rotating Endpoints -->
+            <div class="rotating-endpoints-list">
+                <h3>Your Rotating Endpoints</h3>
+                <div id="rotatingEndpointsList" class="rotating-endpoints-container">
+                    <div class="loading-message">Loading rotating endpoints...</div>
+                </div>
+            </div>
+
+            <!-- Usage Instructions -->
+            <div class="usage-instructions">
+                <h3>Usage</h3>
+                <p class="card-text">Your rotating endpoints will be available at:</p>
+                <pre class="code-block"><code>/rotating-endpoint/<span class="highlight">{{ user_id }}</span>/<span class="highlight">endpoint_name</span></code></pre>
+                <p class="hint-text">Example: <code class="inline-code">/rotating-endpoint/{{ user_id }}/retry-scenario</code></p>
+                <p class="card-text">
+                    Each request returns the next HTTP code in sequence. After the last code, it cycles back to the first.
+                    Supports all HTTP methods: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS
+                </p>
+            </div>
+        </div>
+
         <div class="card">
             <h2 class="card-title">🔍 Endpoint</h2>
             <pre class="code-block"><code>/httpcode/&lt;int:code&gt;</code></pre>
