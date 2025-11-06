@@ -972,7 +972,7 @@ def http_codes():
     user_id = session["user_id"]
     username = session.get("username", "User")
     log(f"User {user_id} accessed HTTP codes tester")
-    return render_template("httpcodes.html", username=username)
+    return render_template("httpcodes.html", username=username, user_id=user_id)
 
 
 @app.route("/json-compare")
@@ -1055,6 +1055,568 @@ def http_status_test(code):
         response.headers['Retry-After'] = '120'
 
     return response, code
+
+
+# Special Endpoints for HTTP Mocker - Custom delayed responses with specific HTTP codes
+@app.route("/api/special-endpoints", methods=["GET"])
+@login_required
+def get_special_endpoints():
+    """Get all special endpoints for the current user"""
+    user_id = session.get("user_id")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, endpoint_name, http_code, delay_ms, description, is_active, created_at, updated_at
+                FROM special_endpoints
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+            """, (user_id,))
+            endpoints = cursor.fetchall()
+            return jsonify({"success": True, "endpoints": endpoints})
+    except Exception as e:
+        log(f"Error fetching special endpoints: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/special-endpoints", methods=["POST"])
+@login_required
+def create_special_endpoint():
+    """Create a new special endpoint"""
+    user_id = session.get("user_id")
+    data = request.json
+
+    # Validate required fields
+    if not data.get("endpoint_name"):
+        return jsonify({"success": False, "error": "Endpoint name is required"}), 400
+    if not data.get("http_code"):
+        return jsonify({"success": False, "error": "HTTP code is required"}), 400
+
+    # Validate HTTP code range
+    http_code = int(data.get("http_code"))
+    if http_code < 100 or http_code > 599:
+        return jsonify({"success": False, "error": "HTTP code must be between 100 and 599"}), 400
+
+    # Validate delay
+    delay_ms = int(data.get("delay_ms", 0))
+    if delay_ms < 0:
+        return jsonify({"success": False, "error": "Delay must be a positive number"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO special_endpoints (user_id, endpoint_name, http_code, delay_ms, description, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (user_id, data.get("endpoint_name"), http_code, delay_ms,
+                  data.get("description", ""), data.get("is_active", 1)))
+            conn.commit()
+            endpoint_id = cursor.lastrowid
+            return jsonify({"success": True, "id": endpoint_id})
+    except Exception as e:
+        conn.rollback()
+        log(f"Error creating special endpoint: {str(e)}")
+        if "Duplicate entry" in str(e):
+            return jsonify({"success": False, "error": "An endpoint with this name already exists"}), 400
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/special-endpoints/<int:endpoint_id>", methods=["PUT"])
+@login_required
+def update_special_endpoint(endpoint_id):
+    """Update an existing special endpoint"""
+    user_id = session.get("user_id")
+    data = request.json
+
+    # Validate HTTP code if provided
+    if data.get("http_code"):
+        http_code = int(data.get("http_code"))
+        if http_code < 100 or http_code > 599:
+            return jsonify({"success": False, "error": "HTTP code must be between 100 and 599"}), 400
+
+    # Validate delay if provided
+    if data.get("delay_ms") is not None:
+        delay_ms = int(data.get("delay_ms"))
+        if delay_ms < 0:
+            return jsonify({"success": False, "error": "Delay must be a positive number"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Build dynamic update query
+            update_fields = []
+            params = []
+
+            if data.get("endpoint_name"):
+                update_fields.append("endpoint_name = %s")
+                params.append(data.get("endpoint_name"))
+            if data.get("http_code"):
+                update_fields.append("http_code = %s")
+                params.append(data.get("http_code"))
+            if data.get("delay_ms") is not None:
+                update_fields.append("delay_ms = %s")
+                params.append(data.get("delay_ms"))
+            if data.get("description") is not None:
+                update_fields.append("description = %s")
+                params.append(data.get("description"))
+            if data.get("is_active") is not None:
+                update_fields.append("is_active = %s")
+                params.append(data.get("is_active"))
+
+            if not update_fields:
+                return jsonify({"success": False, "error": "No fields to update"}), 400
+
+            params.extend([user_id, endpoint_id])
+
+            cursor.execute(f"""
+                UPDATE special_endpoints
+                SET {', '.join(update_fields)}
+                WHERE user_id = %s AND id = %s
+            """, params)
+            conn.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+            return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        log(f"Error updating special endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/special-endpoints/<int:endpoint_id>", methods=["DELETE"])
+@login_required
+def delete_special_endpoint(endpoint_id):
+    """Delete a special endpoint"""
+    user_id = session.get("user_id")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                DELETE FROM special_endpoints
+                WHERE user_id = %s AND id = %s
+            """, (user_id, endpoint_id))
+            conn.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+            return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        log(f"Error deleting special endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/special-endpoint/<int:user_id>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def special_endpoint_handler(user_id, endpoint_name):
+    """Handle special endpoint requests with custom delay and HTTP code"""
+    import time
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Verify user exists
+            cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+            user_result = cursor.fetchone()
+
+            if not user_result:
+                return jsonify({
+                    "error": "User not found",
+                    "user_id": user_id
+                }), 404
+
+            # Get special endpoint configuration
+            cursor.execute("""
+                SELECT http_code, delay_ms, description
+                FROM special_endpoints
+                WHERE user_id = %s AND endpoint_name = %s AND is_active = 1
+            """, (user_id, endpoint_name))
+            endpoint = cursor.fetchone()
+
+            if not endpoint:
+                return jsonify({
+                    "error": "Special endpoint not found or inactive",
+                    "user_id": user_id,
+                    "endpoint_name": endpoint_name
+                }), 404
+
+            # Apply delay if specified
+            if endpoint["delay_ms"] > 0:
+                time.sleep(endpoint["delay_ms"] / 1000.0)
+
+            # Prepare response
+            http_code = endpoint["http_code"]
+            response_data = {
+                "status": http_code,
+                "message": get_http_status_message(http_code),
+                "endpoint_name": endpoint_name,
+                "user_id": user_id,
+                "description": endpoint["description"],
+                "delay_ms": endpoint["delay_ms"],
+                "method": request.method,
+                "path": request.path,
+                "timestamp": datetime.now().isoformat()
+            }
+
+            # Include request data if present
+            if request.method in ["POST", "PUT", "PATCH"]:
+                if request.is_json:
+                    response_data["received_data"] = request.get_json()
+                elif request.form:
+                    response_data["received_data"] = dict(request.form)
+                elif request.data:
+                    response_data["received_data"] = request.data.decode('utf-8', errors='ignore')
+
+            # Handle special HTTP codes that need special responses
+            if http_code == 204:
+                # No Content - return empty response
+                response = Response('', status=http_code)
+            else:
+                response = jsonify(response_data)
+                response.status_code = http_code
+
+            # Add special headers based on status code
+            if http_code == 401:
+                response.headers['WWW-Authenticate'] = 'Basic realm="Authentication Required"'
+            elif http_code in [301, 302, 307, 308]:
+                response.headers['Location'] = '/'
+            elif http_code == 429:
+                response.headers['Retry-After'] = '60'
+            elif http_code == 503:
+                response.headers['Retry-After'] = '120'
+
+            return response
+
+    except Exception as e:
+        log(f"Error handling special endpoint: {str(e)}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+    finally:
+        conn.close()
+
+
+def get_http_status_message(code):
+    """Get standard HTTP status message for a given code"""
+    status_messages = {
+        100: "Continue", 101: "Switching Protocols",
+        200: "OK", 201: "Created", 202: "Accepted", 203: "Non-Authoritative Information",
+        204: "No Content", 205: "Reset Content", 206: "Partial Content",
+        300: "Multiple Choices", 301: "Moved Permanently", 302: "Found", 303: "See Other",
+        304: "Not Modified", 307: "Temporary Redirect", 308: "Permanent Redirect",
+        400: "Bad Request", 401: "Unauthorized", 403: "Forbidden", 404: "Not Found",
+        405: "Method Not Allowed", 406: "Not Acceptable", 408: "Request Timeout",
+        409: "Conflict", 410: "Gone", 422: "Unprocessable Entity", 429: "Too Many Requests",
+        500: "Internal Server Error", 501: "Not Implemented", 502: "Bad Gateway",
+        503: "Service Unavailable", 504: "Gateway Timeout"
+    }
+    return status_messages.get(code, "Unknown Status")
+
+
+# Rotating Endpoints - Cycle through multiple HTTP codes in sequence
+@app.route("/api/rotating-endpoints", methods=["GET"])
+@login_required
+def get_rotating_endpoints():
+    """Get all rotating endpoints for the current user"""
+    user_id = session.get("user_id")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, endpoint_name, http_codes, current_index, description, is_active, created_at, updated_at
+                FROM rotating_endpoints
+                WHERE user_id = %s
+                ORDER BY created_at DESC
+            """, (user_id,))
+            endpoints = cursor.fetchall()
+            return jsonify({"success": True, "endpoints": endpoints})
+    except Exception as e:
+        log(f"Error fetching rotating endpoints: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/rotating-endpoints", methods=["POST"])
+@login_required
+def create_rotating_endpoint():
+    """Create a new rotating endpoint"""
+    user_id = session.get("user_id")
+    data = request.json
+
+    # Validate required fields
+    if not data.get("endpoint_name"):
+        return jsonify({"success": False, "error": "Endpoint name is required"}), 400
+    if not data.get("http_codes") or not isinstance(data.get("http_codes"), list):
+        return jsonify({"success": False, "error": "HTTP codes array is required"}), 400
+    if len(data.get("http_codes")) == 0:
+        return jsonify({"success": False, "error": "At least one HTTP code is required"}), 400
+
+    # Validate HTTP codes
+    http_codes = data.get("http_codes")
+    for code in http_codes:
+        try:
+            code_int = int(code)
+            if code_int < 100 or code_int > 599:
+                return jsonify({"success": False, "error": f"HTTP code {code} must be between 100 and 599"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "error": f"Invalid HTTP code: {code}"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO rotating_endpoints (user_id, endpoint_name, http_codes, current_index, description, is_active)
+                VALUES (%s, %s, %s, 0, %s, %s)
+            """, (user_id, data.get("endpoint_name"), json.dumps(http_codes),
+                  data.get("description", ""), data.get("is_active", 1)))
+            conn.commit()
+            endpoint_id = cursor.lastrowid
+            return jsonify({"success": True, "id": endpoint_id})
+    except Exception as e:
+        conn.rollback()
+        log(f"Error creating rotating endpoint: {str(e)}")
+        if "Duplicate entry" in str(e):
+            return jsonify({"success": False, "error": "An endpoint with this name already exists"}), 400
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/rotating-endpoints/<int:endpoint_id>", methods=["PUT"])
+@login_required
+def update_rotating_endpoint(endpoint_id):
+    """Update an existing rotating endpoint"""
+    user_id = session.get("user_id")
+    data = request.json
+
+    # Validate HTTP codes if provided
+    if data.get("http_codes"):
+        if not isinstance(data.get("http_codes"), list):
+            return jsonify({"success": False, "error": "HTTP codes must be an array"}), 400
+        if len(data.get("http_codes")) == 0:
+            return jsonify({"success": False, "error": "At least one HTTP code is required"}), 400
+
+        for code in data.get("http_codes"):
+            try:
+                code_int = int(code)
+                if code_int < 100 or code_int > 599:
+                    return jsonify({"success": False, "error": f"HTTP code {code} must be between 100 and 599"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"success": False, "error": f"Invalid HTTP code: {code}"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Build dynamic update query
+            update_fields = []
+            params = []
+
+            if data.get("endpoint_name"):
+                update_fields.append("endpoint_name = %s")
+                params.append(data.get("endpoint_name"))
+            if data.get("http_codes"):
+                update_fields.append("http_codes = %s")
+                params.append(json.dumps(data.get("http_codes")))
+                # Reset current_index when codes are updated
+                update_fields.append("current_index = 0")
+            if data.get("description") is not None:
+                update_fields.append("description = %s")
+                params.append(data.get("description"))
+            if data.get("is_active") is not None:
+                update_fields.append("is_active = %s")
+                params.append(data.get("is_active"))
+
+            if not update_fields:
+                return jsonify({"success": False, "error": "No fields to update"}), 400
+
+            params.extend([user_id, endpoint_id])
+
+            cursor.execute(f"""
+                UPDATE rotating_endpoints
+                SET {', '.join(update_fields)}
+                WHERE user_id = %s AND id = %s
+            """, params)
+            conn.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+            return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        log(f"Error updating rotating endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/rotating-endpoints/<int:endpoint_id>", methods=["DELETE"])
+@login_required
+def delete_rotating_endpoint(endpoint_id):
+    """Delete a rotating endpoint"""
+    user_id = session.get("user_id")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                DELETE FROM rotating_endpoints
+                WHERE user_id = %s AND id = %s
+            """, (user_id, endpoint_id))
+            conn.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+            return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        log(f"Error deleting rotating endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/rotating-endpoints/<int:endpoint_id>/reset", methods=["POST"])
+@login_required
+def reset_rotating_endpoint(endpoint_id):
+    """Reset the rotation counter to start from the beginning"""
+    user_id = session.get("user_id")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                UPDATE rotating_endpoints
+                SET current_index = 0
+                WHERE user_id = %s AND id = %s
+            """, (user_id, endpoint_id))
+            conn.commit()
+
+            if cursor.rowcount == 0:
+                return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+            return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        log(f"Error resetting rotating endpoint: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/rotating-endpoint/<int:user_id>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def rotating_endpoint_handler(user_id, endpoint_name):
+    """Handle rotating endpoint requests - cycles through HTTP codes in sequence"""
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Verify user exists
+            cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+            user_result = cursor.fetchone()
+
+            if not user_result:
+                return jsonify({
+                    "error": "User not found",
+                    "user_id": user_id
+                }), 404
+
+            # Get rotating endpoint configuration with row lock for atomic update
+            cursor.execute("""
+                SELECT id, http_codes, current_index, description
+                FROM rotating_endpoints
+                WHERE user_id = %s AND endpoint_name = %s AND is_active = 1
+                FOR UPDATE
+            """, (user_id, endpoint_name))
+            endpoint = cursor.fetchone()
+
+            if not endpoint:
+                return jsonify({
+                    "error": "Rotating endpoint not found or inactive",
+                    "user_id": user_id,
+                    "endpoint_name": endpoint_name
+                }), 404
+
+            # Parse HTTP codes
+            http_codes = json.loads(endpoint["http_codes"]) if isinstance(endpoint["http_codes"], str) else endpoint["http_codes"]
+            current_index = endpoint["current_index"]
+
+            # Get current HTTP code
+            http_code = int(http_codes[current_index])
+
+            # Calculate next index (circular rotation)
+            next_index = (current_index + 1) % len(http_codes)
+
+            # Update current index for next call
+            cursor.execute("""
+                UPDATE rotating_endpoints
+                SET current_index = %s
+                WHERE id = %s
+            """, (next_index, endpoint["id"]))
+            conn.commit()
+
+            # Prepare response
+            response_data = {
+                "status": http_code,
+                "message": get_http_status_message(http_code),
+                "endpoint_name": endpoint_name,
+                "user_id": user_id,
+                "description": endpoint["description"],
+                "current_code_index": current_index,
+                "total_codes": len(http_codes),
+                "next_code": int(http_codes[next_index]),
+                "all_codes": http_codes,
+                "method": request.method,
+                "path": request.path,
+                "timestamp": datetime.now().isoformat()
+            }
+
+            # Include request data if present
+            if request.method in ["POST", "PUT", "PATCH"]:
+                if request.is_json:
+                    response_data["received_data"] = request.get_json()
+                elif request.form:
+                    response_data["received_data"] = dict(request.form)
+                elif request.data:
+                    response_data["received_data"] = request.data.decode('utf-8', errors='ignore')
+
+            # Handle special HTTP codes that need special responses
+            if http_code == 204:
+                # No Content - return empty response
+                response = Response('', status=http_code)
+            else:
+                response = jsonify(response_data)
+                response.status_code = http_code
+
+            # Add special headers based on status code
+            if http_code == 401:
+                response.headers['WWW-Authenticate'] = 'Basic realm="Authentication Required"'
+            elif http_code in [301, 302, 307, 308]:
+                response.headers['Location'] = '/'
+            elif http_code == 429:
+                response.headers['Retry-After'] = '60'
+            elif http_code == 503:
+                response.headers['Retry-After'] = '120'
+
+            return response
+
+    except Exception as e:
+        log(f"Error handling rotating endpoint: {str(e)}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+    finally:
+        conn.close()
 
 
 @app.route("/events/<user_id>")
