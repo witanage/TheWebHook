@@ -29,126 +29,60 @@
             about the request, response, and headers.
         </p>
 
-        <!-- Special Endpoints Management Section -->
-        <div class="card special-endpoints-section">
-            <h2 class="card-title">⚡ Special Endpoints - Custom Delays & HTTP Codes</h2>
-            <p class="card-text">
-                Create custom endpoints with specific HTTP status codes and response delays.
-                These endpoints are user-specific and can be used to test timeout scenarios,
-                rate limiting, and various HTTP status responses with configurable delays.
-            </p>
+        <!-- Sequence Endpoints Section -->
+        <div class="card sequence-endpoints-card">
+            <h2 class="card-title">⚡ Sequence Endpoints</h2>
+            <p class="card-description">Create powerful test sequences combining HTTP codes, delays, and custom payloads. Perfect for testing retry logic and service recovery scenarios.</p>
 
-            <!-- Create New Special Endpoint Form -->
-            <div class="special-endpoint-form">
-                <h3>Create New Special Endpoint</h3>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="endpointName">Endpoint Name *</label>
-                        <input type="text" id="endpointName" placeholder="e.g., slow-response" class="form-input">
-                        <small class="hint-text">Use lowercase letters, numbers, and hyphens only</small>
+            <!-- Create New Sequence Endpoint Form -->
+            <div class="form-section">
+                <h3 class="section-title">Create New Sequence</h3>
+                <form id="sequenceEndpointForm" class="endpoint-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="sequenceEndpointName">Endpoint Name</label>
+                            <input type="text" id="sequenceEndpointName" name="endpoint_name" required
+                                placeholder="e.g., service-recovery">
+                        </div>
+                        <div class="form-group">
+                            <label for="sequenceDescription">Description (Optional)</label>
+                            <input type="text" id="sequenceDescription" name="description"
+                                placeholder="e.g., Simulates service recovery with delays">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="httpCode">HTTP Status Code *</label>
-                        <input type="number" id="httpCode" min="100" max="599" value="200" class="form-input">
+
+                    <!-- Sequence Steps Container -->
+                    <div class="sequence-steps-container">
+                        <label class="steps-label">Sequence Steps</label>
+                        <div id="sequenceStepsList" class="sequence-steps-list">
+                            <!-- Steps will be added dynamically here -->
+                        </div>
+                        <button type="button" id="addSequenceStep" class="btn btn-secondary">
+                            ➕ Add Step
+                        </button>
                     </div>
-                    <div class="form-group">
-                        <label for="delayMs">Delay (ms) *</label>
-                        <input type="number" id="delayMs" min="0" value="1000" class="form-input">
-                        <small class="hint-text">Response delay in milliseconds</small>
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="description">Description (Optional)</label>
-                        <input type="text" id="description" placeholder="e.g., Simulate slow server response" class="form-input">
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="responsePayload">Response JSON Payload (Optional)</label>
-                        <textarea id="responsePayload" placeholder='{"key": "value", "status": "success"}' class="form-input" rows="4"></textarea>
-                        <small class="hint-text">Custom JSON response body. Leave empty for default response format.</small>
-                    </div>
-                </div>
-                <button onclick="createSpecialEndpoint()" class="test-button">Create Endpoint</button>
-                <div id="createMessage" class="message" style="display:none;"></div>
+
+                    <button type="submit" class="btn btn-primary">Create Sequence Endpoint</button>
+                </form>
             </div>
 
-            <!-- List of Special Endpoints -->
-            <div class="special-endpoints-list">
-                <h3>Your Special Endpoints</h3>
-                <div id="endpointsTableContainer">
-                    <table id="endpointsTable" class="endpoints-table">
+            <!-- List of Sequence Endpoints -->
+            <div class="endpoints-list-section">
+                <h3 class="section-title">Your Sequence Endpoints</h3>
+                <div class="table-responsive">
+                    <table class="sequence-table" id="sequenceEndpointsTable">
                         <thead>
                             <tr>
-                                <th>Status</th>
-                                <th>Endpoint Name</th>
-                                <th>HTTP Code</th>
-                                <th>Delay (ms)</th>
-                                <th>Description</th>
-                                <th>URL</th>
-                                <th>Actions</th>
+                                <th class="col-status">●</th>
+                                <th class="col-name">Endpoint</th>
+                                <th class="col-sequence">Sequence</th>
+                                <th class="col-progress">Current</th>
+                                <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="endpointsList">
+                        <tbody>
                             <tr>
-                                <td colspan="7" class="loading-message">Loading endpoints...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Rotating Endpoints Section -->
-        <div class="card rotating-endpoints-section">
-            <h2 class="card-title">🔄 Rotating Endpoints - Cycle Through HTTP Codes</h2>
-            <p class="card-text">
-                Create endpoints that cycle through multiple HTTP status codes in sequence.
-                Perfect for testing retry logic and failover scenarios.
-            </p>
-
-            <!-- Create New Rotating Endpoint Form -->
-            <div class="rotating-endpoint-form">
-                <h3>Create New Rotating Endpoint</h3>
-                <div class="form-grid-rotating">
-                    <div class="form-group">
-                        <label for="rotatingEndpointName">Endpoint Name *</label>
-                        <input type="text" id="rotatingEndpointName" placeholder="e.g., retry-scenario" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="httpCodesInput">HTTP Codes (comma-separated) *</label>
-                        <input type="text" id="httpCodesInput" placeholder="e.g., 503,503,200" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="rotatingDescription">Description</label>
-                        <input type="text" id="rotatingDescription" placeholder="Optional" class="form-input">
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="rotatingResponsePayload">Response JSON Payload (Optional)</label>
-                        <textarea id="rotatingResponsePayload" placeholder='{"key": "value", "status": "success"}' class="form-input" rows="4"></textarea>
-                        <small class="hint-text">Custom JSON response body. Leave empty for default response format.</small>
-                    </div>
-                </div>
-                <button onclick="createRotatingEndpoint()" class="test-button">Create Endpoint</button>
-                <div id="rotatingCreateMessage" class="message" style="display:none;"></div>
-            </div>
-
-            <!-- List of Rotating Endpoints -->
-            <div class="rotating-endpoints-list">
-                <h3>Your Rotating Endpoints</h3>
-                <div id="rotatingEndpointsTableContainer">
-                    <table id="rotatingEndpointsTable" class="endpoints-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Endpoint Name</th>
-                                <th>HTTP Codes Sequence</th>
-                                <th>Next Code</th>
-                                <th>Description</th>
-                                <th>URL</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="rotatingEndpointsList">
-                            <tr>
-                                <td colspan="7" class="loading-message">Loading endpoints...</td>
+                                <td colspan="5" class="loading-message">Loading endpoints...</td>
                             </tr>
                         </tbody>
                     </table>

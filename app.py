@@ -1057,287 +1057,6 @@ def http_status_test(code):
     return response, code
 
 
-# Special Endpoints for HTTP Mocker - Custom delayed responses with specific HTTP codes
-@app.route("/api/special-endpoints", methods=["GET"])
-@login_required
-def get_special_endpoints():
-    """Get all special endpoints for the current user"""
-    user_id = session.get("user_id")
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT id, endpoint_name, http_code, delay_ms, description, is_active, created_at, updated_at
-                FROM special_endpoints
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-            """, (user_id,))
-            endpoints = cursor.fetchall()
-            return jsonify({"success": True, "endpoints": endpoints})
-    except Exception as e:
-        log(f"Error fetching special endpoints: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/special-endpoints", methods=["POST"])
-@login_required
-def create_special_endpoint():
-    """Create a new special endpoint"""
-    user_id = session.get("user_id")
-    data = request.json
-
-    # Validate required fields
-    if not data.get("endpoint_name"):
-        return jsonify({"success": False, "error": "Endpoint name is required"}), 400
-    if not data.get("http_code"):
-        return jsonify({"success": False, "error": "HTTP code is required"}), 400
-
-    # Validate HTTP code range
-    http_code = int(data.get("http_code"))
-    if http_code < 100 or http_code > 599:
-        return jsonify({"success": False, "error": "HTTP code must be between 100 and 599"}), 400
-
-    # Validate delay
-    delay_ms = int(data.get("delay_ms", 0))
-    if delay_ms < 0:
-        return jsonify({"success": False, "error": "Delay must be a positive number"}), 400
-
-    # Validate response_payload if provided
-    response_payload = data.get("response_payload")
-    if response_payload:
-        # Validate it's valid JSON if provided as string
-        if isinstance(response_payload, str):
-            try:
-                response_payload = json.loads(response_payload)
-            except json.JSONDecodeError:
-                return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                INSERT INTO special_endpoints (user_id, endpoint_name, http_code, delay_ms, description, response_payload, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (user_id, data.get("endpoint_name"), http_code, delay_ms,
-                  data.get("description", ""), json.dumps(response_payload) if response_payload else None, data.get("is_active", 1)))
-            conn.commit()
-            endpoint_id = cursor.lastrowid
-            return jsonify({"success": True, "id": endpoint_id})
-    except Exception as e:
-        conn.rollback()
-        log(f"Error creating special endpoint: {str(e)}")
-        if "Duplicate entry" in str(e):
-            return jsonify({"success": False, "error": "An endpoint with this name already exists"}), 400
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/special-endpoints/<int:endpoint_id>", methods=["PUT"])
-@login_required
-def update_special_endpoint(endpoint_id):
-    """Update an existing special endpoint"""
-    user_id = session.get("user_id")
-    data = request.json
-
-    # Validate HTTP code if provided
-    if data.get("http_code"):
-        http_code = int(data.get("http_code"))
-        if http_code < 100 or http_code > 599:
-            return jsonify({"success": False, "error": "HTTP code must be between 100 and 599"}), 400
-
-    # Validate delay if provided
-    if data.get("delay_ms") is not None:
-        delay_ms = int(data.get("delay_ms"))
-        if delay_ms < 0:
-            return jsonify({"success": False, "error": "Delay must be a positive number"}), 400
-
-    # Validate response_payload if provided
-    if "response_payload" in data:
-        response_payload = data.get("response_payload")
-        if response_payload:
-            # Validate it's valid JSON if provided as string
-            if isinstance(response_payload, str):
-                try:
-                    response_payload = json.loads(response_payload)
-                except json.JSONDecodeError:
-                    return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
-        else:
-            response_payload = None
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # Build dynamic update query
-            update_fields = []
-            params = []
-
-            if data.get("endpoint_name"):
-                update_fields.append("endpoint_name = %s")
-                params.append(data.get("endpoint_name"))
-            if data.get("http_code"):
-                update_fields.append("http_code = %s")
-                params.append(data.get("http_code"))
-            if data.get("delay_ms") is not None:
-                update_fields.append("delay_ms = %s")
-                params.append(data.get("delay_ms"))
-            if data.get("description") is not None:
-                update_fields.append("description = %s")
-                params.append(data.get("description"))
-            if "response_payload" in data:
-                update_fields.append("response_payload = %s")
-                params.append(json.dumps(response_payload) if response_payload else None)
-            if data.get("is_active") is not None:
-                update_fields.append("is_active = %s")
-                params.append(data.get("is_active"))
-
-            if not update_fields:
-                return jsonify({"success": False, "error": "No fields to update"}), 400
-
-            params.extend([user_id, endpoint_id])
-
-            cursor.execute(f"""
-                UPDATE special_endpoints
-                SET {', '.join(update_fields)}
-                WHERE user_id = %s AND id = %s
-            """, params)
-            conn.commit()
-
-            if cursor.rowcount == 0:
-                return jsonify({"success": False, "error": "Endpoint not found"}), 404
-
-            return jsonify({"success": True})
-    except Exception as e:
-        conn.rollback()
-        log(f"Error updating special endpoint: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/special-endpoints/<int:endpoint_id>", methods=["DELETE"])
-@login_required
-def delete_special_endpoint(endpoint_id):
-    """Delete a special endpoint"""
-    user_id = session.get("user_id")
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                DELETE FROM special_endpoints
-                WHERE user_id = %s AND id = %s
-            """, (user_id, endpoint_id))
-            conn.commit()
-
-            if cursor.rowcount == 0:
-                return jsonify({"success": False, "error": "Endpoint not found"}), 404
-
-            return jsonify({"success": True})
-    except Exception as e:
-        conn.rollback()
-        log(f"Error deleting special endpoint: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/special-endpoint/<int:user_id>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-def special_endpoint_handler(user_id, endpoint_name):
-    """Handle special endpoint requests with custom delay and HTTP code"""
-    import time
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # Verify user exists
-            cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
-            user_result = cursor.fetchone()
-
-            if not user_result:
-                return jsonify({
-                    "error": "User not found",
-                    "user_id": user_id
-                }), 404
-
-            # Get special endpoint configuration
-            cursor.execute("""
-                SELECT http_code, delay_ms, description, response_payload
-                FROM special_endpoints
-                WHERE user_id = %s AND endpoint_name = %s AND is_active = 1
-            """, (user_id, endpoint_name))
-            endpoint = cursor.fetchone()
-
-            if not endpoint:
-                return jsonify({
-                    "error": "Special endpoint not found or inactive",
-                    "user_id": user_id,
-                    "endpoint_name": endpoint_name
-                }), 404
-
-            # Apply delay if specified
-            if endpoint["delay_ms"] > 0:
-                time.sleep(endpoint["delay_ms"] / 1000.0)
-
-            # Prepare response
-            http_code = endpoint["http_code"]
-
-            # Use custom payload only if provided and HTTP code is 200, otherwise use default response
-            if endpoint["response_payload"] and http_code == 200:
-                response_payload = json.loads(endpoint["response_payload"]) if isinstance(endpoint["response_payload"], str) else endpoint["response_payload"]
-                response_data = response_payload
-            else:
-                response_data = {
-                    "status": http_code,
-                    "message": get_http_status_message(http_code),
-                    "endpoint_name": endpoint_name,
-                    "user_id": user_id,
-                    "description": endpoint["description"],
-                    "delay_ms": endpoint["delay_ms"],
-                    "method": request.method,
-                    "path": request.path,
-                    "timestamp": datetime.now().isoformat()
-                }
-
-            # Include request data if present (only for default response, not custom payload)
-            if not (endpoint["response_payload"] and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
-                if request.is_json:
-                    response_data["received_data"] = request.get_json()
-                elif request.form:
-                    response_data["received_data"] = dict(request.form)
-                elif request.data:
-                    response_data["received_data"] = request.data.decode('utf-8', errors='ignore')
-
-            # Handle special HTTP codes that need special responses
-            if http_code == 204:
-                # No Content - return empty response
-                response = Response('', status=http_code)
-            else:
-                response = jsonify(response_data)
-                response.status_code = http_code
-
-            # Add special headers based on status code
-            if http_code == 401:
-                response.headers['WWW-Authenticate'] = 'Basic realm="Authentication Required"'
-            elif http_code in [301, 302, 307, 308]:
-                response.headers['Location'] = '/'
-            elif http_code == 429:
-                response.headers['Retry-After'] = '60'
-            elif http_code == 503:
-                response.headers['Retry-After'] = '120'
-
-            return response
-
-    except Exception as e:
-        log(f"Error handling special endpoint: {str(e)}")
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
-    finally:
-        conn.close()
-
-
 def get_http_status_message(code):
     """Get standard HTTP status message for a given code"""
     status_messages = {
@@ -1355,80 +1074,97 @@ def get_http_status_message(code):
     return status_messages.get(code, "Unknown Status")
 
 
-# Rotating Endpoints - Cycle through multiple HTTP codes in sequence
-@app.route("/api/rotating-endpoints", methods=["GET"])
+# ==================== SEQUENCE ENDPOINTS API ====================
+# Combines features from Special Endpoints (delays, custom codes) and
+# Rotating Endpoints (sequence rotation) for advanced testing scenarios
+
+@app.route("/api/sequence-endpoints", methods=["GET"])
 @login_required
-def get_rotating_endpoints():
-    """Get all rotating endpoints for the current user"""
+def get_sequence_endpoints():
+    """Get all sequence endpoints for the current user"""
     user_id = session.get("user_id")
 
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT id, endpoint_name, http_codes, current_index, description, is_active, created_at, updated_at
-                FROM rotating_endpoints
+                SELECT id, endpoint_name, sequence_config, current_index, description, is_active, created_at, updated_at
+                FROM sequence_endpoints
                 WHERE user_id = %s
                 ORDER BY created_at DESC
             """, (user_id,))
             endpoints = cursor.fetchall()
             return jsonify({"success": True, "endpoints": endpoints})
     except Exception as e:
-        log(f"Error fetching rotating endpoints: {str(e)}")
+        log(f"Error fetching sequence endpoints: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
 
 
-@app.route("/api/rotating-endpoints", methods=["POST"])
+@app.route("/api/sequence-endpoints", methods=["POST"])
 @login_required
-def create_rotating_endpoint():
-    """Create a new rotating endpoint"""
+def create_sequence_endpoint():
+    """Create a new sequence endpoint"""
     user_id = session.get("user_id")
     data = request.json
 
     # Validate required fields
     if not data.get("endpoint_name"):
         return jsonify({"success": False, "error": "Endpoint name is required"}), 400
-    if not data.get("http_codes") or not isinstance(data.get("http_codes"), list):
-        return jsonify({"success": False, "error": "HTTP codes array is required"}), 400
-    if len(data.get("http_codes")) == 0:
-        return jsonify({"success": False, "error": "At least one HTTP code is required"}), 400
+    if not data.get("sequence_config") or not isinstance(data.get("sequence_config"), list):
+        return jsonify({"success": False, "error": "Sequence configuration array is required"}), 400
+    if len(data.get("sequence_config")) == 0:
+        return jsonify({"success": False, "error": "At least one sequence step is required"}), 400
 
-    # Validate HTTP codes
-    http_codes = data.get("http_codes")
-    for code in http_codes:
+    # Validate sequence steps
+    sequence_config = data.get("sequence_config")
+    for i, step in enumerate(sequence_config):
+        if not isinstance(step, dict):
+            return jsonify({"success": False, "error": f"Step {i+1} must be an object"}), 400
+
+        # Validate HTTP code
+        if "http_code" not in step:
+            return jsonify({"success": False, "error": f"Step {i+1} missing http_code"}), 400
         try:
-            code_int = int(code)
+            code_int = int(step["http_code"])
             if code_int < 100 or code_int > 599:
-                return jsonify({"success": False, "error": f"HTTP code {code} must be between 100 and 599"}), 400
+                return jsonify({"success": False, "error": f"Step {i+1}: HTTP code must be between 100 and 599"}), 400
         except (ValueError, TypeError):
-            return jsonify({"success": False, "error": f"Invalid HTTP code: {code}"}), 400
+            return jsonify({"success": False, "error": f"Step {i+1}: Invalid HTTP code"}), 400
 
-    # Validate response_payload if provided
-    response_payload = data.get("response_payload")
-    if response_payload:
-        # Validate it's valid JSON if provided as string
-        if isinstance(response_payload, str):
-            try:
-                response_payload = json.loads(response_payload)
-            except json.JSONDecodeError:
-                return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
+        # Validate delay_ms
+        if "delay_ms" not in step:
+            return jsonify({"success": False, "error": f"Step {i+1} missing delay_ms"}), 400
+        try:
+            delay_int = int(step["delay_ms"])
+            if delay_int < 0 or delay_int > 60000:
+                return jsonify({"success": False, "error": f"Step {i+1}: Delay must be between 0 and 60000 ms"}), 400
+        except (ValueError, TypeError):
+            return jsonify({"success": False, "error": f"Step {i+1}: Invalid delay value"}), 400
+
+        # Validate payload if provided
+        if "payload" in step and step["payload"]:
+            if isinstance(step["payload"], str):
+                try:
+                    json.loads(step["payload"])
+                except json.JSONDecodeError:
+                    return jsonify({"success": False, "error": f"Step {i+1}: Invalid JSON payload"}), 400
 
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO rotating_endpoints (user_id, endpoint_name, http_codes, current_index, description, response_payload, is_active)
-                VALUES (%s, %s, %s, 0, %s, %s, %s)
-            """, (user_id, data.get("endpoint_name"), json.dumps(http_codes),
-                  data.get("description", ""), json.dumps(response_payload) if response_payload else None, data.get("is_active", 1)))
+                INSERT INTO sequence_endpoints (user_id, endpoint_name, sequence_config, current_index, description, is_active)
+                VALUES (%s, %s, %s, 0, %s, %s)
+            """, (user_id, data.get("endpoint_name"), json.dumps(sequence_config),
+                  data.get("description", ""), data.get("is_active", 1)))
             conn.commit()
             endpoint_id = cursor.lastrowid
             return jsonify({"success": True, "id": endpoint_id})
     except Exception as e:
         conn.rollback()
-        log(f"Error creating rotating endpoint: {str(e)}")
+        log(f"Error creating sequence endpoint: {str(e)}")
         if "Duplicate entry" in str(e):
             return jsonify({"success": False, "error": "An endpoint with this name already exists"}), 400
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1436,40 +1172,52 @@ def create_rotating_endpoint():
         conn.close()
 
 
-@app.route("/api/rotating-endpoints/<int:endpoint_id>", methods=["PUT"])
+@app.route("/api/sequence-endpoints/<int:endpoint_id>", methods=["PUT"])
 @login_required
-def update_rotating_endpoint(endpoint_id):
-    """Update an existing rotating endpoint"""
+def update_sequence_endpoint(endpoint_id):
+    """Update an existing sequence endpoint"""
     user_id = session.get("user_id")
     data = request.json
 
-    # Validate HTTP codes if provided
-    if data.get("http_codes"):
-        if not isinstance(data.get("http_codes"), list):
-            return jsonify({"success": False, "error": "HTTP codes must be an array"}), 400
-        if len(data.get("http_codes")) == 0:
-            return jsonify({"success": False, "error": "At least one HTTP code is required"}), 400
+    # Validate sequence_config if provided
+    if data.get("sequence_config"):
+        if not isinstance(data.get("sequence_config"), list):
+            return jsonify({"success": False, "error": "Sequence configuration must be an array"}), 400
+        if len(data.get("sequence_config")) == 0:
+            return jsonify({"success": False, "error": "At least one sequence step is required"}), 400
 
-        for code in data.get("http_codes"):
+        sequence_config = data.get("sequence_config")
+        for i, step in enumerate(sequence_config):
+            if not isinstance(step, dict):
+                return jsonify({"success": False, "error": f"Step {i+1} must be an object"}), 400
+
+            # Validate HTTP code
+            if "http_code" not in step:
+                return jsonify({"success": False, "error": f"Step {i+1} missing http_code"}), 400
             try:
-                code_int = int(code)
+                code_int = int(step["http_code"])
                 if code_int < 100 or code_int > 599:
-                    return jsonify({"success": False, "error": f"HTTP code {code} must be between 100 and 599"}), 400
+                    return jsonify({"success": False, "error": f"Step {i+1}: HTTP code must be between 100 and 599"}), 400
             except (ValueError, TypeError):
-                return jsonify({"success": False, "error": f"Invalid HTTP code: {code}"}), 400
+                return jsonify({"success": False, "error": f"Step {i+1}: Invalid HTTP code"}), 400
 
-    # Validate response_payload if provided
-    if "response_payload" in data:
-        response_payload = data.get("response_payload")
-        if response_payload:
-            # Validate it's valid JSON if provided as string
-            if isinstance(response_payload, str):
-                try:
-                    response_payload = json.loads(response_payload)
-                except json.JSONDecodeError:
-                    return jsonify({"success": False, "error": "Invalid JSON payload"}), 400
-        else:
-            response_payload = None
+            # Validate delay_ms
+            if "delay_ms" not in step:
+                return jsonify({"success": False, "error": f"Step {i+1} missing delay_ms"}), 400
+            try:
+                delay_int = int(step["delay_ms"])
+                if delay_int < 0 or delay_int > 60000:
+                    return jsonify({"success": False, "error": f"Step {i+1}: Delay must be between 0 and 60000 ms"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"success": False, "error": f"Step {i+1}: Invalid delay value"}), 400
+
+            # Validate payload if provided
+            if "payload" in step and step["payload"]:
+                if isinstance(step["payload"], str):
+                    try:
+                        json.loads(step["payload"])
+                    except json.JSONDecodeError:
+                        return jsonify({"success": False, "error": f"Step {i+1}: Invalid JSON payload"}), 400
 
     conn = get_db_connection()
     try:
@@ -1481,17 +1229,14 @@ def update_rotating_endpoint(endpoint_id):
             if data.get("endpoint_name"):
                 update_fields.append("endpoint_name = %s")
                 params.append(data.get("endpoint_name"))
-            if data.get("http_codes"):
-                update_fields.append("http_codes = %s")
-                params.append(json.dumps(data.get("http_codes")))
-                # Reset current_index when codes are updated
+            if data.get("sequence_config"):
+                update_fields.append("sequence_config = %s")
+                params.append(json.dumps(data.get("sequence_config")))
+                # Reset current_index when sequence is updated
                 update_fields.append("current_index = 0")
             if data.get("description") is not None:
                 update_fields.append("description = %s")
                 params.append(data.get("description"))
-            if "response_payload" in data:
-                update_fields.append("response_payload = %s")
-                params.append(json.dumps(response_payload) if response_payload else None)
             if data.get("is_active") is not None:
                 update_fields.append("is_active = %s")
                 params.append(data.get("is_active"))
@@ -1502,7 +1247,7 @@ def update_rotating_endpoint(endpoint_id):
             params.extend([user_id, endpoint_id])
 
             cursor.execute(f"""
-                UPDATE rotating_endpoints
+                UPDATE sequence_endpoints
                 SET {', '.join(update_fields)}
                 WHERE user_id = %s AND id = %s
             """, params)
@@ -1514,23 +1259,23 @@ def update_rotating_endpoint(endpoint_id):
             return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
-        log(f"Error updating rotating endpoint: {str(e)}")
+        log(f"Error updating sequence endpoint: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
 
 
-@app.route("/api/rotating-endpoints/<int:endpoint_id>", methods=["DELETE"])
+@app.route("/api/sequence-endpoints/<int:endpoint_id>", methods=["DELETE"])
 @login_required
-def delete_rotating_endpoint(endpoint_id):
-    """Delete a rotating endpoint"""
+def delete_sequence_endpoint(endpoint_id):
+    """Delete a sequence endpoint"""
     user_id = session.get("user_id")
 
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                DELETE FROM rotating_endpoints
+                DELETE FROM sequence_endpoints
                 WHERE user_id = %s AND id = %s
             """, (user_id, endpoint_id))
             conn.commit()
@@ -1541,23 +1286,23 @@ def delete_rotating_endpoint(endpoint_id):
             return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
-        log(f"Error deleting rotating endpoint: {str(e)}")
+        log(f"Error deleting sequence endpoint: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
 
 
-@app.route("/api/rotating-endpoints/<int:endpoint_id>/reset", methods=["POST"])
+@app.route("/api/sequence-endpoints/<int:endpoint_id>/reset", methods=["POST"])
 @login_required
-def reset_rotating_endpoint(endpoint_id):
-    """Reset the rotation counter to start from the beginning"""
+def reset_sequence_endpoint(endpoint_id):
+    """Reset the sequence counter to start from the beginning"""
     user_id = session.get("user_id")
 
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                UPDATE rotating_endpoints
+                UPDATE sequence_endpoints
                 SET current_index = 0
                 WHERE user_id = %s AND id = %s
             """, (user_id, endpoint_id))
@@ -1569,15 +1314,17 @@ def reset_rotating_endpoint(endpoint_id):
             return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
-        log(f"Error resetting rotating endpoint: {str(e)}")
+        log(f"Error resetting sequence endpoint: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
 
 
-@app.route("/rotating-endpoint/<int:user_id>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-def rotating_endpoint_handler(user_id, endpoint_name):
-    """Handle rotating endpoint requests - cycles through HTTP codes in sequence"""
+@app.route("/sequence-endpoint/<int:user_id>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def sequence_endpoint_handler(user_id, endpoint_name):
+    """Handle sequence endpoint requests - cycles through configured steps with delays and custom responses"""
+    import time
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -1591,10 +1338,10 @@ def rotating_endpoint_handler(user_id, endpoint_name):
                     "user_id": user_id
                 }), 404
 
-            # Get rotating endpoint configuration with row lock for atomic update
+            # Get sequence endpoint configuration with row lock for atomic update
             cursor.execute("""
-                SELECT id, http_codes, current_index, description, response_payload
-                FROM rotating_endpoints
+                SELECT id, sequence_config, current_index, description
+                FROM sequence_endpoints
                 WHERE user_id = %s AND endpoint_name = %s AND is_active = 1
                 FOR UPDATE
             """, (user_id, endpoint_name))
@@ -1602,52 +1349,67 @@ def rotating_endpoint_handler(user_id, endpoint_name):
 
             if not endpoint:
                 return jsonify({
-                    "error": "Rotating endpoint not found or inactive",
+                    "error": "Sequence endpoint not found or inactive",
                     "user_id": user_id,
                     "endpoint_name": endpoint_name
                 }), 404
 
-            # Parse HTTP codes
-            http_codes = json.loads(endpoint["http_codes"]) if isinstance(endpoint["http_codes"], str) else endpoint["http_codes"]
+            # Parse sequence configuration
+            sequence_config = json.loads(endpoint["sequence_config"]) if isinstance(endpoint["sequence_config"], str) else endpoint["sequence_config"]
             current_index = endpoint["current_index"]
 
-            # Get current HTTP code
-            http_code = int(http_codes[current_index])
+            # Get current step
+            current_step = sequence_config[current_index]
+            http_code = int(current_step["http_code"])
+            delay_ms = int(current_step["delay_ms"])
+            payload = current_step.get("payload")
+
+            # Apply delay if configured
+            if delay_ms > 0:
+                time.sleep(delay_ms / 1000.0)
 
             # Calculate next index (circular rotation)
-            next_index = (current_index + 1) % len(http_codes)
+            next_index = (current_index + 1) % len(sequence_config)
 
             # Update current index for next call
             cursor.execute("""
-                UPDATE rotating_endpoints
+                UPDATE sequence_endpoints
                 SET current_index = %s
                 WHERE id = %s
             """, (next_index, endpoint["id"]))
             conn.commit()
 
             # Prepare response
-            # Use custom payload only if provided and HTTP code is 200, otherwise use default response
-            if endpoint["response_payload"] and http_code == 200:
-                response_payload = json.loads(endpoint["response_payload"]) if isinstance(endpoint["response_payload"], str) else endpoint["response_payload"]
-                response_data = response_payload
+            # Use custom payload if provided and HTTP code is 200, otherwise use default response
+            if payload and http_code == 200:
+                response_data = payload
             else:
+                # Get next step info for response
+                next_step = sequence_config[next_index]
+
                 response_data = {
                     "status": http_code,
                     "message": get_http_status_message(http_code),
                     "endpoint_name": endpoint_name,
                     "user_id": user_id,
                     "description": endpoint["description"],
-                    "current_code_index": current_index,
-                    "total_codes": len(http_codes),
-                    "next_code": int(http_codes[next_index]),
-                    "all_codes": http_codes,
+                    "current_step_index": current_index,
+                    "total_steps": len(sequence_config),
+                    "next_step": {
+                        "http_code": next_step["http_code"],
+                        "delay_ms": next_step["delay_ms"]
+                    },
+                    "current_step": {
+                        "http_code": http_code,
+                        "delay_ms": delay_ms
+                    },
                     "method": request.method,
                     "path": request.path,
                     "timestamp": datetime.now().isoformat()
                 }
 
             # Include request data if present (only for default response, not custom payload)
-            if not (endpoint["response_payload"] and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
+            if not (payload and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
                 if request.is_json:
                     response_data["received_data"] = request.get_json()
                 elif request.form:
@@ -1676,7 +1438,7 @@ def rotating_endpoint_handler(user_id, endpoint_name):
             return response
 
     except Exception as e:
-        log(f"Error handling rotating endpoint: {str(e)}")
+        log(f"Error handling sequence endpoint: {str(e)}")
         return jsonify({"error": "Internal server error", "details": str(e)}), 500
     finally:
         conn.close()
