@@ -1,3 +1,72 @@
+// ==================== MODAL FUNCTIONS ====================
+
+function showModal(title, message, onConfirm, isDanger = false) {
+    const modal = document.getElementById('confirmModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+
+    // Remove any existing event listeners by cloning
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    // Set danger styling
+    if (isDanger) {
+        newConfirmBtn.classList.add('danger');
+    } else {
+        newConfirmBtn.classList.remove('danger');
+    }
+
+    // Add new event listener
+    newConfirmBtn.addEventListener('click', () => {
+        onConfirm();
+        closeModal();
+    });
+
+    modal.classList.add('show');
+
+    // Close on overlay click
+    const overlay = modal.querySelector('.modal-overlay');
+    overlay.onclick = closeModal;
+
+    // Close on escape key
+    document.addEventListener('keydown', handleEscapeKey);
+}
+
+function closeModal() {
+    const modal = document.getElementById('confirmModal');
+    modal.classList.remove('show');
+    document.removeEventListener('keydown', handleEscapeKey);
+}
+
+function handleEscapeKey(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+}
+
+function showAlert(title, message) {
+    const modal = document.getElementById('confirmModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalMessage = document.getElementById('modalMessage');
+    const footer = modal.querySelector('.modal-footer');
+
+    modalTitle.textContent = title;
+    modalMessage.textContent = message;
+
+    // Hide confirm button, show only close
+    footer.innerHTML = '<button class="modal-btn modal-btn-confirm" onclick="closeModal()">OK</button>';
+
+    modal.classList.add('show');
+
+    const overlay = modal.querySelector('.modal-overlay');
+    overlay.onclick = closeModal;
+    document.addEventListener('keydown', handleEscapeKey);
+}
+
 // Copy functionality
 document.querySelectorAll('.copy-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -140,7 +209,7 @@ function removeSequenceStep(stepId) {
             step.remove();
             updateStepNumbers();
         } else {
-            alert('You must have at least one step in the sequence.');
+            showAlert('Cannot Remove Step', 'You must have at least one step in the sequence.');
         }
     }
 }
@@ -166,7 +235,7 @@ async function createSequenceEndpoint() {
     const stepElements = document.querySelectorAll('.sequence-step');
 
     if (stepElements.length === 0) {
-        alert('Please add at least one step to the sequence.');
+        showAlert('Missing Steps', 'Please add at least one step to the sequence.');
         return;
     }
 
@@ -180,7 +249,7 @@ async function createSequenceEndpoint() {
             try {
                 payload = JSON.parse(payloadText);
             } catch (e) {
-                alert(`Invalid JSON payload in one of the steps. Please check your JSON syntax.`);
+                showAlert('Invalid JSON', 'Invalid JSON payload in one of the steps. Please check your JSON syntax.');
                 return;
             }
         }
@@ -206,7 +275,7 @@ async function createSequenceEndpoint() {
         const data = await response.json();
 
         if (data.success) {
-            alert('Sequence endpoint created successfully!');
+            showAlert('Success', 'Sequence endpoint created successfully!');
             document.getElementById('sequenceEndpointForm').reset();
 
             // Clear and re-add default step
@@ -216,10 +285,10 @@ async function createSequenceEndpoint() {
 
             await loadSequenceEndpoints();
         } else {
-            alert(`Error: ${data.error}`);
+            showAlert('Error', `Error: ${data.error}`);
         }
     } catch (error) {
-        alert(`Error creating sequence endpoint: ${error.message}`);
+        showAlert('Error', `Error creating sequence endpoint: ${error.message}`);
     }
 }
 
@@ -308,23 +377,23 @@ function displaySequenceEndpoints(endpoints) {
 
 // Reset sequence endpoint counter
 async function resetSequenceEndpoint(endpointId) {
-    if (!confirm('Reset this sequence to the beginning?')) return;
+    showModal('Reset Sequence', 'Reset this sequence to the beginning?', async () => {
+        try {
+            const response = await fetch(`/api/sequence-endpoints/${endpointId}/reset`, {
+                method: 'POST'
+            });
 
-    try {
-        const response = await fetch(`/api/sequence-endpoints/${endpointId}/reset`, {
-            method: 'POST'
-        });
+            const data = await response.json();
 
-        const data = await response.json();
-
-        if (data.success) {
-            await loadSequenceEndpoints();
-        } else {
-            alert(`Error: ${data.error}`);
+            if (data.success) {
+                await loadSequenceEndpoints();
+            } else {
+                showAlert('Error', data.error);
+            }
+        } catch (error) {
+            showAlert('Error', `Error resetting sequence endpoint: ${error.message}`);
         }
-    } catch (error) {
-        alert(`Error resetting sequence endpoint: ${error.message}`);
-    }
+    });
 }
 
 // Toggle sequence endpoint active status
@@ -341,32 +410,32 @@ async function toggleSequenceEndpoint(endpointId, isActive) {
         if (data.success) {
             await loadSequenceEndpoints();
         } else {
-            alert(`Error: ${data.error}`);
+            showAlert('Error', data.error);
         }
     } catch (error) {
-        alert(`Error toggling sequence endpoint: ${error.message}`);
+        showAlert('Error', `Error toggling sequence endpoint: ${error.message}`);
     }
 }
 
 // Delete sequence endpoint
 async function deleteSequenceEndpoint(endpointId) {
-    if (!confirm('Are you sure you want to delete this sequence endpoint?')) return;
+    showModal('Delete Endpoint', 'Are you sure you want to delete this sequence endpoint? This action cannot be undone.', async () => {
+        try {
+            const response = await fetch(`/api/sequence-endpoints/${endpointId}`, {
+                method: 'DELETE'
+            });
 
-    try {
-        const response = await fetch(`/api/sequence-endpoints/${endpointId}`, {
-            method: 'DELETE'
-        });
+            const data = await response.json();
 
-        const data = await response.json();
-
-        if (data.success) {
-            await loadSequenceEndpoints();
-        } else {
-            alert(`Error: ${data.error}`);
+            if (data.success) {
+                await loadSequenceEndpoints();
+            } else {
+                showAlert('Error', data.error);
+            }
+        } catch (error) {
+            showAlert('Error', `Error deleting sequence endpoint: ${error.message}`);
         }
-    } catch (error) {
-        alert(`Error deleting sequence endpoint: ${error.message}`);
-    }
+    }, true);
 }
 
 // Copy sequence endpoint URL to clipboard
