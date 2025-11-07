@@ -156,6 +156,67 @@
             </div>
         </div>
 
+        <!-- Sequence Endpoints Section -->
+        <div class="card">
+            <h2 class="card-title">⚡ Sequence Endpoints - Advanced Response Sequences</h2>
+            <p class="card-description">Create powerful test sequences combining HTTP codes, delays, and custom payloads.
+                Perfect for testing retry logic, backoff strategies, and service recovery scenarios.</p>
+
+            <!-- Create New Sequence Endpoint Form -->
+            <form id="sequenceEndpointForm" class="endpoint-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="sequenceEndpointName">Endpoint Name</label>
+                        <input type="text" id="sequenceEndpointName" name="endpoint_name" required
+                            placeholder="e.g., service-recovery">
+                    </div>
+                    <div class="form-group">
+                        <label for="sequenceDescription">Description (Optional)</label>
+                        <input type="text" id="sequenceDescription" name="description"
+                            placeholder="e.g., Simulates service recovery with delays">
+                    </div>
+                </div>
+
+                <!-- Sequence Steps Container -->
+                <div class="sequence-steps-container">
+                    <label class="steps-label">Sequence Steps</label>
+                    <div id="sequenceStepsList" class="sequence-steps-list">
+                        <!-- Steps will be added dynamically here -->
+                    </div>
+                    <button type="button" id="addSequenceStep" class="btn btn-secondary">
+                        ➕ Add Step
+                    </button>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Create Sequence Endpoint</button>
+            </form>
+
+            <!-- List of Sequence Endpoints -->
+            <div class="endpoints-list-container">
+                <h3>Your Sequence Endpoints</h3>
+                <div class="table-responsive">
+                    <table class="endpoints-table" id="sequenceEndpointsTable">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Name</th>
+                                <th>Sequence</th>
+                                <th>Next Step</th>
+                                <th>Position</th>
+                                <th>URL</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" class="loading-message">Loading endpoints...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div class="card">
             <h2 class="card-title">🔍 Endpoint</h2>
             <pre class="code-block"><code>/httpcode/&lt;int:code&gt;</code></pre>
