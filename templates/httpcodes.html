@@ -31,53 +31,12 @@
 
         <!-- Sequence Endpoints Section -->
         <div class="card sequence-endpoints-card">
-            <div class="card-header-fancy">
-                <div class="header-content">
-                    <h2 class="card-title-large">⚡ Sequence Endpoints</h2>
-                    <p class="card-subtitle">Advanced Response Sequences for API Testing</p>
-                </div>
-                <div class="header-badge">
-                    <span class="feature-badge">All-in-One</span>
-                </div>
-            </div>
-
-            <div class="feature-highlights">
-                <div class="highlight-item">
-                    <span class="highlight-icon">🔄</span>
-                    <div class="highlight-text">
-                        <strong>Sequential Rotation</strong>
-                        <small>Cycles through configured steps</small>
-                    </div>
-                </div>
-                <div class="highlight-item">
-                    <span class="highlight-icon">⏱️</span>
-                    <div class="highlight-text">
-                        <strong>Custom Delays</strong>
-                        <small>Per-step response timing</small>
-                    </div>
-                </div>
-                <div class="highlight-item">
-                    <span class="highlight-icon">🎯</span>
-                    <div class="highlight-text">
-                        <strong>HTTP Codes</strong>
-                        <small>Any status code (100-599)</small>
-                    </div>
-                </div>
-                <div class="highlight-item">
-                    <span class="highlight-icon">📦</span>
-                    <div class="highlight-text">
-                        <strong>Custom Payloads</strong>
-                        <small>JSON response bodies</small>
-                    </div>
-                </div>
-            </div>
+            <h2 class="card-title">⚡ Sequence Endpoints</h2>
+            <p class="card-description">Create powerful test sequences combining HTTP codes, delays, and custom payloads. Perfect for testing retry logic and service recovery scenarios.</p>
 
             <!-- Create New Sequence Endpoint Form -->
             <div class="form-section">
-                <h3 class="section-title">
-                    <span class="title-icon">➕</span>
-                    Create New Sequence
-                </h3>
+                <h3 class="section-title">Create New Sequence</h3>
                 <form id="sequenceEndpointForm" class="endpoint-form">
                     <div class="form-row">
                         <div class="form-group">
@@ -94,10 +53,7 @@
 
                     <!-- Sequence Steps Container -->
                     <div class="sequence-steps-container">
-                        <label class="steps-label">
-                            <span class="label-icon">🔢</span>
-                            Sequence Steps
-                        </label>
+                        <label class="steps-label">Sequence Steps</label>
                         <div id="sequenceStepsList" class="sequence-steps-list">
                             <!-- Steps will be added dynamically here -->
                         </div>
@@ -106,27 +62,21 @@
                         </button>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-create">
-                        <span class="btn-icon">✨</span>
-                        Create Sequence Endpoint
-                    </button>
+                    <button type="submit" class="btn btn-primary">Create Sequence Endpoint</button>
                 </form>
             </div>
 
             <!-- List of Sequence Endpoints -->
             <div class="endpoints-list-section">
-                <h3 class="section-title">
-                    <span class="title-icon">📋</span>
-                    Your Sequence Endpoints
-                </h3>
+                <h3 class="section-title">Your Sequence Endpoints</h3>
                 <div class="table-responsive">
-                    <table class="endpoints-table endpoints-table-compact" id="sequenceEndpointsTable">
+                    <table class="sequence-table" id="sequenceEndpointsTable">
                         <thead>
                             <tr>
-                                <th class="col-status">Status</th>
-                                <th class="col-name">Name</th>
-                                <th class="col-sequence">Sequence Flow</th>
-                                <th class="col-progress">Progress</th>
+                                <th class="col-status">●</th>
+                                <th class="col-name">Endpoint</th>
+                                <th class="col-sequence">Sequence</th>
+                                <th class="col-progress">Current</th>
                                 <th class="col-actions">Actions</th>
                             </tr>
                         </thead>

@@ -253,51 +253,52 @@ function displaySequenceEndpoints(endpoints) {
             ? JSON.parse(endpoint.sequence_config)
             : endpoint.sequence_config;
 
+        // Build sequence display with better formatting
         const sequenceDisplay = sequence.map((step, idx) => {
             const isNext = idx === endpoint.current_index;
             const code = step.http_code;
-            const delay = step.delay_ms > 0 ? `${step.delay_ms}ms` : '';
-            const stepText = delay ? `${code}(${delay})` : code;
-            return isNext ? `<strong class="current-step">${stepText}</strong>` : stepText;
-        }).join(' → ');
+            const delay = step.delay_ms > 0 ? `+${step.delay_ms}ms` : '';
+            const stepText = delay ? `${code}<span class="delay-text">${delay}</span>` : code;
+            return isNext ? `<span class="step-current">${stepText}</span>` : `<span class="step-normal">${stepText}</span>`;
+        }).join('<span class="step-arrow">→</span>');
 
-        const nextStep = sequence[endpoint.current_index];
-        const position = `${endpoint.current_index + 1}/${sequence.length}`;
-        const nextStepInfo = `Next: ${nextStep.http_code}${nextStep.delay_ms > 0 ? ` (${nextStep.delay_ms}ms)` : ''}`;
+        const currentStep = sequence[endpoint.current_index];
+        const stepInfo = `Step ${endpoint.current_index + 1}/${sequence.length}: ${currentStep.http_code}`;
+        const delayInfo = currentStep.delay_ms > 0 ? ` (+${currentStep.delay_ms}ms)` : '';
 
-        const statusBadge = endpoint.is_active
-            ? '<span class="status-badge status-active">●</span>'
-            : '<span class="status-badge status-inactive">○</span>';
+        const statusIcon = endpoint.is_active ? '●' : '○';
+        const statusClass = endpoint.is_active ? 'status-active' : 'status-inactive';
 
         const url = `${window.location.origin}/sequence-endpoint/${userId}/${endpoint.endpoint_name}`;
-        const description = endpoint.description ? `<small class="endpoint-description">${endpoint.description}</small>` : '';
+        const description = endpoint.description ? `<div class="endpoint-desc">${endpoint.description}</div>` : '';
 
         return `
-            <tr class="${endpoint.is_active ? 'active-row' : 'inactive-row'}">
-                <td class="col-status">${statusBadge}</td>
+            <tr class="seq-row ${endpoint.is_active ? 'active' : 'inactive'}">
+                <td class="col-status">
+                    <span class="${statusClass}">${statusIcon}</span>
+                </td>
                 <td class="col-name">
-                    <div class="endpoint-name-cell">
-                        <strong>${endpoint.endpoint_name}</strong>
+                    <div class="endpoint-info">
+                        <div class="endpoint-name">${endpoint.endpoint_name}</div>
                         ${description}
                     </div>
                 </td>
                 <td class="col-sequence">
-                    <div class="sequence-flow">${sequenceDisplay}</div>
+                    <div class="sequence-display">${sequenceDisplay}</div>
                 </td>
                 <td class="col-progress">
-                    <div class="progress-info">
-                        <span class="position-badge">${position}</span>
-                        <small class="next-step-info">${nextStepInfo}</small>
+                    <div class="current-info">
+                        <div class="step-info">${stepInfo}${delayInfo}</div>
                     </div>
                 </td>
                 <td class="col-actions">
-                    <div class="actions-group">
-                        <button class="btn-action btn-copy" onclick="copySequenceEndpointUrl('${url}')" title="Copy URL">📋</button>
-                        <button class="btn-action" onclick="resetSequenceEndpoint(${endpoint.id})" title="Reset to start">🔄</button>
-                        <button class="btn-action" onclick="toggleSequenceEndpoint(${endpoint.id}, ${endpoint.is_active ? 0 : 1})" title="${endpoint.is_active ? 'Deactivate' : 'Activate'}">
+                    <div class="action-btns">
+                        <button class="action-btn copy-btn" onclick="copySequenceEndpointUrl('${url}')" title="Copy URL">📋</button>
+                        <button class="action-btn" onclick="resetSequenceEndpoint(${endpoint.id})" title="Reset">🔄</button>
+                        <button class="action-btn" onclick="toggleSequenceEndpoint(${endpoint.id}, ${endpoint.is_active ? 0 : 1})" title="${endpoint.is_active ? 'Deactivate' : 'Activate'}">
                             ${endpoint.is_active ? '⏸' : '▶'}
                         </button>
-                        <button class="btn-action btn-delete" onclick="deleteSequenceEndpoint(${endpoint.id})" title="Delete">🗑</button>
+                        <button class="action-btn delete-btn" onclick="deleteSequenceEndpoint(${endpoint.id})" title="Delete">🗑</button>
                     </div>
                 </td>
             </tr>
