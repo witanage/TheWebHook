@@ -29,73 +29,6 @@
             about the request, response, and headers.
         </p>
 
-        <!-- Special Endpoints Management Section -->
-        <div class="card special-endpoints-section">
-            <h2 class="card-title">⚡ Special Endpoints - Custom Delays & HTTP Codes</h2>
-            <p class="card-text">
-                Create custom endpoints with specific HTTP status codes and response delays.
-                These endpoints are user-specific and can be used to test timeout scenarios,
-                rate limiting, and various HTTP status responses with configurable delays.
-            </p>
-
-            <!-- Create New Special Endpoint Form -->
-            <div class="special-endpoint-form">
-                <h3>Create New Special Endpoint</h3>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="endpointName">Endpoint Name *</label>
-                        <input type="text" id="endpointName" placeholder="e.g., slow-response" class="form-input">
-                        <small class="hint-text">Use lowercase letters, numbers, and hyphens only</small>
-                    </div>
-                    <div class="form-group">
-                        <label for="httpCode">HTTP Status Code *</label>
-                        <input type="number" id="httpCode" min="100" max="599" value="200" class="form-input">
-                    </div>
-                    <div class="form-group">
-                        <label for="delayMs">Delay (ms) *</label>
-                        <input type="number" id="delayMs" min="0" value="1000" class="form-input">
-                        <small class="hint-text">Response delay in milliseconds</small>
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="description">Description (Optional)</label>
-                        <input type="text" id="description" placeholder="e.g., Simulate slow server response" class="form-input">
-                    </div>
-                    <div class="form-group full-width">
-                        <label for="responsePayload">Response JSON Payload (Optional)</label>
-                        <textarea id="responsePayload" placeholder='{"key": "value", "status": "success"}' class="form-input" rows="4"></textarea>
-                        <small class="hint-text">Custom JSON response body. Leave empty for default response format.</small>
-                    </div>
-                </div>
-                <button onclick="createSpecialEndpoint()" class="test-button">Create Endpoint</button>
-                <div id="createMessage" class="message" style="display:none;"></div>
-            </div>
-
-            <!-- List of Special Endpoints -->
-            <div class="special-endpoints-list">
-                <h3>Your Special Endpoints</h3>
-                <div id="endpointsTableContainer">
-                    <table id="endpointsTable" class="endpoints-table">
-                        <thead>
-                            <tr>
-                                <th>Status</th>
-                                <th>Endpoint Name</th>
-                                <th>HTTP Code</th>
-                                <th>Delay (ms)</th>
-                                <th>Description</th>
-                                <th>URL</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="endpointsList">
-                            <tr>
-                                <td colspan="7" class="loading-message">Loading endpoints...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
         <!-- Rotating Endpoints Section -->
         <div class="card rotating-endpoints-section">
             <h2 class="card-title">🔄 Rotating Endpoints - Cycle Through HTTP Codes</h2>
@@ -195,21 +128,19 @@
             <div class="endpoints-list-container">
                 <h3>Your Sequence Endpoints</h3>
                 <div class="table-responsive">
-                    <table class="endpoints-table" id="sequenceEndpointsTable">
+                    <table class="endpoints-table endpoints-table-compact" id="sequenceEndpointsTable">
                         <thead>
                             <tr>
-                                <th>Status</th>
-                                <th>Name</th>
-                                <th>Sequence</th>
-                                <th>Next Step</th>
-                                <th>Position</th>
-                                <th>URL</th>
-                                <th>Actions</th>
+                                <th class="col-status">Status</th>
+                                <th class="col-name">Name</th>
+                                <th class="col-sequence">Sequence Flow</th>
+                                <th class="col-progress">Progress</th>
+                                <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td colspan="7" class="loading-message">Loading endpoints...</td>
+                                <td colspan="5" class="loading-message">Loading endpoints...</td>
                             </tr>
                         </tbody>
                     </table>
