@@ -1290,11 +1290,6 @@ class WebhookViewer {
         // Add the new webhook to the beginning of the list
         this.currentRequests.unshift(webhookData);
 
-        // Limit to 20 most recent requests
-        if (this.currentRequests.length > 20) {
-            this.currentRequests = this.currentRequests.slice(0, 20);
-        }
-
         // Re-render the list with animation
         this.renderRequestsList(true);
 

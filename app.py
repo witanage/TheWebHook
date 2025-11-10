@@ -855,7 +855,6 @@ def handle_webhook(user_id, webhook_id):
                     FROM webhook_responses
                     WHERE user_id = %s AND webhook_id = %s
                     ORDER BY timestamp DESC
-                    LIMIT 20
                 """, (user_id, webhook_id))
             data = cursor.fetchall()
             log(f"Webhook data retrieved for user {user_id}, webhook {webhook_id}")
