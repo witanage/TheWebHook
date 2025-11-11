@@ -1000,7 +1000,7 @@ def karate_generator():
     """Karate feature file generator page"""
     user_id = session["user_id"]
     username = session.get("username", "User")
-    is_admin = check_admin(user_id)
+    is_admin = session.get("is_admin", 0)
     log(f"User {user_id} accessed Karate generator tool")
     return render_template("karate-generator.html", username=username, is_admin=is_admin)
 
