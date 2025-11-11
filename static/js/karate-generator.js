@@ -33,6 +33,7 @@ function addScenario(data = null) {
         request: '',
         response: '',
         extractVars: [], // Array of {varName: 'userId', jsonPath: 'response.id'}
+        assertions: [], // Array of custom assertion strings
         sourceScenarioId: null, // null means not a duplicate
         duplicateNumber: null   // null means not a duplicate
     };
@@ -43,6 +44,9 @@ function addScenario(data = null) {
     }
     if (scenarioData.duplicateNumber === undefined) {
         scenarioData.duplicateNumber = null;
+    }
+    if (scenarioData.assertions === undefined) {
+        scenarioData.assertions = [];
     }
 
     scenarios.push(scenarioData);
@@ -104,6 +108,19 @@ function createScenarioCard(data) {
                    data-scenario-id="${data.id}"
                    data-var-index="${idx}">
             <button class="btn-remove-var" onclick="removeExtractVar(${data.id}, ${idx})" title="Remove">✕</button>
+        </div>
+    `).join('');
+
+    // Create assertions HTML
+    const assertionsHTML = (data.assertions || []).map((assertion, idx) => `
+        <div class="assertion-item" data-assertion-index="${idx}">
+            <input type="text"
+                   class="assertion-input"
+                   placeholder="match response.id == '#number'"
+                   value="${assertion || ''}"
+                   data-scenario-id="${data.id}"
+                   data-assertion-index="${idx}">
+            <button class="btn-remove-var" onclick="removeAssertion(${data.id}, ${idx})" title="Remove">✕</button>
         </div>
     `).join('');
 
@@ -224,6 +241,21 @@ function createScenarioCard(data) {
                 <small>💡 Examples: <code>userId</code> ← <code>response.id</code> or <code>authToken</code> ← <code>response.data.token</code></small>
             </div>
         </div>
+
+        <div class="assertions-section">
+            <div class="assertions-header">
+                <label>Custom Assertions (optional)</label>
+                <button class="btn-add-var" onclick="addAssertion(${data.id})" title="Add Assertion">
+                    ➕ Add Assertion
+                </button>
+            </div>
+            <div class="assertions-list" id="assertionsList_${data.id}">
+                ${assertionsHTML || '<div class="empty-vars-hint">No custom assertions. Click "Add Assertion" to add validation rules.</div>'}
+            </div>
+            <div class="assertions-help">
+                <small>💡 Examples: <code>match response.id == '#number'</code> or <code>match response.email == '#regex .+@.+'</code></small>
+            </div>
+        </div>
     `;
 
     return card;
@@ -277,6 +309,51 @@ function removeExtractVar(scenarioId, varIndex) {
     // Show empty hint if no variables left
     if (list.querySelectorAll('.extract-var-item').length === 0) {
         list.innerHTML = '<div class="empty-vars-hint">No variables to extract. Click "Add Variable" to extract values from this response.</div>';
+    }
+}
+
+// Add custom assertion field
+function addAssertion(scenarioId) {
+    const scenario = scenarios.find(s => s.id === scenarioId);
+    if (!scenario) return;
+
+    const data = collectScenarioData(scenarioId);
+    if (!data.assertions) data.assertions = [];
+
+    const assertionIndex = data.assertions.length;
+    data.assertions.push('');
+
+    const list = document.getElementById(`assertionsList_${scenarioId}`);
+
+    // Remove empty hint if it exists
+    const emptyHint = list.querySelector('.empty-vars-hint');
+    if (emptyHint) emptyHint.remove();
+
+    const assertionItem = document.createElement('div');
+    assertionItem.className = 'assertion-item';
+    assertionItem.dataset.assertionIndex = assertionIndex;
+    assertionItem.innerHTML = `
+        <input type="text"
+               class="assertion-input"
+               placeholder="match response.id == '#number'"
+               data-scenario-id="${scenarioId}"
+               data-assertion-index="${assertionIndex}">
+        <button class="btn-remove-var" onclick="removeAssertion(${scenarioId}, ${assertionIndex})" title="Remove">✕</button>
+    `;
+    list.appendChild(assertionItem);
+}
+
+// Remove custom assertion field
+function removeAssertion(scenarioId, assertionIndex) {
+    const list = document.getElementById(`assertionsList_${scenarioId}`);
+    const item = list.querySelector(`[data-assertion-index="${assertionIndex}"]`);
+    if (item) {
+        item.remove();
+    }
+
+    // Show empty hint if no assertions left
+    if (list.querySelectorAll('.assertion-item').length === 0) {
+        list.innerHTML = '<div class="empty-vars-hint">No custom assertions. Click "Add Assertion" to add validation rules.</div>';
     }
 }
 
@@ -405,6 +482,17 @@ function collectScenarioData(id) {
         }
     });
 
+    // Collect assertions
+    const assertions = [];
+    const assertionInputs = document.querySelectorAll(`.assertion-input[data-scenario-id="${id}"]`);
+
+    assertionInputs.forEach((input) => {
+        const assertion = input.value.trim();
+        if (assertion) {
+            assertions.push(assertion);
+        }
+    });
+
     return {
         id,
         name,
@@ -413,7 +501,8 @@ function collectScenarioData(id) {
         status: parseInt(status),
         request,
         response,
-        extractVars
+        extractVars,
+        assertions
     };
 }
 
@@ -625,6 +714,16 @@ function buildKarateFeature(config) {
             }
             scenario.extractVars.forEach(v => {
                 feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+            });
+        }
+
+        // Custom assertions
+        if (scenario.assertions && scenario.assertions.length > 0) {
+            if (config.includeComments) {
+                feature += `\n  # Custom assertions\n`;
+            }
+            scenario.assertions.forEach(assertion => {
+                feature += `  And ${assertion}\n`;
             });
         }
 
