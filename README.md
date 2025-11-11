@@ -132,72 +132,19 @@ Compare AWS CloudWatch log exports and identify changes with advanced intelligen
    ```
 
 3. **Set up the database**
-   ```sql
-   CREATE DATABASE webhook_viewer;
-   USE webhook_viewer;
 
-   -- Users table
-   CREATE TABLE users (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       username VARCHAR(255) UNIQUE NOT NULL,
-       password_hash VARCHAR(255) NOT NULL,
-       status TINYINT DEFAULT 0,
-       is_admin TINYINT DEFAULT 0
-   );
-
-   -- Webhook responses table
-   CREATE TABLE webhook_responses (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       user_id INT NOT NULL,
-       webhook_id VARCHAR(255) NOT NULL,
-       method VARCHAR(10),
-       headers TEXT,
-       body TEXT,
-       query_params TEXT,
-       timestamp DATETIME NOT NULL,
-       is_read TINYINT DEFAULT 0,
-       client_ip VARCHAR(45),
-       FOREIGN KEY (user_id) REFERENCES users(id)
-   );
-
-   -- Menu items table (applications)
-   CREATE TABLE menu_items (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       title VARCHAR(255) NOT NULL,
-       description TEXT,
-       icon VARCHAR(50),
-       route VARCHAR(255) NOT NULL,
-       display_order INT DEFAULT 0,
-       is_active TINYINT DEFAULT 1,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   );
-
-   -- User menu assignments (optional - for per-user app access)
-   CREATE TABLE user_menu_items (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       user_id INT NOT NULL,
-       menu_item_id INT NOT NULL,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-       FOREIGN KEY (menu_item_id) REFERENCES menu_items(id) ON DELETE CASCADE,
-       UNIQUE KEY unique_user_menu (user_id, menu_item_id)
-   );
-
-   -- Create indexes for performance
-   CREATE INDEX idx_user_id ON user_menu_items(user_id);
-   CREATE INDEX idx_menu_item_id ON user_menu_items(menu_item_id);
+   Run the provided schema file to create all necessary tables and default data:
+   ```bash
+   mysql -u your-db-user -p < schema.sql
    ```
 
-4. **Insert default applications**
+   Or import it manually in MySQL:
    ```sql
-   INSERT INTO menu_items (title, description, icon, route, display_order) VALUES
-   ('Webhook Viewer', 'Monitor and manage webhooks in real-time', '📡', '/webhook-viewer', 1),
-   ('JSON Comparison Tool', 'Compare two JSON objects and visualize differences', '🔄', '/json-compare', 2),
-   ('HTTP Status Code Tester', 'Test and simulate different HTTP status codes', '🌐', '/http-codes', 3),
-   ('AWS Log Comparison Tool', 'Compare AWS CloudWatch log exports', '📊', '/aws-log-compare', 4);
+   mysql -u your-db-user -p
+   source schema.sql;
    ```
 
-5. **Configure environment variables**
+4. **Configure environment variables**
    Create a `.env` file in the root directory:
    ```env
    # Flask Configuration
@@ -217,12 +164,12 @@ Compare AWS CloudWatch log exports and identify changes with advanced intelligen
    DB_NAME=webhook_viewer
    ```
 
-6. **Run the application**
+5. **Run the application**
    ```bash
    python app.py
    ```
 
-7. **Access the application**
+6. **Access the application**
    Open your browser and navigate to `http://localhost:5000`
 
 ## Usage
