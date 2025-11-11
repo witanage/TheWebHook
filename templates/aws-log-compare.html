@@ -62,8 +62,15 @@
         </button>
 
         <select class="key-column-selector" id="keyColumn" title="Select the column to use as unique identifier">
-            <option value="auto">Auto-detect Key Column</option>
+            <option value="auto">🔍 Auto-detect Key Column</option>
         </select>
+
+        <div class="filter-options">
+            <label class="advanced-option" title="Enable fuzzy matching to find similar records even when keys don't match exactly">
+                <input type="checkbox" id="useFuzzyMatching">
+                <span>🔍 Fuzzy Matching</span>
+            </label>
+        </div>
 
         <div class="filter-options">
             <label>
@@ -109,6 +116,8 @@
         <p>Comparing log files...</p>
     </div>
 
+    <div class="insights" id="insights" style="display: none;"></div>
+
     <div class="results" id="results"></div>
 
     <div class="export-section" id="exportSection">
@@ -121,4 +130,85 @@
 
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/aws-log-compare.js') }}"></script>
+{% endblock %}
+
+{% block about_title %}About AWS Log Comparison Tool{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>📊 AWS Log CSV Comparison Tool</h4>
+    <p>Intelligent log analysis and comparison tool with AI-like capabilities for AWS CloudWatch exports and CSV data analysis.</p>
+</section>
+
+<section class="about-section">
+    <h5>✨ Core Features</h5>
+    <ul class="feature-list">
+        <li><strong>File Upload or Paste</strong> - Support for CSV/TSV file upload or direct paste</li>
+        <li><strong>Smart Key Detection</strong> - Advanced scoring algorithm for automatic key column identification</li>
+        <li><strong>Change Tracking</strong> - Identify added, removed, modified, and fuzzy-matched entries</li>
+        <li><strong>Visual Diff</strong> - Color-coded row highlighting with detailed change information</li>
+        <li><strong>Statistics Dashboard</strong> - Comprehensive summary with change counts</li>
+        <li><strong>Export Results</strong> - Download comparison results as CSV</li>
+        <li><strong>Flexible Filtering</strong> - Show/hide different change types</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>🧠 Intelligent Analysis</h5>
+    <div class="info-card">
+        <strong>Fuzzy Matching (85% threshold)</strong>
+        <ul style="list-style: none; padding-left: 1rem; margin-top: 0.5rem;">
+            <li>• Levenshtein distance algorithm for similarity</li>
+            <li>• Finds similar records when keys don't match exactly</li>
+            <li>• Shows similarity percentage for each match</li>
+        </ul>
+    </div>
+    <div class="info-card">
+        <strong>Semantic Change Detection</strong>
+        <ul style="list-style: none; padding-left: 1rem; margin-top: 0.5rem;">
+            <li>• Numeric changes with percentage calculation</li>
+            <li>• Timestamp shifts with time difference</li>
+            <li>• Type change detection</li>
+        </ul>
+    </div>
+    <div class="info-card">
+        <strong>Pattern Detection & Data Quality</strong>
+        <ul style="list-style: none; padding-left: 1rem; margin-top: 0.5rem;">
+            <li>• Identifies consistent change patterns</li>
+            <li>• Detects bulk operations</li>
+            <li>• Recognizes field renaming</li>
+            <li>• Duplicate key detection</li>
+            <li>• Null value analysis</li>
+        </ul>
+    </div>
+</section>
+
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <ol>
+        <li>Upload or paste your original log data (CSV/TSV format)</li>
+        <li>Upload or paste your new log data for comparison</li>
+        <li>Enable "Fuzzy Matching" if you want to find similar records with different keys</li>
+        <li>Select a key column or use auto-detection (recommended)</li>
+        <li>Click "Compare Logs" to start the intelligent analysis</li>
+        <li>Review the insights panel for patterns, quality issues, and recommendations</li>
+        <li>Use filters to focus on specific change types</li>
+        <li>Export results for further analysis or documentation</li>
+    </ol>
+</section>
+
+<section class="about-section">
+    <h5>🎨 Color Legend</h5>
+    <ul class="feature-list">
+        <li><strong style="color: #28a745;">Green</strong> - Added records</li>
+        <li><strong style="color: #dc3545;">Red</strong> - Removed records</li>
+        <li><strong style="color: #ff9800;">Orange</strong> - Modified records</li>
+        <li><strong style="color: #9c27b0;">Purple</strong> - Fuzzy matched records (with similarity %)</li>
+        <li><strong style="color: #007acc;">Blue</strong> - Unchanged records</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
 {% endblock %}

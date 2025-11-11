@@ -40,15 +40,54 @@ Test and simulate different HTTP status codes.
 - **Request/Response Details**: View complete HTTP transaction information
 - **Documentation**: Built-in reference for HTTP status codes
 
-#### 4. AWS Log CSV Comparison Tool
-Compare AWS CloudWatch log exports and identify changes.
+#### 4. AWS Log CSV Comparison Tool (Enhanced with AI-like Intelligence)
+Compare AWS CloudWatch log exports and identify changes with advanced intelligent analysis.
+
+**Core Features:**
 - **File Upload or Paste**: Support for CSV/TSV file upload or direct paste
-- **Auto-detection**: Intelligent key column detection
-- **Change Tracking**: Identify added, removed, and modified log entries
-- **Visual Diff**: Color-coded row highlighting for changes
-- **Statistics Dashboard**: Summary of changes with counts
+- **Smart Key Detection**: Advanced algorithm that scores columns based on:
+  - Name patterns (id, requestId, uuid, etc.)
+  - Uniqueness ratio (perfect uniqueness scores highest)
+  - Sequential number detection
+  - UUID and timestamp pattern recognition
+  - Null value analysis
+- **Change Tracking**: Identify added, removed, modified, and fuzzy-matched log entries
+- **Visual Diff**: Color-coded row highlighting with enhanced change details
+- **Statistics Dashboard**: Comprehensive summary of changes with counts
 - **Export Results**: Download comparison results as CSV
 - **Flexible Filtering**: Show/hide different change types
+
+**Intelligent Analysis Features:**
+- **Fuzzy Matching**: Find similar records even when keys don't match exactly (85% similarity threshold)
+  - Uses Levenshtein distance algorithm
+  - Helps identify records with minor key variations
+  - Shows similarity percentage for each match
+- **Semantic Change Detection**:
+  - Numeric changes with percentage calculation (e.g., "+10.5 (+25%)")
+  - Timestamp shifts with time difference (e.g., "+3.5 hours")
+  - Type change detection (string → number)
+- **Pattern Detection**:
+  - Identifies columns that consistently change across records
+  - Detects bulk insert/delete operations
+  - Recognizes field renaming (e.g., "userId" → "user_id")
+  - Finds consistent patterns in modifications
+- **Data Quality Analysis**:
+  - Duplicate key detection in both datasets
+  - High null/empty value rate warnings (>10%)
+  - Data type consistency validation
+  - Schema mismatch identification
+- **Smart Recommendations**:
+  - Capacity planning suggestions for data growth
+  - Data retention policy confirmations
+  - Schema change documentation reminders
+  - Data validation recommendations
+  - Fuzzy match verification prompts
+
+**Insights Panel:**
+- Summary of comparison results
+- Detected patterns and anomalies
+- Data quality issues with severity levels
+- Actionable recommendations for next steps
 
 ### Admin Features
 - **User Management**: Create, activate/deactivate, and delete users
