@@ -1,4 +1,4 @@
-// Karate Feature File Generator JavaScript - Multiple Scenarios Support
+// Karate Feature File Generator JavaScript - Multiple Scenarios with Variable Chaining
 
 let generatedFeature = '';
 let scenarioCounter = 0;
@@ -28,7 +28,8 @@ function addScenario(data = null) {
         endpoint: '',
         status: 200,
         request: '',
-        response: ''
+        response: '',
+        extractVars: [] // Array of {varName: 'userId', jsonPath: 'response.id'}
     };
 
     scenarios.push(scenarioData);
@@ -40,11 +41,58 @@ function addScenario(data = null) {
     updateEmptyState();
 }
 
+// Get available variables from previous scenarios
+function getAvailableVariables(currentScenarioId) {
+    const variables = [];
+    for (const scenario of scenarios) {
+        if (scenario.id >= currentScenarioId) break;
+        const data = collectScenarioData(scenario.id);
+        if (data && data.extractVars) {
+            data.extractVars.forEach(v => {
+                if (v.varName && v.jsonPath) {
+                    variables.push({
+                        name: v.varName,
+                        from: `Scenario #${scenario.id + 1}`,
+                        path: v.jsonPath
+                    });
+                }
+            });
+        }
+    }
+    return variables;
+}
+
 // Create scenario card HTML
 function createScenarioCard(data) {
     const card = document.createElement('div');
     card.className = 'scenario-card';
     card.dataset.scenarioId = data.id;
+
+    // Get available variables from previous scenarios
+    const availableVars = getAvailableVariables(data.id);
+    const varsHint = availableVars.length > 0
+        ? `<div class="variables-hint">💡 Available variables: ${availableVars.map(v => `<code>${v.name}</code>`).join(', ')}</div>`
+        : '';
+
+    // Create extract vars HTML
+    const extractVarsHTML = (data.extractVars || []).map((v, idx) => `
+        <div class="extract-var-item" data-var-index="${idx}">
+            <input type="text"
+                   class="extract-var-name"
+                   placeholder="variableName"
+                   value="${v.varName || ''}"
+                   data-scenario-id="${data.id}"
+                   data-var-index="${idx}">
+            <span class="extract-arrow">←</span>
+            <input type="text"
+                   class="extract-var-path"
+                   placeholder="response.id"
+                   value="${v.jsonPath || ''}"
+                   data-scenario-id="${data.id}"
+                   data-var-index="${idx}">
+            <button class="btn-remove-var" onclick="removeExtractVar(${data.id}, ${idx})" title="Remove">✕</button>
+        </div>
+    `).join('');
 
     card.innerHTML = `
         <div class="scenario-card-header">
@@ -81,11 +129,11 @@ function createScenarioCard(data) {
             </div>
 
             <div class="form-group">
-                <label>Endpoint Path</label>
+                <label>Endpoint Path ${varsHint}</label>
                 <input type="text"
                        class="scenario-endpoint"
                        data-scenario-id="${data.id}"
-                       placeholder="e.g., /api/users/123"
+                       placeholder="e.g., /api/users/123 or /api/users/#(userId)"
                        value="${data.endpoint}">
             </div>
 
@@ -103,7 +151,7 @@ function createScenarioCard(data) {
         <div class="scenario-payloads">
             <div class="scenario-payload-group">
                 <label>
-                    Request Payload (Optional)
+                    Request Payload (Optional) ${varsHint}
                     <button class="btn-icon" onclick="formatScenarioJSON(${data.id}, 'request')" title="Format">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="16 18 22 12 16 6"></polyline>
@@ -113,7 +161,7 @@ function createScenarioCard(data) {
                 </label>
                 <textarea class="scenario-request"
                           data-scenario-id="${data.id}"
-                          placeholder='{"key": "value"}'>${data.request}</textarea>
+                          placeholder='Use #(varName) syntax, e.g.: {"userId": "#(userId)"}'>${data.request}</textarea>
             </div>
 
             <div class="scenario-payload-group">
@@ -131,9 +179,75 @@ function createScenarioCard(data) {
                           placeholder='{"id": 123, "status": "success"}'>${data.response}</textarea>
             </div>
         </div>
+
+        <div class="extract-vars-section">
+            <div class="extract-vars-header">
+                <label>Extract Variables from Response (for use in later scenarios)</label>
+                <button class="btn-add-var" onclick="addExtractVar(${data.id})" title="Add Variable">
+                    ➕ Add Variable
+                </button>
+            </div>
+            <div class="extract-vars-list" id="extractVarsList_${data.id}">
+                ${extractVarsHTML || '<div class="empty-vars-hint">No variables to extract. Click "Add Variable" to extract values from this response.</div>'}
+            </div>
+            <div class="extract-vars-help">
+                <small>💡 Examples: <code>userId</code> ← <code>response.id</code> or <code>authToken</code> ← <code>response.data.token</code></small>
+            </div>
+        </div>
     `;
 
     return card;
+}
+
+// Add variable extraction field
+function addExtractVar(scenarioId) {
+    const scenario = scenarios.find(s => s.id === scenarioId);
+    if (!scenario) return;
+
+    const data = collectScenarioData(scenarioId);
+    if (!data.extractVars) data.extractVars = [];
+
+    const varIndex = data.extractVars.length;
+    data.extractVars.push({ varName: '', jsonPath: '' });
+
+    const list = document.getElementById(`extractVarsList_${scenarioId}`);
+
+    // Remove empty hint if it exists
+    const emptyHint = list.querySelector('.empty-vars-hint');
+    if (emptyHint) emptyHint.remove();
+
+    const varItem = document.createElement('div');
+    varItem.className = 'extract-var-item';
+    varItem.dataset.varIndex = varIndex;
+    varItem.innerHTML = `
+        <input type="text"
+               class="extract-var-name"
+               placeholder="variableName"
+               data-scenario-id="${scenarioId}"
+               data-var-index="${varIndex}">
+        <span class="extract-arrow">←</span>
+        <input type="text"
+               class="extract-var-path"
+               placeholder="response.id"
+               data-scenario-id="${scenarioId}"
+               data-var-index="${varIndex}">
+        <button class="btn-remove-var" onclick="removeExtractVar(${scenarioId}, ${varIndex})" title="Remove">✕</button>
+    `;
+    list.appendChild(varItem);
+}
+
+// Remove variable extraction field
+function removeExtractVar(scenarioId, varIndex) {
+    const list = document.getElementById(`extractVarsList_${scenarioId}`);
+    const item = list.querySelector(`[data-var-index="${varIndex}"]`);
+    if (item) {
+        item.remove();
+    }
+
+    // Show empty hint if no variables left
+    if (list.querySelectorAll('.extract-var-item').length === 0) {
+        list.innerHTML = '<div class="empty-vars-hint">No variables to extract. Click "Add Variable" to extract values from this response.</div>';
+    }
 }
 
 // Duplicate scenario
@@ -221,6 +335,19 @@ function collectScenarioData(id) {
     const request = document.querySelector(`.scenario-request[data-scenario-id="${id}"]`)?.value.trim();
     const response = document.querySelector(`.scenario-response[data-scenario-id="${id}"]`)?.value.trim();
 
+    // Collect extract variables
+    const extractVars = [];
+    const varNames = document.querySelectorAll(`.extract-var-name[data-scenario-id="${id}"]`);
+    const varPaths = document.querySelectorAll(`.extract-var-path[data-scenario-id="${id}"]`);
+
+    varNames.forEach((nameInput, idx) => {
+        const varName = nameInput.value.trim();
+        const jsonPath = varPaths[idx]?.value.trim();
+        if (varName && jsonPath) {
+            extractVars.push({ varName, jsonPath });
+        }
+    });
+
     return {
         id,
         name,
@@ -228,7 +355,8 @@ function collectScenarioData(id) {
         endpoint,
         status: parseInt(status),
         request,
-        response
+        response,
+        extractVars
     };
 }
 
@@ -244,8 +372,13 @@ function formatScenarioJSON(id, type) {
     }
 
     try {
-        const parsed = JSON.parse(input);
-        textarea.value = JSON.stringify(parsed, null, 2);
+        // Handle Karate variable syntax - preserve #(varName) patterns
+        const preserved = input.replace(/"#\((\w+)\)"/g, '__KARATE_VAR_$1__');
+        const parsed = JSON.parse(preserved);
+        let formatted = JSON.stringify(parsed, null, 2);
+        // Restore Karate variables
+        formatted = formatted.replace(/"__KARATE_VAR_(\w+)__"/g, '"#($1)"');
+        textarea.value = formatted;
     } catch (e) {
         showModal('JSON Error', 'Invalid JSON: ' + e.message);
     }
@@ -288,13 +421,15 @@ function generateKarateFeature() {
             return;
         }
 
-        // Validate JSON
+        // Validate JSON (skip validation for fields with Karate variables)
         let requestJson = null;
         let responseJson = null;
 
         if (data.request) {
             try {
-                requestJson = JSON.parse(data.request);
+                // Temporarily replace Karate variables for validation
+                const tempRequest = data.request.replace(/"#\(\w+\)"/g, '"__TEMP__"');
+                requestJson = JSON.parse(tempRequest);
             } catch (e) {
                 showModal('JSON Error', `Scenario #${scenario.id + 1} invalid request JSON: ${e.message}`);
                 return;
@@ -381,14 +516,14 @@ function buildKarateFeature(config) {
             feature += `  # Arrange: Set up the request\n`;
         }
 
-        // Set path
+        // Set path (handle Karate variable syntax)
         feature += `  * def endpoint = '${scenario.endpoint}'\n`;
 
         // Set request body if present
-        if (scenario.requestJson) {
+        if (scenario.request) {
             feature += `  * def requestBody =\n`;
             feature += `    """\n`;
-            feature += indentJSON(scenario.requestJson, 4);
+            feature += indentText(scenario.request, 4);
             feature += `    """\n`;
         }
 
@@ -397,7 +532,7 @@ function buildKarateFeature(config) {
         }
 
         // Make the request
-        if (scenario.requestJson && ['POST', 'PUT', 'PATCH'].includes(scenario.method)) {
+        if (scenario.request && ['POST', 'PUT', 'PATCH'].includes(scenario.method)) {
             feature += `  Given path endpoint\n`;
             feature += `  And request requestBody\n`;
             feature += `  When method ${scenario.method}\n`;
@@ -426,6 +561,16 @@ function buildKarateFeature(config) {
             feature += `    """\n`;
         }
 
+        // Extract variables
+        if (scenario.extractVars && scenario.extractVars.length > 0) {
+            if (config.includeComments) {
+                feature += `\n  # Extract variables for use in subsequent scenarios\n`;
+            }
+            scenario.extractVars.forEach(v => {
+                feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+            });
+        }
+
         // Add schema validation examples for first scenario only
         if (index === 0 && config.includeComments) {
             feature += `\n  # Additional validation examples (uncomment as needed):\n`;
@@ -443,6 +588,12 @@ function buildKarateFeature(config) {
 function indentJSON(json, spaces) {
     const jsonString = JSON.stringify(json, null, 2);
     const lines = jsonString.split('\n');
+    return lines.map(line => ' '.repeat(spaces) + line).join('\n') + '\n';
+}
+
+// Indent text (for request payloads that might have Karate syntax)
+function indentText(text, spaces) {
+    const lines = text.split('\n');
     return lines.map(line => ' '.repeat(spaces) + line).join('\n') + '\n';
 }
 
@@ -480,7 +631,7 @@ function loadSampleData() {
     scenarioCounter = 0;
     document.getElementById('scenariosList').innerHTML = '';
 
-    // Add sample scenario 1 - Create User
+    // Add sample scenario 1 - Create User (extracts userId)
     addScenario({
         id: 0,
         name: 'Create a new user',
@@ -501,15 +652,18 @@ function loadSampleData() {
             "role": "developer",
             "status": "active",
             "createdAt": "2024-01-15T10:30:00Z"
-        }, null, 2)
+        }, null, 2),
+        extractVars: [
+            { varName: 'userId', jsonPath: 'response.id' }
+        ]
     });
 
-    // Add sample scenario 2 - Get User
+    // Add sample scenario 2 - Get User (uses userId from scenario 1)
     addScenario({
         id: 1,
         name: 'Get user by ID',
         method: 'GET',
-        endpoint: '/api/users/12345',
+        endpoint: '/api/users/#(userId)',
         status: 200,
         request: '',
         response: JSON.stringify({
@@ -521,15 +675,16 @@ function loadSampleData() {
             "status": "active",
             "createdAt": "2024-01-15T10:30:00Z",
             "updatedAt": "2024-01-15T10:30:00Z"
-        }, null, 2)
+        }, null, 2),
+        extractVars: []
     });
 
-    // Add sample scenario 3 - Update User
+    // Add sample scenario 3 - Update User (uses userId from scenario 1)
     addScenario({
         id: 2,
         name: 'Update user details',
         method: 'PUT',
-        endpoint: '/api/users/12345',
+        endpoint: '/api/users/#(userId)',
         status: 200,
         request: JSON.stringify({
             "age": 31,
@@ -543,10 +698,11 @@ function loadSampleData() {
             "role": "senior developer",
             "status": "active",
             "updatedAt": "2024-01-16T14:20:00Z"
-        }, null, 2)
+        }, null, 2),
+        extractVars: []
     });
 
-    showModal('Success', 'Sample data with 3 scenarios loaded! Click "Generate Feature File" to see the result.');
+    showModal('Success', 'Sample data with variable chaining loaded! Notice how userId from Scenario 1 is used in Scenarios 2 & 3.');
 }
 
 // Copy to Clipboard
