@@ -1049,11 +1049,7 @@ function parseCSVLine(line, delimiter = ',') {
     return result;
 }
 
-// Show alert modal (using global function from base.html if available)
+// Show alert modal (using global showModal function from base.html)
 function showAlert(title, message) {
-    if (typeof showAlertModal === 'function') {
-        showAlertModal(title, message);
-    } else {
-        alert(message);
-    }
+    showModal(title, message);
 }

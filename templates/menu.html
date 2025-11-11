@@ -93,12 +93,12 @@
                 }
             } else if (data.error) {
                 console.error('Error setting default app:', data.error);
-                alert('Failed to set default app: ' + data.error);
+                showModal('Error', 'Failed to set default app: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to set default app. Please try again.');
+            showModal('Error', 'Failed to set default app. Please try again.');
         });
     }
 

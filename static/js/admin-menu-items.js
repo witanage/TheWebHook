@@ -27,12 +27,12 @@ function editMenuItem(itemId) {
                 document.getElementById('itemOrder').value = item.display_order;
                 document.getElementById('menuItemModal').classList.add('active');
             } else {
-                alert('Error: ' + (data.error || 'Failed to load menu item'));
+                showModal('Error', data.error || 'Failed to load menu item');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to load menu item');
+            showModal('Error', 'Failed to load menu item');
         });
 }
 
@@ -64,40 +64,43 @@ function saveMenuItem(event) {
             closeMenuItemModal();
             location.reload();
         } else {
-            alert('Error: ' + (result.error || 'Failed to save menu item'));
+            showModal('Error', result.error || 'Failed to save menu item');
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to save menu item');
+        showModal('Error', 'Failed to save menu item');
     });
 }
 
 function deleteMenuItem(itemId) {
-    if (!confirm('Are you sure you want to delete this menu item? This action cannot be undone.')) {
-        return;
-    }
-
-    fetch(`/api/menu-items/${itemId}`, {
-        method: 'DELETE'
-    })
-    .then(response => response.json())
-    .then(result => {
-        if (result.success) {
-            // Remove the row from the table immediately
-            const row = document.querySelector(`tr[data-id="${itemId}"]`);
-            if (row) {
-                row.remove();
-            }
-            alert('Menu item deleted successfully');
-        } else {
-            alert('Error: ' + (result.error || 'Failed to delete menu item'));
+    showConfirmModal(
+        'Delete Menu Item',
+        'Are you sure you want to delete this menu item? This action cannot be undone.',
+        function() {
+            // User confirmed deletion
+            fetch(`/api/menu-items/${itemId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    // Remove the row from the table immediately
+                    const row = document.querySelector(`tr[data-id="${itemId}"]`);
+                    if (row) {
+                        row.remove();
+                    }
+                    showModal('Success', 'Menu item deleted successfully');
+                } else {
+                    showModal('Error', result.error || 'Failed to delete menu item');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showModal('Error', 'Failed to delete menu item');
+            });
         }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to delete menu item');
-    });
+    );
 }
 
 // Close modal when clicking outside
