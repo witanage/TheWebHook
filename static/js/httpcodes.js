@@ -318,6 +318,12 @@ async function resetSequenceEndpoint(endpointId) {
 
             if (data.success) {
                 await loadSequenceEndpoints();
+
+                // Show appropriate message based on response
+                if (data.message) {
+                    const title = data.message.includes('already') ? 'Info' : 'Success';
+                    showModal(title, data.message);
+                }
             } else {
                 showModal('Error', data.error);
             }

@@ -1300,6 +1300,21 @@ def reset_sequence_endpoint(endpoint_id):
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
+            # First check if endpoint exists
+            cursor.execute("""
+                SELECT id, current_index FROM sequence_endpoints
+                WHERE user_id = %s AND id = %s
+            """, (user_id, endpoint_id))
+            endpoint = cursor.fetchone()
+
+            if not endpoint:
+                return jsonify({"success": False, "error": "Endpoint not found"}), 404
+
+            # Check if already at beginning
+            if endpoint['current_index'] == 0:
+                return jsonify({"success": True, "message": "Sequence is already at the beginning"})
+
+            # Reset to beginning
             cursor.execute("""
                 UPDATE sequence_endpoints
                 SET current_index = 0
@@ -1307,10 +1322,7 @@ def reset_sequence_endpoint(endpoint_id):
             """, (user_id, endpoint_id))
             conn.commit()
 
-            if cursor.rowcount == 0:
-                return jsonify({"success": False, "error": "Endpoint not found"}), 404
-
-            return jsonify({"success": True})
+            return jsonify({"success": True, "message": "Sequence reset to beginning"})
     except Exception as e:
         conn.rollback()
         log(f"Error resetting sequence endpoint: {str(e)}")
