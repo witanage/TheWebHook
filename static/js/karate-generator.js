@@ -29,8 +29,18 @@ function addScenario(data = null) {
         status: 200,
         request: '',
         response: '',
-        extractVars: [] // Array of {varName: 'userId', jsonPath: 'response.id'}
+        extractVars: [], // Array of {varName: 'userId', jsonPath: 'response.id'}
+        sourceScenarioId: null, // null means not a duplicate
+        duplicateNumber: null   // null means not a duplicate
     };
+
+    // Ensure duplicate tracking fields exist
+    if (scenarioData.sourceScenarioId === undefined) {
+        scenarioData.sourceScenarioId = null;
+    }
+    if (scenarioData.duplicateNumber === undefined) {
+        scenarioData.duplicateNumber = null;
+    }
 
     scenarios.push(scenarioData);
 
@@ -94,9 +104,26 @@ function createScenarioCard(data) {
         </div>
     `).join('');
 
+    // Calculate scenario number text with duplicate tracking
+    let scenarioNumberText;
+    if (data.sourceScenarioId !== null && data.duplicateNumber !== null) {
+        // This is a duplicate - find the display position of the source scenario
+        const sourceScenarioIndex = scenarios.findIndex(s => s.id === data.sourceScenarioId);
+        if (sourceScenarioIndex !== -1) {
+            scenarioNumberText = `Scenario #${sourceScenarioIndex + 1} (Duplicate ${data.duplicateNumber})`;
+        } else {
+            // Source scenario was deleted, fall back to just showing it's a duplicate
+            scenarioNumberText = `Scenario (Duplicate ${data.duplicateNumber})`;
+        }
+    } else {
+        // Original scenario - find its display position
+        const currentIndex = scenarios.findIndex(s => s.id === data.id);
+        scenarioNumberText = `Scenario #${currentIndex + 1}`;
+    }
+
     card.innerHTML = `
         <div class="scenario-card-header">
-            <span class="scenario-number">Scenario #${data.id + 1}</span>
+            <span class="scenario-number">${scenarioNumberText}</span>
             <div class="scenario-actions">
                 <button class="btn-duplicate" onclick="duplicateScenario(${data.id})" title="Duplicate">
                     📋 Duplicate
@@ -258,10 +285,18 @@ function duplicateScenario(id) {
     const scenarioData = collectScenarioData(id);
     if (!scenarioData) return;
 
-    // Create new scenario with same data but different name
+    // Determine the source scenario ID (handle duplicating a duplicate)
+    const sourceId = scenario.sourceScenarioId !== null ? scenario.sourceScenarioId : id;
+
+    // Count existing duplicates of this source
+    const existingDuplicates = scenarios.filter(s => s.sourceScenarioId === sourceId);
+    const nextDuplicateNumber = existingDuplicates.length + 1;
+
+    // Create new scenario with duplicate metadata
     addScenario({
         ...scenarioData,
-        name: scenarioData.name + ' (Copy)'
+        sourceScenarioId: sourceId,
+        duplicateNumber: nextDuplicateNumber
     });
 
     showModal('Success', 'Scenario duplicated successfully!');
@@ -292,10 +327,29 @@ function removeScenario(id) {
 
 // Update scenario numbers after removal
 function updateScenarioNumbers() {
-    document.querySelectorAll('.scenario-card').forEach((card, index) => {
+    document.querySelectorAll('.scenario-card').forEach((card) => {
+        const scenarioId = parseInt(card.dataset.scenarioId);
+        const scenario = scenarios.find(s => s.id === scenarioId);
+        if (!scenario) return;
+
         const numberSpan = card.querySelector('.scenario-number');
         if (numberSpan) {
-            numberSpan.textContent = `Scenario #${index + 1}`;
+            let scenarioNumberText;
+            if (scenario.sourceScenarioId !== null && scenario.duplicateNumber !== null) {
+                // This is a duplicate
+                const sourceScenarioIndex = scenarios.findIndex(s => s.id === scenario.sourceScenarioId);
+                if (sourceScenarioIndex !== -1) {
+                    scenarioNumberText = `Scenario #${sourceScenarioIndex + 1} (Duplicate ${scenario.duplicateNumber})`;
+                } else {
+                    // Source scenario was deleted
+                    scenarioNumberText = `Scenario (Duplicate ${scenario.duplicateNumber})`;
+                }
+            } else {
+                // Original scenario
+                const currentIndex = scenarios.findIndex(s => s.id === scenario.id);
+                scenarioNumberText = `Scenario #${currentIndex + 1}`;
+            }
+            numberSpan.textContent = scenarioNumberText;
         }
     });
 }
