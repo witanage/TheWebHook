@@ -9,6 +9,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add first scenario by default
     addScenario();
 
+    // Environment URL checkbox handler
+    const useEnvUrlCheckbox = document.getElementById('useEnvUrl');
+    const envUrlConfig = document.getElementById('envUrlConfig');
+    const envUrlDomain = document.getElementById('envUrlDomain');
+    const domainPreview = document.getElementById('domainPreview');
+
+    useEnvUrlCheckbox.addEventListener('change', function() {
+        envUrlConfig.style.display = this.checked ? 'block' : 'none';
+    });
+
+    envUrlDomain.addEventListener('input', function() {
+        domainPreview.textContent = this.value || '.abc.com/api';
+    });
+
     // Keyboard shortcuts
     document.addEventListener('keydown', function(e) {
         if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -535,6 +549,8 @@ function generateKarateFeature() {
     // Get feature-level configuration
     const featureName = document.getElementById('featureName').value.trim();
     const baseUrl = document.getElementById('baseUrl').value.trim();
+    const useEnvUrl = document.getElementById('useEnvUrl').checked;
+    const envUrlDomain = document.getElementById('envUrlDomain').value.trim();
     const includeHeaders = document.getElementById('includeHeaders').checked;
     const includeAuth = document.getElementById('includeAuth').checked;
     const strictValidation = document.getElementById('strictValidation').checked;
@@ -543,6 +559,12 @@ function generateKarateFeature() {
     // Validate feature name
     if (!featureName) {
         showModal('Validation Error', 'Feature name is required');
+        return;
+    }
+
+    // Validate environment URL configuration
+    if (useEnvUrl && !envUrlDomain) {
+        showModal('Validation Error', 'URL Pattern is required when using environment-based URL');
         return;
     }
 
@@ -600,6 +622,8 @@ function generateKarateFeature() {
     generatedFeature = buildKarateFeature({
         featureName,
         baseUrl,
+        useEnvUrl,
+        envUrlDomain,
         includeHeaders,
         includeAuth,
         strictValidation,
@@ -629,10 +653,14 @@ function buildKarateFeature(config) {
     }
 
     // Background (optional)
-    if (config.baseUrl || config.includeHeaders || config.includeAuth) {
+    if (config.useEnvUrl || config.baseUrl || config.includeHeaders || config.includeAuth) {
         feature += `Background:\n`;
 
-        if (config.baseUrl) {
+        // Environment-based URL or static URL
+        if (config.useEnvUrl && config.envUrlDomain) {
+            feature += `  * def env = karate.properties['env']\n`;
+            feature += `  Given url 'https://' + env + '${config.envUrlDomain}'\n`;
+        } else if (config.baseUrl) {
             feature += `  * url '${config.baseUrl}'\n`;
         }
 
@@ -758,6 +786,9 @@ function clearAll() {
     showConfirmModal('Clear All', 'Are you sure you want to clear all scenarios and configuration?', () => {
         document.getElementById('featureName').value = 'API Test';
         document.getElementById('baseUrl').value = '';
+        document.getElementById('useEnvUrl').checked = false;
+        document.getElementById('envUrlDomain').value = '';
+        document.getElementById('envUrlConfig').style.display = 'none';
         document.getElementById('includeHeaders').checked = true;
         document.getElementById('includeAuth').checked = false;
         document.getElementById('strictValidation').checked = true;

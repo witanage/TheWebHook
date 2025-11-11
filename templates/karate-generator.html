@@ -36,6 +36,9 @@
                 <div class="form-group form-group-wide">
                     <label for="baseUrl">Base URL (Optional)</label>
                     <input type="text" id="baseUrl" placeholder="e.g., https://api.example.com">
+                    <small style="color: var(--text-secondary); font-size: 12px; margin-top: 4px; display: block;">
+                        Leave empty if using environment-based URL below
+                    </small>
                 </div>
             </div>
         </div>
@@ -45,6 +48,20 @@
             <details>
                 <summary>Feature-Level Options</summary>
                 <div class="advanced-content">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="useEnvUrl">
+                            Use Environment-Based URL
+                        </label>
+                    </div>
+                    <div class="form-group" id="envUrlConfig" style="display: none; margin-left: 24px;">
+                        <label for="envUrlDomain" style="font-size: 13px;">URL Pattern</label>
+                        <input type="text" id="envUrlDomain" placeholder="e.g., .abc.com/api" style="margin-top: 4px;">
+                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">
+                            Will generate: * def env = karate.properties['env']<br>
+                            Given url 'https://' + env + '<span id="domainPreview">.abc.com/api</span>'
+                        </small>
+                    </div>
                     <div class="form-group">
                         <label>
                             <input type="checkbox" id="includeHeaders" checked>
