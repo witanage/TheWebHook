@@ -84,3 +84,40 @@
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/json-compare.js') }}"></script>
 {% endblock %}
+
+{% block about_title %}About JSON Comparison Tool{% endblock %}
+
+{% block about_content %}
+<h4>JSON Comparison Tool</h4>
+<p>Compare two JSON objects and visualize their differences with color-coded highlighting.</p>
+
+<h5>Key Features</h5>
+<ul style="margin-left: 20px; line-height: 1.8;">
+    <li><strong>Side-by-Side Comparison</strong> - View JSON objects in parallel for easy comparison</li>
+    <li><strong>Visual Diff Highlighting</strong> - Color-coded additions (green), removals (red), and changes (yellow)</li>
+    <li><strong>Format & Validate</strong> - Auto-format and validate JSON syntax with error detection</li>
+    <li><strong>Sample Data</strong> - Load sample JSON for testing and demonstration</li>
+    <li><strong>Statistics</strong> - Real-time count of added, removed, and changed fields</li>
+    <li><strong>Editable Panels</strong> - Directly edit JSON in the browser</li>
+    <li><strong>Nested Object Support</strong> - Handles complex nested JSON structures</li>
+</ul>
+
+<h5>How to Use</h5>
+<ol style="margin-left: 20px; line-height: 1.8;">
+    <li>Paste or type your first JSON object in the left panel (JSON 1)</li>
+    <li>Paste or type your second JSON object in the right panel (JSON 2)</li>
+    <li>Click "Compare" to see the differences</li>
+    <li>Use "Format JSON" to auto-format and validate your JSON</li>
+    <li>Click "Load Sample" to see an example comparison</li>
+    <li>Review the color-coded differences and statistics</li>
+</ol>
+
+<h5>Color Legend</h5>
+<ul style="margin-left: 20px; line-height: 1.8;">
+    <li><strong style="color: #28a745;">Green</strong> - Fields added in JSON 2</li>
+    <li><strong style="color: #dc3545;">Red</strong> - Fields removed in JSON 2</li>
+    <li><strong style="color: #ffc107;">Yellow</strong> - Fields with changed values</li>
+</ul>
+
+<p style="margin-top: 15px;"><strong>Version:</strong> 1.0</p>
+{% endblock %}
