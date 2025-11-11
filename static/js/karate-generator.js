@@ -21,7 +21,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // Add new scenario
 function addScenario(data = null) {
     const id = scenarioCounter++;
-    const scenarioData = data || {
+    const scenarioData = data ? {
+        ...data,
+        id: id  // Always override with new unique ID
+    } : {
         id: id,
         name: '',
         method: 'GET',
