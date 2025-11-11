@@ -78,6 +78,191 @@
     cursor: pointer;
 }
 
+.form-group-wide {
+    grid-column: 1 / -1;
+}
+
+/* Scenarios Section */
+.scenarios-section {
+    background: var(--card-bg);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px var(--shadow-color);
+}
+
+.scenarios-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.btn-add-scenario {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-add-scenario:hover {
+    background: var(--primary-color-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px var(--primary-color-alpha);
+}
+
+.scenarios-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Scenario Card */
+.scenario-card {
+    background: var(--input-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    position: relative;
+    transition: all 0.2s;
+}
+
+.scenario-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px var(--primary-color-alpha);
+}
+
+.scenario-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.scenario-number {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.scenario-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-duplicate,
+.btn-remove {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.btn-duplicate {
+    color: var(--primary-color);
+}
+
+.btn-duplicate:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.btn-remove {
+    color: var(--danger-color, #dc3545);
+}
+
+.btn-remove:hover {
+    background: var(--danger-color, #dc3545);
+    color: white;
+    border-color: var(--danger-color, #dc3545);
+}
+
+.scenario-config {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.scenario-payloads {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 968px) {
+    .scenario-payloads {
+        grid-template-columns: 1fr;
+    }
+}
+
+.scenario-payload-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.scenario-payload-group label {
+    margin-bottom: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scenario-payload-group textarea {
+    min-height: 200px;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.scenario-payload-group textarea:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px var(--primary-color-alpha);
+}
+
+.scenario-payload-group textarea::placeholder {
+    color: var(--text-muted);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-state p {
+    margin: 0 0 16px 0;
+    font-size: 15px;
+}
+
 /* Payload Panels */
 .payload-panels {
     display: grid;

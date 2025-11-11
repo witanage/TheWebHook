@@ -19,99 +19,31 @@
 {% block content %}
 <div class="karate-container">
     <div class="page-header">
-        <p class="page-description">Generate Karate API test feature files from your request and response payloads</p>
+        <p class="page-description">Generate Karate API test feature files with multiple scenarios</p>
     </div>
 
     <div class="input-section">
+        <!-- Feature-Level Configuration -->
         <div class="config-panel">
-            <h3 class="section-title">Test Configuration</h3>
+            <h3 class="section-title">Feature Configuration</h3>
 
             <div class="form-grid">
-                <div class="form-group">
+                <div class="form-group form-group-wide">
                     <label for="featureName">Feature Name</label>
-                    <input type="text" id="featureName" placeholder="e.g., User API Tests" value="API Test">
+                    <input type="text" id="featureName" placeholder="e.g., User Management API Tests" value="API Test">
                 </div>
 
-                <div class="form-group">
-                    <label for="scenarioName">Scenario Name</label>
-                    <input type="text" id="scenarioName" placeholder="e.g., Get user details" value="Test API Endpoint">
-                </div>
-
-                <div class="form-group">
-                    <label for="httpMethod">HTTP Method</label>
-                    <select id="httpMethod">
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                        <option value="PUT">PUT</option>
-                        <option value="DELETE">DELETE</option>
-                        <option value="PATCH">PATCH</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="endpoint">Endpoint Path</label>
-                    <input type="text" id="endpoint" placeholder="e.g., /api/users/123" value="/api/endpoint">
-                </div>
-
-                <div class="form-group">
+                <div class="form-group form-group-wide">
                     <label for="baseUrl">Base URL (Optional)</label>
                     <input type="text" id="baseUrl" placeholder="e.g., https://api.example.com">
                 </div>
-
-                <div class="form-group">
-                    <label for="expectedStatus">Expected Status Code</label>
-                    <input type="number" id="expectedStatus" value="200" min="100" max="599">
-                </div>
             </div>
         </div>
 
-        <div class="payload-panels">
-            <div class="payload-panel">
-                <div class="panel-header">
-                    <h3>Request Payload (Optional)</h3>
-                    <div class="header-actions">
-                        <button class="btn-icon" onclick="formatRequestJSON()" title="Format JSON">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="16 18 22 12 16 6"></polyline>
-                                <polyline points="8 6 2 12 8 18"></polyline>
-                            </svg>
-                        </button>
-                        <button class="btn-icon" onclick="clearRequest()" title="Clear">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <textarea id="requestPayload" class="json-input" placeholder='Enter request JSON payload (for POST/PUT/PATCH)&#10;Example:&#10;{&#10;  "name": "John Doe",&#10;  "email": "john@example.com"&#10;}'></textarea>
-            </div>
-
-            <div class="payload-panel">
-                <div class="panel-header">
-                    <h3>Response Payload</h3>
-                    <div class="header-actions">
-                        <button class="btn-icon" onclick="formatResponseJSON()" title="Format JSON">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="16 18 22 12 16 6"></polyline>
-                                <polyline points="8 6 2 12 8 18"></polyline>
-                            </svg>
-                        </button>
-                        <button class="btn-icon" onclick="clearResponse()" title="Clear">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="18" y1="6" x2="6" y2="18"></line>
-                                <line x1="6" y1="6" x2="18" y2="18"></line>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-                <textarea id="responsePayload" class="json-input" placeholder='Enter expected response JSON payload&#10;Example:&#10;{&#10;  "id": 123,&#10;  "name": "John Doe",&#10;  "email": "john@example.com",&#10;  "status": "active"&#10;}'></textarea>
-            </div>
-        </div>
-
+        <!-- Advanced Options -->
         <div class="advanced-options">
             <details>
-                <summary>Advanced Options</summary>
+                <summary>Feature-Level Options</summary>
                 <div class="advanced-content">
                     <div class="form-group">
                         <label>
@@ -139,6 +71,24 @@
                     </div>
                 </div>
             </details>
+        </div>
+
+        <!-- Scenarios Section -->
+        <div class="scenarios-section">
+            <div class="scenarios-header">
+                <h3 class="section-title">Scenarios</h3>
+                <button class="btn-add-scenario" onclick="addScenario()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Scenario
+                </button>
+            </div>
+
+            <div id="scenariosList" class="scenarios-list">
+                <!-- Scenarios will be added here dynamically -->
+            </div>
         </div>
 
         <div class="action-buttons">
@@ -190,12 +140,13 @@
 {% block about_content %}
 <section class="about-section">
     <h4>🥋 Karate Feature File Generator</h4>
-    <p>Automatically generate Karate API test feature files from your request and response payloads. Perfect for quickly creating API test automation scripts.</p>
+    <p>Automatically generate Karate API test feature files with multiple scenarios from your request and response payloads. Perfect for quickly creating comprehensive API test automation scripts.</p>
 </section>
 
 <section class="about-section">
     <h5>✨ Key Features</h5>
     <ul class="feature-list">
+        <li><strong>Multiple Scenarios</strong> - Add unlimited scenarios to a single feature file</li>
         <li><strong>Quick Generation</strong> - Create feature files in seconds from JSON payloads</li>
         <li><strong>All HTTP Methods</strong> - Support for GET, POST, PUT, DELETE, PATCH</li>
         <li><strong>Schema Validation</strong> - Automatic schema matching for response validation</li>
@@ -209,9 +160,16 @@
 <section class="about-section">
     <h5>🚀 How to Use</h5>
     <ol>
-        <li>Fill in the test configuration (feature name, scenario, method, endpoint)</li>
-        <li>Enter your request payload (optional, for POST/PUT/PATCH)</li>
-        <li>Enter your expected response payload</li>
+        <li>Fill in the feature configuration (feature name, base URL)</li>
+        <li>Click "Add Scenario" to add your first test scenario</li>
+        <li>For each scenario:
+            <ul>
+                <li>Enter scenario name, method, endpoint, and expected status</li>
+                <li>Add request payload (optional, for POST/PUT/PATCH)</li>
+                <li>Add expected response payload</li>
+            </ul>
+        </li>
+        <li>Add more scenarios as needed using the "Add Scenario" button</li>
         <li>Click "Generate Feature File"</li>
         <li>Copy to clipboard or download the generated .feature file</li>
     </ol>
@@ -225,10 +183,10 @@
 <section class="about-section">
     <h5>📝 Generated Features</h5>
     <ul class="feature-list">
-        <li>Feature and Scenario descriptions</li>
+        <li>Feature and multiple scenario descriptions</li>
         <li>Given, When, Then BDD syntax</li>
-        <li>Request method and endpoint</li>
-        <li>Request body (if provided)</li>
+        <li>Request methods and endpoints for each scenario</li>
+        <li>Request bodies (if provided)</li>
         <li>Response status validation</li>
         <li>Response schema matching</li>
         <li>Optional headers and authentication</li>
