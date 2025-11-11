@@ -393,6 +393,123 @@
     font-size: 1.2em;
 }
 
+/* Insights Panel */
+.insights {
+    background: var(--bg-secondary);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    padding: 20px;
+    margin-bottom: 1.5rem;
+}
+
+.insights-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.insight-section {
+    background: var(--bg-primary);
+    padding: 15px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+}
+
+.insight-section h3 {
+    margin: 0 0 15px 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.insight-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.insight-item {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: var(--radius);
+    background: var(--bg-tertiary);
+    border-left: 4px solid var(--border-color);
+    line-height: 1.6;
+}
+
+.insight-item.info {
+    border-left-color: var(--accent-color);
+}
+
+.insight-item.warning {
+    border-left-color: #ff9800;
+    background: rgba(255, 152, 0, 0.1);
+}
+
+.insight-item.error {
+    border-left-color: var(--danger-color);
+    background: rgba(220, 53, 69, 0.1);
+}
+
+.insight-item.recommendation {
+    border-left-color: var(--success-color);
+    background: rgba(40, 167, 69, 0.1);
+}
+
+.insight-section.summary {
+    background: linear-gradient(135deg, var(--bg-tertiary) 0%, var(--bg-primary) 100%);
+    border: 2px solid var(--accent-color);
+}
+
+.insight-section.summary p {
+    font-size: 1.1rem;
+    color: var(--text-primary);
+    margin: 0;
+    font-weight: 500;
+}
+
+/* Advanced options styling */
+.advanced-option {
+    background: var(--bg-tertiary);
+    padding: 8px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s;
+}
+
+.advanced-option:hover {
+    background: var(--bg-quaternary);
+    border-color: var(--accent-color);
+}
+
+/* Enhanced change badges */
+.badge-fuzzy {
+    background: #9c27b0;
+    color: white;
+}
+
+.badge-unchanged {
+    background: var(--accent-color);
+    color: white;
+}
+
+/* Fuzzy match row styling */
+.row-fuzzy {
+    background: rgba(156, 39, 176, 0.15) !important;
+}
+
+/* Change detail styling */
+.change-detail {
+    display: block;
+    font-size: 12px;
+    color: var(--accent-color);
+    font-style: italic;
+    margin-top: 4px;
+    font-weight: bold;
+}
+
 /* Export Section */
 .export-section {
     padding: 20px;

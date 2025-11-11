@@ -62,8 +62,15 @@
         </button>
 
         <select class="key-column-selector" id="keyColumn" title="Select the column to use as unique identifier">
-            <option value="auto">Auto-detect Key Column</option>
+            <option value="auto">🔍 Auto-detect Key Column</option>
         </select>
+
+        <div class="filter-options">
+            <label class="advanced-option" title="Enable fuzzy matching to find similar records even when keys don't match exactly">
+                <input type="checkbox" id="useFuzzyMatching">
+                <span>🔍 Fuzzy Matching</span>
+            </label>
+        </div>
 
         <div class="filter-options">
             <label>
@@ -108,6 +115,8 @@
         <div class="spinner"></div>
         <p>Comparing log files...</p>
     </div>
+
+    <div class="insights" id="insights" style="display: none;"></div>
 
     <div class="results" id="results"></div>
 
