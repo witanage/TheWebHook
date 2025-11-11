@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Karate Feature Generator{% endblock %}
+
+{% block header_left %}
+<button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Menu
+</button>
+{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/karate-generator-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="karate-container">
+    <div class="page-header">
+        <p class="page-description">Generate Karate API test feature files with multiple scenarios</p>
+    </div>
+
+    <div class="input-section">
+        <!-- Feature-Level Configuration -->
+        <div class="config-panel">
+            <h3 class="section-title">Feature Configuration</h3>
+
+            <div class="form-grid">
+                <div class="form-group form-group-wide">
+                    <label for="featureName">Feature Name</label>
+                    <input type="text" id="featureName" placeholder="e.g., User Management API Tests" value="API Test">
+                </div>
+
+                <div class="form-group form-group-wide">
+                    <label for="baseUrl">Base URL (Optional)</label>
+                    <input type="text" id="baseUrl" placeholder="e.g., https://api.example.com">
+                    <small style="color: var(--text-secondary); font-size: 12px; margin-top: 4px; display: block;">
+                        Leave empty if using environment-based URL below
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Options -->
+        <div class="advanced-options">
+            <details>
+                <summary>Feature-Level Options</summary>
+                <div class="advanced-content">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="useEnvUrl">
+                            Use Environment-Based URL
+                        </label>
+                    </div>
+                    <div class="form-group" id="envUrlConfig" style="display: none; margin-left: 24px;">
+                        <label for="envUrlDomain" style="font-size: 13px;">URL Pattern</label>
+                        <input type="text" id="envUrlDomain" placeholder="e.g., .abc.com/api" style="margin-top: 4px;">
+                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">
+                            Will generate: * def env = karate.properties['env']<br>
+                            Given url 'https://' + env + '<span id="domainPreview">.abc.com/api</span>'
+                        </small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="includeHeaders" checked>
+                            Include Headers Section
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="includeAuth">
+                            Include Authentication
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="strictValidation" checked>
+                            Strict Schema Validation
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="includeComments" checked>
+                            Include Comments
+                        </label>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- Scenarios Section -->
+        <div class="scenarios-section">
+            <div class="scenarios-header">
+                <h3 class="section-title">Scenarios</h3>
+                <button class="btn-add-scenario" onclick="addScenario()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add Scenario
+                </button>
+            </div>
+
+            <div id="scenariosList" class="scenarios-list">
+                <!-- Scenarios will be added here dynamically -->
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn-primary" onclick="generateKarateFeature()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Generate Feature File
+            </button>
+            <button class="btn-secondary" onclick="loadSampleData()">Load Sample</button>
+            <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        </div>
+    </div>
+
+    <div class="output-section" id="outputSection" style="display: none;">
+        <div class="output-header">
+            <h3>Generated Karate Feature File</h3>
+            <div class="output-actions">
+                <button class="btn-success" onclick="copyToClipboard()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy to Clipboard
+                </button>
+                <button class="btn-success" onclick="downloadFeatureFile()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download .feature
+                </button>
+            </div>
+        </div>
+        <pre id="karateOutput" class="karate-output"></pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/karate-generator.js') }}"></script>
+{% endblock %}
+
+{% block about_title %}About Karate Feature Generator{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>🥋 Karate Feature File Generator</h4>
+    <p>Automatically generate Karate API test feature files with multiple scenarios from your request and response payloads. Perfect for quickly creating comprehensive API test automation scripts.</p>
+</section>
+
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Multiple Scenarios</strong> - Add unlimited scenarios to a single feature file</li>
+        <li><strong>Quick Generation</strong> - Create feature files in seconds from JSON payloads</li>
+        <li><strong>All HTTP Methods</strong> - Support for GET, POST, PUT, DELETE, PATCH</li>
+        <li><strong>Schema Validation</strong> - Automatic schema matching for response validation</li>
+        <li><strong>Smart Formatting</strong> - Automatic JSON formatting and validation</li>
+        <li><strong>Advanced Options</strong> - Headers, authentication, and strict validation support</li>
+        <li><strong>Copy & Download</strong> - Easy copy to clipboard or download as .feature file</li>
+        <li><strong>Sample Data</strong> - Pre-loaded examples to get started quickly</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <ol>
+        <li>Fill in the feature configuration (feature name, base URL)</li>
+        <li>Click "Add Scenario" to add your first test scenario</li>
+        <li>For each scenario:
+            <ul>
+                <li>Enter scenario name, method, endpoint, and expected status</li>
+                <li>Add request payload (optional, for POST/PUT/PATCH)</li>
+                <li>Add expected response payload</li>
+            </ul>
+        </li>
+        <li>Add more scenarios as needed using the "Add Scenario" button</li>
+        <li>Click "Generate Feature File"</li>
+        <li>Copy to clipboard or download the generated .feature file</li>
+    </ol>
+</section>
+
+<section class="about-section">
+    <h5>💡 What is Karate?</h5>
+    <p>Karate is an open-source unified test automation framework that combines API test-automation, mocks, performance-testing and UI automation into a single, unified framework. The syntax is language-neutral and easy for non-programmers.</p>
+</section>
+
+<section class="about-section">
+    <h5>📝 Generated Features</h5>
+    <ul class="feature-list">
+        <li>Feature and multiple scenario descriptions</li>
+        <li>Given, When, Then BDD syntax</li>
+        <li>Request methods and endpoints for each scenario</li>
+        <li>Request bodies (if provided)</li>
+        <li>Response status validation</li>
+        <li>Response schema matching</li>
+        <li>Optional headers and authentication</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
+{% endblock %}
