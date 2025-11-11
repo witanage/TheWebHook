@@ -86,8 +86,33 @@
                             Include Comments
                         </label>
                     </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="useEnvVariables">
+                            Use Environment-Specific Variables
+                        </label>
+                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">
+                            Define variables that change based on environment (e.g., userId, apiKey)
+                        </small>
+                    </div>
                 </div>
             </details>
+        </div>
+
+        <!-- Environment Variables Section -->
+        <div class="env-variables-section" id="envVariablesSection" style="display: none;">
+            <div class="section-header">
+                <h3 class="section-title">Environment-Specific Variables</h3>
+                <button class="btn-add-var" onclick="addEnvVariable()" title="Add Variable">
+                    ➕ Add Variable
+                </button>
+            </div>
+            <div id="envVariablesList" class="env-variables-list">
+                <div class="empty-vars-hint">No environment variables defined. Click "Add Variable" to define variables that change per environment.</div>
+            </div>
+            <div class="env-vars-help">
+                <small>💡 These variables will be read from <code>karate-config.js</code>. Use them in your requests/responses with <code>#(varName)</code> syntax.</small>
+            </div>
         </div>
 
         <!-- Scenarios Section -->

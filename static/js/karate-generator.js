@@ -3,6 +3,8 @@
 let generatedFeature = '';
 let scenarioCounter = 0;
 let scenarios = [];
+let envVariables = []; // Array of {name: 'userId', description: 'User ID for testing'}
+let envVarCounter = 0;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -21,6 +23,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     envUrlDomain.addEventListener('input', function() {
         domainPreview.textContent = this.value || '.abc.com/api';
+    });
+
+    // Environment variables checkbox handler
+    const useEnvVariablesCheckbox = document.getElementById('useEnvVariables');
+    const envVariablesSection = document.getElementById('envVariablesSection');
+
+    useEnvVariablesCheckbox.addEventListener('change', function() {
+        envVariablesSection.style.display = this.checked ? 'block' : 'none';
     });
 
     // Keyboard shortcuts
@@ -371,6 +381,67 @@ function removeAssertion(scenarioId, assertionIndex) {
     }
 }
 
+// Add environment variable
+function addEnvVariable() {
+    const id = envVarCounter++;
+    envVariables.push({ id, name: '', description: '' });
+
+    const list = document.getElementById('envVariablesList');
+
+    // Remove empty hint if it exists
+    const emptyHint = list.querySelector('.empty-vars-hint');
+    if (emptyHint) emptyHint.remove();
+
+    const varItem = document.createElement('div');
+    varItem.className = 'env-var-item';
+    varItem.dataset.envVarId = id;
+    varItem.innerHTML = `
+        <input type="text"
+               class="env-var-name"
+               placeholder="Variable name (e.g., userId)"
+               data-env-var-id="${id}">
+        <input type="text"
+               class="env-var-description"
+               placeholder="Description (e.g., Test user ID)"
+               data-env-var-id="${id}">
+        <button class="btn-remove-var" onclick="removeEnvVariable(${id})" title="Remove">✕</button>
+    `;
+    list.appendChild(varItem);
+}
+
+// Remove environment variable
+function removeEnvVariable(id) {
+    envVariables = envVariables.filter(v => v.id !== id);
+
+    const list = document.getElementById('envVariablesList');
+    const item = list.querySelector(`[data-env-var-id="${id}"]`);
+    if (item) {
+        item.remove();
+    }
+
+    // Show empty hint if no variables left
+    if (list.querySelectorAll('.env-var-item').length === 0) {
+        list.innerHTML = '<div class="empty-vars-hint">No environment variables defined. Click "Add Variable" to define variables that change per environment.</div>';
+    }
+}
+
+// Collect environment variables from form
+function collectEnvVariables() {
+    const variables = [];
+    const nameInputs = document.querySelectorAll('.env-var-name');
+    const descriptionInputs = document.querySelectorAll('.env-var-description');
+
+    nameInputs.forEach((nameInput, idx) => {
+        const name = nameInput.value.trim();
+        const description = descriptionInputs[idx]?.value.trim() || '';
+        if (name) {
+            variables.push({ name, description });
+        }
+    });
+
+    return variables;
+}
+
 // Duplicate scenario
 function duplicateScenario(id) {
     const scenario = scenarios.find(s => s.id === id);
@@ -568,6 +639,10 @@ function generateKarateFeature() {
         return;
     }
 
+    // Collect environment variables
+    const useEnvVariables = document.getElementById('useEnvVariables').checked;
+    const envVars = useEnvVariables ? collectEnvVariables() : [];
+
     // Collect all scenarios
     const scenarioDataList = [];
     for (const scenario of scenarios) {
@@ -624,6 +699,8 @@ function generateKarateFeature() {
         baseUrl,
         useEnvUrl,
         envUrlDomain,
+        useEnvVariables,
+        envVariables: envVars,
         includeHeaders,
         includeAuth,
         strictValidation,
@@ -652,8 +729,23 @@ function buildKarateFeature(config) {
         feature += `  # Scenarios: ${config.scenarios.length}\n\n`;
     }
 
+    // Add karate-config.js instructions for environment variables
+    if (config.useEnvVariables && config.envVariables && config.envVariables.length > 0 && config.includeComments) {
+        feature += `  # Configure environment-specific variables in karate-config.js:\n`;
+        feature += `  # function fn() {\n`;
+        feature += `  #   var env = karate.properties['env'] || 'dev';\n`;
+        feature += `  #   var config = {\n`;
+        config.envVariables.forEach(v => {
+            const comment = v.description ? ` // ${v.description}` : '';
+            feature += `  #     ${v.name}: karate.properties['${v.name}'] || getDefault${v.name}(env),${comment}\n`;
+        });
+        feature += `  #   };\n`;
+        feature += `  #   return config;\n`;
+        feature += `  # }\n\n`;
+    }
+
     // Background (optional)
-    if (config.useEnvUrl || config.baseUrl || config.includeHeaders || config.includeAuth) {
+    if (config.useEnvUrl || config.baseUrl || config.useEnvVariables || config.includeHeaders || config.includeAuth) {
         feature += `Background:\n`;
 
         // Environment-based URL or static URL
@@ -662,6 +754,17 @@ function buildKarateFeature(config) {
             feature += `  Given url 'https://' + env + '${config.envUrlDomain}'\n`;
         } else if (config.baseUrl) {
             feature += `  * url '${config.baseUrl}'\n`;
+        }
+
+        // Environment-specific variables
+        if (config.useEnvVariables && config.envVariables && config.envVariables.length > 0) {
+            if (config.includeComments) {
+                feature += `  # Read environment-specific variables from karate-config.js\n`;
+            }
+            config.envVariables.forEach(v => {
+                const comment = v.description ? ` # ${v.description}` : '';
+                feature += `  * def ${v.name} = karate.get('${v.name}')${comment}\n`;
+            });
         }
 
         if (config.includeHeaders) {
@@ -793,11 +896,18 @@ function clearAll() {
         document.getElementById('includeAuth').checked = false;
         document.getElementById('strictValidation').checked = true;
         document.getElementById('includeComments').checked = true;
+        document.getElementById('useEnvVariables').checked = false;
+        document.getElementById('envVariablesSection').style.display = 'none';
 
         // Clear all scenarios
         scenarios = [];
         scenarioCounter = 0;
         document.getElementById('scenariosList').innerHTML = '';
+
+        // Clear environment variables
+        envVariables = [];
+        envVarCounter = 0;
+        document.getElementById('envVariablesList').innerHTML = '<div class="empty-vars-hint">No environment variables defined. Click "Add Variable" to define variables that change per environment.</div>';
 
         // Add one empty scenario
         addScenario();
