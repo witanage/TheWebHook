@@ -195,55 +195,68 @@
 {% block about_title %}About HTTP Status Code Tester{% endblock %}
 
 {% block about_content %}
-<h4>HTTP Status Code Tester</h4>
-<p>Test and simulate different HTTP status codes with advanced sequence endpoint capabilities.</p>
+<section class="about-section">
+    <h4>🔧 HTTP Status Code Tester</h4>
+    <p>Test and simulate different HTTP status codes with advanced sequence endpoint capabilities for comprehensive API testing.</p>
+</section>
 
-<h5>Key Features</h5>
-<ul style="margin-left: 20px; line-height: 1.8;">
-    <li><strong>Complete Status Code Coverage</strong> - Support for all HTTP status codes (100-599)</li>
-    <li><strong>Multiple HTTP Methods</strong> - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</li>
-    <li><strong>Sequence Endpoints</strong> - Create powerful test sequences with custom HTTP codes, delays, and payloads</li>
-    <li><strong>Quick Links</strong> - One-click access to common status codes with copy-to-clipboard</li>
-    <li><strong>Request/Response Details</strong> - View complete HTTP transaction information</li>
-    <li><strong>Special Behaviors</strong> - Automatic handling of special headers (Location, WWW-Authenticate, Retry-After)</li>
-    <li><strong>Live Testing</strong> - Interactive test interface for immediate results</li>
-    <li><strong>Code Examples</strong> - Built-in curl examples and JSON response formats</li>
-</ul>
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Complete Status Code Coverage</strong> - Support for all HTTP status codes (100-599)</li>
+        <li><strong>Multiple HTTP Methods</strong> - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</li>
+        <li><strong>Sequence Endpoints</strong> - Create powerful test sequences with custom HTTP codes, delays, and payloads</li>
+        <li><strong>Quick Links</strong> - One-click access to common status codes with copy-to-clipboard</li>
+        <li><strong>Request/Response Details</strong> - View complete HTTP transaction information</li>
+        <li><strong>Special Behaviors</strong> - Automatic handling of special headers (Location, WWW-Authenticate, Retry-After)</li>
+        <li><strong>Live Testing</strong> - Interactive test interface for immediate results</li>
+        <li><strong>Code Examples</strong> - Built-in curl examples and JSON response formats</li>
+    </ul>
+</section>
 
-<h5>Sequence Endpoints</h5>
-<p>Create sophisticated test sequences for simulating complex scenarios:</p>
-<ul style="margin-left: 20px; line-height: 1.8;">
-    <li><strong>Custom Sequences</strong> - Define multiple steps with different HTTP codes</li>
-    <li><strong>Delay Simulation</strong> - Add delays (0-60000ms) between responses</li>
-    <li><strong>Custom Payloads</strong> - Return custom JSON payloads for each step</li>
-    <li><strong>Circular Rotation</strong> - Automatically cycles through steps</li>
-    <li><strong>Progress Tracking</strong> - See current step in the sequence</li>
-    <li><strong>Reset Capability</strong> - Reset sequence to start from beginning</li>
-</ul>
+<section class="about-section">
+    <h5>⚡ Sequence Endpoints</h5>
+    <p>Create sophisticated test sequences for simulating complex scenarios:</p>
+    <ul class="feature-list">
+        <li><strong>Custom Sequences</strong> - Define multiple steps with different HTTP codes</li>
+        <li><strong>Delay Simulation</strong> - Add delays (0-60000ms) between responses</li>
+        <li><strong>Custom Payloads</strong> - Return custom JSON payloads for each step</li>
+        <li><strong>Circular Rotation</strong> - Automatically cycles through steps</li>
+        <li><strong>Progress Tracking</strong> - See current step in the sequence</li>
+        <li><strong>Reset Capability</strong> - Reset sequence to start from beginning</li>
+    </ul>
+</section>
 
-<h5>How to Use</h5>
-<ol style="margin-left: 20px; line-height: 1.8;">
-    <li><strong>Simple Testing:</strong> Use /httpcode/&lt;code&gt; endpoint with any status code (100-599)</li>
-    <li><strong>Sequence Testing:</strong>
-        <ul style="margin-left: 20px;">
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <div class="info-card">
+        <p><strong>Simple Testing:</strong> Use /httpcode/&lt;code&gt; endpoint with any status code (100-599)</p>
+    </div>
+    <div class="info-card">
+        <p><strong>Sequence Testing:</strong></p>
+        <ol>
             <li>Create a new sequence endpoint with a unique name</li>
             <li>Add multiple steps with HTTP codes and delays</li>
             <li>Optionally add custom JSON payloads</li>
             <li>Use the generated endpoint URL for testing</li>
-        </ul>
-    </li>
-    <li><strong>Live Testing:</strong> Use the "Try it Live!" section to test any code instantly</li>
-    <li><strong>Copy URLs:</strong> Click copy icons next to common endpoints to get full URLs</li>
-</ol>
+        </ol>
+    </div>
+    <p><strong>Live Testing:</strong> Use the "Try it Live!" section to test any code instantly</p>
+    <p><strong>Copy URLs:</strong> Click copy icons next to common endpoints to get full URLs</p>
+</section>
 
-<h5>Special Status Codes</h5>
-<ul style="margin-left: 20px; line-height: 1.8;">
-    <li><strong>204</strong> - Returns empty response (No Content)</li>
-    <li><strong>301/302/307/308</strong> - Includes Location header</li>
-    <li><strong>401</strong> - Includes WWW-Authenticate header</li>
-    <li><strong>429</strong> - Includes Retry-After: 60 header</li>
-    <li><strong>503</strong> - Includes Retry-After: 120 header</li>
-</ul>
+<section class="about-section">
+    <h5>⚠️ Special Status Codes</h5>
+    <ul class="feature-list">
+        <li><strong>204</strong> - Returns empty response (No Content)</li>
+        <li><strong>301/302/307/308</strong> - Includes Location header</li>
+        <li><strong>401</strong> - Includes WWW-Authenticate header</li>
+        <li><strong>429</strong> - Includes Retry-After: 60 header</li>
+        <li><strong>503</strong> - Includes Retry-After: 120 header</li>
+    </ul>
+</section>
 
-<p style="margin-top: 15px;"><strong>Version:</strong> 1.0</p>
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
 {% endblock %}

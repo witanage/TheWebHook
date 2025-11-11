@@ -425,30 +425,38 @@
 {% block about_title %}About Webhook Viewer{% endblock %}
 
 {% block about_content %}
-<h4>Webhook Viewer</h4>
-<p>Real-time webhook monitoring and inspection tool for developers.</p>
+<section class="about-section">
+    <h4>📡 Webhook Viewer</h4>
+    <p>Real-time webhook monitoring and inspection tool for developers to test, debug, and analyze HTTP requests.</p>
+</section>
 
-<h5>Key Features</h5>
-<ul style="margin-left: 20px; line-height: 1.8;">
-    <li><strong>Live Updates</strong> - Instant webhook notifications via Server-Sent Events (SSE)</li>
-    <li><strong>Request Details</strong> - View complete headers, body, query parameters, and client IP</li>
-    <li><strong>Smart Organization</strong> - Automatic grouping by webhook IDs</li>
-    <li><strong>Advanced Search</strong> - Full-text search across all webhook data with highlighting</li>
-    <li><strong>Date Range Filtering</strong> - Filter webhooks by custom date ranges</li>
-    <li><strong>Export Options</strong> - Download webhooks in JSON, XML, or CSV formats</li>
-    <li><strong>Bulk Operations</strong> - Mark all as read, delete individual requests</li>
-    <li><strong>Connection Monitoring</strong> - Real-time connection status indicator</li>
-</ul>
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Live Updates</strong> - Instant webhook notifications via Server-Sent Events (SSE)</li>
+        <li><strong>Request Details</strong> - View complete headers, body, query parameters, and client IP</li>
+        <li><strong>Smart Organization</strong> - Automatic grouping by webhook IDs</li>
+        <li><strong>Advanced Search</strong> - Full-text search across all webhook data with highlighting</li>
+        <li><strong>Date Range Filtering</strong> - Filter webhooks by custom date ranges</li>
+        <li><strong>Export Options</strong> - Download webhooks in JSON, XML, or CSV formats</li>
+        <li><strong>Bulk Operations</strong> - Mark all as read, delete individual requests</li>
+        <li><strong>Connection Monitoring</strong> - Real-time connection status indicator</li>
+    </ul>
+</section>
 
-<h5>How to Use</h5>
-<ol style="margin-left: 20px; line-height: 1.8;">
-    <li>Copy your unique webhook URL from the "Create New Webhook ID" section</li>
-    <li>Send HTTP requests to your webhook URL from your application</li>
-    <li>View incoming requests in real-time in the main panel</li>
-    <li>Click on any request to view detailed information</li>
-    <li>Use search and filters to find specific webhooks</li>
-    <li>Export data for further analysis</li>
-</ol>
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <ol>
+        <li>Copy your unique webhook URL from the "Create New Webhook ID" section</li>
+        <li>Send HTTP requests to your webhook URL from your application</li>
+        <li>View incoming requests in real-time in the main panel</li>
+        <li>Click on any request to view detailed information</li>
+        <li>Use search and filters to find specific webhooks</li>
+        <li>Export data for further analysis</li>
+    </ol>
+</section>
 
-<p style="margin-top: 15px;"><strong>Version:</strong> 1.0</p>
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
 {% endblock %}

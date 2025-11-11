@@ -160,18 +160,26 @@
             <h3>{% block about_title %}About{% endblock %}</h3>
             <button class="modal-close" onclick="closeAboutModal()">✕</button>
         </div>
-        <div class="modal-content">
+        <div class="modal-content scrollable">
             {% block about_content %}
-            <h4>Developer Tools Dashboard</h4>
-            <p>A comprehensive multi-application dashboard for developers, providing essential tools for webhook monitoring, data comparison, and API testing.</p>
-            <h5>Available Tools</h5>
-            <ul style="margin-left: 20px; line-height: 1.8;">
-                <li><strong>Webhook Viewer</strong> - Real-time webhook monitoring and inspection</li>
-                <li><strong>JSON Comparison</strong> - Compare and visualize JSON differences</li>
-                <li><strong>HTTP Status Tester</strong> - Test different HTTP status codes</li>
-                <li><strong>AWS Log Comparison</strong> - Intelligent log analysis and comparison</li>
-            </ul>
-            <p style="margin-top: 15px;"><strong>Version:</strong> 1.0</p>
+            <section class="about-section">
+                <h4>Developer Tools Dashboard</h4>
+                <p>A comprehensive multi-application dashboard for developers, providing essential tools for webhook monitoring, data comparison, and API testing.</p>
+            </section>
+
+            <section class="about-section">
+                <h5>Available Tools</h5>
+                <ul class="feature-list">
+                    <li><strong>Webhook Viewer</strong> - Real-time webhook monitoring and inspection</li>
+                    <li><strong>JSON Comparison</strong> - Compare and visualize JSON differences</li>
+                    <li><strong>HTTP Status Tester</strong> - Test different HTTP status codes</li>
+                    <li><strong>AWS Log Comparison</strong> - Intelligent log analysis and comparison</li>
+                </ul>
+            </section>
+
+            <section class="about-section">
+                <p><strong>Version:</strong> 1.0</p>
+            </section>
             {% endblock %}
         </div>
         <div class="modal-footer">
