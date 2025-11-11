@@ -994,6 +994,17 @@ def aws_log_compare():
     return render_template("aws-log-compare.html", username=username)
 
 
+@app.route("/karate-generator")
+@login_required
+def karate_generator():
+    """Karate feature file generator page"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    is_admin = check_admin(user_id)
+    log(f"User {user_id} accessed Karate generator tool")
+    return render_template("karate-generator.html", username=username, is_admin=is_admin)
+
+
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def http_status_test(code):
     """

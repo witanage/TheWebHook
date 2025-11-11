@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Karate Feature Generator{% endblock %}
+
+{% block header_left %}
+<button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Menu
+</button>
+{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/karate-generator-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="karate-container">
+    <div class="page-header">
+        <p class="page-description">Generate Karate API test feature files from your request and response payloads</p>
+    </div>
+
+    <div class="input-section">
+        <div class="config-panel">
+            <h3 class="section-title">Test Configuration</h3>
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="featureName">Feature Name</label>
+                    <input type="text" id="featureName" placeholder="e.g., User API Tests" value="API Test">
+                </div>
+
+                <div class="form-group">
+                    <label for="scenarioName">Scenario Name</label>
+                    <input type="text" id="scenarioName" placeholder="e.g., Get user details" value="Test API Endpoint">
+                </div>
+
+                <div class="form-group">
+                    <label for="httpMethod">HTTP Method</label>
+                    <select id="httpMethod">
+                        <option value="GET">GET</option>
+                        <option value="POST">POST</option>
+                        <option value="PUT">PUT</option>
+                        <option value="DELETE">DELETE</option>
+                        <option value="PATCH">PATCH</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="endpoint">Endpoint Path</label>
+                    <input type="text" id="endpoint" placeholder="e.g., /api/users/123" value="/api/endpoint">
+                </div>
+
+                <div class="form-group">
+                    <label for="baseUrl">Base URL (Optional)</label>
+                    <input type="text" id="baseUrl" placeholder="e.g., https://api.example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="expectedStatus">Expected Status Code</label>
+                    <input type="number" id="expectedStatus" value="200" min="100" max="599">
+                </div>
+            </div>
+        </div>
+
+        <div class="payload-panels">
+            <div class="payload-panel">
+                <div class="panel-header">
+                    <h3>Request Payload (Optional)</h3>
+                    <div class="header-actions">
+                        <button class="btn-icon" onclick="formatRequestJSON()" title="Format JSON">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="16 18 22 12 16 6"></polyline>
+                                <polyline points="8 6 2 12 8 18"></polyline>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" onclick="clearRequest()" title="Clear">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <textarea id="requestPayload" class="json-input" placeholder='Enter request JSON payload (for POST/PUT/PATCH)&#10;Example:&#10;{&#10;  "name": "John Doe",&#10;  "email": "john@example.com"&#10;}'></textarea>
+            </div>
+
+            <div class="payload-panel">
+                <div class="panel-header">
+                    <h3>Response Payload</h3>
+                    <div class="header-actions">
+                        <button class="btn-icon" onclick="formatResponseJSON()" title="Format JSON">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="16 18 22 12 16 6"></polyline>
+                                <polyline points="8 6 2 12 8 18"></polyline>
+                            </svg>
+                        </button>
+                        <button class="btn-icon" onclick="clearResponse()" title="Clear">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <textarea id="responsePayload" class="json-input" placeholder='Enter expected response JSON payload&#10;Example:&#10;{&#10;  "id": 123,&#10;  "name": "John Doe",&#10;  "email": "john@example.com",&#10;  "status": "active"&#10;}'></textarea>
+            </div>
+        </div>
+
+        <div class="advanced-options">
+            <details>
+                <summary>Advanced Options</summary>
+                <div class="advanced-content">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="includeHeaders" checked>
+                            Include Headers Section
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="includeAuth">
+                            Include Authentication
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="strictValidation" checked>
+                            Strict Schema Validation
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="includeComments" checked>
+                            Include Comments
+                        </label>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <div class="action-buttons">
+            <button class="btn-primary" onclick="generateKarateFeature()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Generate Feature File
+            </button>
+            <button class="btn-secondary" onclick="loadSampleData()">Load Sample</button>
+            <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        </div>
+    </div>
+
+    <div class="output-section" id="outputSection" style="display: none;">
+        <div class="output-header">
+            <h3>Generated Karate Feature File</h3>
+            <div class="output-actions">
+                <button class="btn-success" onclick="copyToClipboard()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy to Clipboard
+                </button>
+                <button class="btn-success" onclick="downloadFeatureFile()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    Download .feature
+                </button>
+            </div>
+        </div>
+        <pre id="karateOutput" class="karate-output"></pre>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/karate-generator.js') }}"></script>
+{% endblock %}
+
+{% block about_title %}About Karate Feature Generator{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>🥋 Karate Feature File Generator</h4>
+    <p>Automatically generate Karate API test feature files from your request and response payloads. Perfect for quickly creating API test automation scripts.</p>
+</section>
+
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Quick Generation</strong> - Create feature files in seconds from JSON payloads</li>
+        <li><strong>All HTTP Methods</strong> - Support for GET, POST, PUT, DELETE, PATCH</li>
+        <li><strong>Schema Validation</strong> - Automatic schema matching for response validation</li>
+        <li><strong>Smart Formatting</strong> - Automatic JSON formatting and validation</li>
+        <li><strong>Advanced Options</strong> - Headers, authentication, and strict validation support</li>
+        <li><strong>Copy & Download</strong> - Easy copy to clipboard or download as .feature file</li>
+        <li><strong>Sample Data</strong> - Pre-loaded examples to get started quickly</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <ol>
+        <li>Fill in the test configuration (feature name, scenario, method, endpoint)</li>
+        <li>Enter your request payload (optional, for POST/PUT/PATCH)</li>
+        <li>Enter your expected response payload</li>
+        <li>Click "Generate Feature File"</li>
+        <li>Copy to clipboard or download the generated .feature file</li>
+    </ol>
+</section>
+
+<section class="about-section">
+    <h5>💡 What is Karate?</h5>
+    <p>Karate is an open-source unified test automation framework that combines API test-automation, mocks, performance-testing and UI automation into a single, unified framework. The syntax is language-neutral and easy for non-programmers.</p>
+</section>
+
+<section class="about-section">
+    <h5>📝 Generated Features</h5>
+    <ul class="feature-list">
+        <li>Feature and Scenario descriptions</li>
+        <li>Given, When, Then BDD syntax</li>
+        <li>Request method and endpoint</li>
+        <li>Request body (if provided)</li>
+        <li>Response status validation</li>
+        <li>Response schema matching</li>
+        <li>Optional headers and authentication</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
+{% endblock %}

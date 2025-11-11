@@ -154,7 +154,8 @@ INSERT INTO menu_items (title, description, icon, route, display_order, is_activ
     ('Webhook Viewer', 'Monitor and manage webhooks in real-time', '📡', '/webhook-viewer', 1, 1),
     ('JSON Comparison Tool', 'Compare two JSON objects and visualize differences', '🔄', '/json-compare', 2, 1),
     ('HTTP Status Code Tester', 'Test and simulate different HTTP status codes', '🌐', '/http-codes', 3, 1),
-    ('AWS Log Comparison Tool', 'Compare AWS CloudWatch log exports', '📊', '/aws-log-compare', 4, 1)
+    ('AWS Log Comparison Tool', 'Compare AWS CloudWatch log exports', '📊', '/aws-log-compare', 4, 1),
+    ('Karate Feature Generator', 'Generate Karate API test feature files from request/response payloads', '🥋', '/karate-generator', 5, 1)
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),
     description = VALUES(description),
