@@ -197,7 +197,7 @@ function createScenarioCard(data) {
                 <input type="text"
                        class="scenario-tags"
                        data-scenario-id="${data.id}"
-                       placeholder="e.g., @ac0149,@smoke or @regression"
+                       placeholder="e.g., @smoke,@regression"
                        value="${data.tags || ''}">
                 <small style="color: #666; font-size: 0.85em;">💡 Separate multiple tags with commas</small>
             </div>
