@@ -734,6 +734,49 @@ function generateKarateFeature() {
     document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Convert JSON values to Karate schema matchers
+function convertToSchemaMatchers(obj) {
+    if (obj === null) {
+        return '#null';
+    }
+
+    if (Array.isArray(obj)) {
+        if (obj.length === 0) {
+            return '#array';
+        }
+        // Convert first element to show schema for array items
+        return [convertToSchemaMatchers(obj[0])];
+    }
+
+    if (typeof obj === 'object') {
+        const result = {};
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                result[key] = convertToSchemaMatchers(obj[key]);
+            }
+        }
+        return result;
+    }
+
+    if (typeof obj === 'string') {
+        // Check if it's a Karate variable pattern like #(varName)
+        if (/^#\([^)]+\)$/.test(obj)) {
+            return obj; // Preserve Karate variables as-is
+        }
+        return '#string';
+    }
+
+    if (typeof obj === 'number') {
+        return '#number';
+    }
+
+    if (typeof obj === 'boolean') {
+        return '#boolean';
+    }
+
+    return obj;
+}
+
 // Build Karate Feature File Content
 function buildKarateFeature(config) {
     let feature = '';
@@ -858,16 +901,17 @@ function buildKarateFeature(config) {
         // Validate status code
         feature += `  Then status ${scenario.status}\n`;
 
-        // Validate response schema
+        // Validate response schema using schema matchers (validates types, not exact values)
+        const schemaResponse = convertToSchemaMatchers(scenario.responseJson);
         if (config.strictValidation) {
             feature += `  And match response ==\n`;
             feature += `    """\n`;
-            feature += indentJSON(scenario.responseJson, 4);
+            feature += indentJSON(schemaResponse, 4);
             feature += `    """\n`;
         } else {
             feature += `  And match response contains\n`;
             feature += `    """\n`;
-            feature += indentJSON(scenario.responseJson, 4);
+            feature += indentJSON(schemaResponse, 4);
             feature += `    """\n`;
         }
 
