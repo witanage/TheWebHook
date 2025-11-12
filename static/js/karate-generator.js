@@ -680,7 +680,9 @@ function generateKarateFeature() {
         }
 
         try {
-            responseJson = JSON.parse(data.response);
+            // Temporarily replace Karate variables for validation
+            const tempResponse = data.response.replace(/"#\(\w+\)"/g, '"__TEMP__"');
+            responseJson = JSON.parse(tempResponse);
         } catch (e) {
             showModal('JSON Error', `Scenario #${scenario.id + 1} invalid response JSON: ${e.message}`);
             return;
