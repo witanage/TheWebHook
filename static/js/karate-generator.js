@@ -603,12 +603,23 @@ function formatScenarioJSON(id, type) {
     }
 
     try {
-        // Handle Karate variable syntax - preserve #(varName) patterns
-        const preserved = input.replace(/"#\((\w+)\)"/g, '__KARATE_VAR_$1__');
+        // Handle Karate variable syntax - preserve #(anything) patterns
+        // Store all Karate variables and replace with placeholders
+        const karateVars = [];
+        const preserved = input.replace(/"#\([^)]+\)"/g, (match) => {
+            const index = karateVars.length;
+            karateVars.push(match.slice(1, -1)); // Remove the quotes
+            return `"__KARATE_VAR_${index}__"`;
+        });
+
         const parsed = JSON.parse(preserved);
         let formatted = JSON.stringify(parsed, null, 2);
+
         // Restore Karate variables
-        formatted = formatted.replace(/"__KARATE_VAR_(\w+)__"/g, '"#($1)"');
+        formatted = formatted.replace(/"__KARATE_VAR_(\d+)__"/g, (match, index) => {
+            return `"${karateVars[parseInt(index)]}"`;
+        });
+
         textarea.value = formatted;
     } catch (e) {
         showModal('JSON Error', 'Invalid JSON: ' + e.message);
@@ -671,7 +682,8 @@ function generateKarateFeature() {
         if (data.request) {
             try {
                 // Temporarily replace Karate variables for validation
-                const tempRequest = data.request.replace(/"#\(\w+\)"/g, '"__TEMP__"');
+                // Handles #(varName), #(obj.prop), #(array[0]), etc.
+                const tempRequest = data.request.replace(/"#\([^)]+\)"/g, '"__TEMP__"');
                 requestJson = JSON.parse(tempRequest);
             } catch (e) {
                 showModal('JSON Error', `Scenario #${scenario.id + 1} invalid request JSON: ${e.message}`);
@@ -681,7 +693,8 @@ function generateKarateFeature() {
 
         try {
             // Temporarily replace Karate variables for validation
-            const tempResponse = data.response.replace(/"#\(\w+\)"/g, '"__TEMP__"');
+            // Handles #(varName), #(obj.prop), #(array[0]), etc.
+            const tempResponse = data.response.replace(/"#\([^)]+\)"/g, '"__TEMP__"');
             responseJson = JSON.parse(tempResponse);
         } catch (e) {
             showModal('JSON Error', `Scenario #${scenario.id + 1} invalid response JSON: ${e.message}`);
