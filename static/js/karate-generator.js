@@ -979,16 +979,8 @@ function buildKarateFeature(config) {
         const availableVars = getPreviousExtractedVars(config.scenarios, index);
         const usedVars = getUsedVariablesInScenario(scenario, availableVars);
 
-        // Retrieve variables from previous scenarios using karate.get()
-        if (usedVars.length > 0) {
-            if (config.includeComments) {
-                feature += `  # Retrieve variables from previous scenarios\n`;
-            }
-            usedVars.forEach(varName => {
-                feature += `  * def ${varName} = karate.get('${varName}')\n`;
-            });
-            feature += `\n`;
-        }
+        // Note: Variables defined in previous scenarios are automatically available
+        // No need to use karate.get() within the same feature file
 
         if (config.includeComments) {
             feature += `  # Arrange: Set up the request\n`;
@@ -1047,7 +1039,6 @@ function buildKarateFeature(config) {
             }
             scenario.extractVars.forEach(v => {
                 feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
-                feature += `  * karate.set('${v.varName}', ${v.varName})\n`;
             });
         }
 
