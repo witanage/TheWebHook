@@ -8,8 +8,9 @@ let envVarCounter = 0;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Add first scenario by default
-    addScenario();
+    // Try to load saved work from database
+    loadWork();
+
 
     // Environment URL checkbox handler
     const useEnvUrlCheckbox = document.getElementById('useEnvUrl');
@@ -746,6 +747,9 @@ function generateKarateFeature() {
     document.getElementById('karateOutput').textContent = generatedFeature;
     document.getElementById('outputSection').style.display = 'block';
 
+    // Auto-save after successful generation
+    saveWork();
+
     // Scroll to output
     document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1194,4 +1198,155 @@ function downloadFeatureFile() {
     window.URL.revokeObjectURL(url);
 
     showModal('Success', `Feature file downloaded as ${filename}`);
+}
+
+// Save work to database
+function saveWork() {
+    // Collect all current data
+    const featureConfig = {
+        featureName: document.getElementById('featureName').value.trim(),
+        baseUrl: document.getElementById('baseUrl').value.trim(),
+        useEnvUrl: document.getElementById('useEnvUrl').checked,
+        envUrlDomain: document.getElementById('envUrlDomain').value.trim(),
+        includeHeaders: document.getElementById('includeHeaders').checked,
+        includeAuth: document.getElementById('includeAuth').checked,
+        strictValidation: document.getElementById('strictValidation').checked,
+        includeComments: document.getElementById('includeComments').checked,
+        useEnvVariables: document.getElementById('useEnvVariables').checked
+    };
+
+    // Collect all scenarios data
+    const scenariosData = scenarios.map(scenario => collectScenarioData(scenario.id));
+
+    // Collect environment variables
+    const envVars = collectEnvVariables();
+
+    // Send to server
+    fetch('/api/karate-generator/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            work_name: 'My Karate Work',
+            feature_config: featureConfig,
+            scenarios_data: scenariosData,
+            env_variables: envVars
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showModal('Success', 'Your work has been saved successfully!');
+            updateLastSavedDisplay(data.saved_at);
+        } else {
+            showModal('Error', 'Failed to save work: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error saving work:', error);
+        showModal('Error', 'Failed to save work: ' + error.message);
+    });
+}
+
+// Load work from database
+function loadWork() {
+    fetch('/api/karate-generator/load')
+    .then(response => {
+        if (response.status === 404) {
+            // No saved work found, start with empty scenario
+            addScenario();
+            return null;
+        }
+        if (!response.ok) {
+            throw new Error('Failed to load saved work');
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (!result) return; // No saved work
+
+        if (result.success && result.data) {
+            const { feature_config, scenarios_data, env_variables, saved_at } = result.data;
+
+            // Restore feature configuration
+            if (feature_config) {
+                document.getElementById('featureName').value = feature_config.featureName || 'API Test';
+                document.getElementById('baseUrl').value = feature_config.baseUrl || '';
+                document.getElementById('useEnvUrl').checked = feature_config.useEnvUrl || false;
+                document.getElementById('envUrlDomain').value = feature_config.envUrlDomain || '';
+                document.getElementById('includeHeaders').checked = feature_config.includeHeaders !== undefined ? feature_config.includeHeaders : true;
+                document.getElementById('includeAuth').checked = feature_config.includeAuth || false;
+                document.getElementById('strictValidation').checked = feature_config.strictValidation !== undefined ? feature_config.strictValidation : true;
+                document.getElementById('includeComments').checked = feature_config.includeComments !== undefined ? feature_config.includeComments : true;
+                document.getElementById('useEnvVariables').checked = feature_config.useEnvVariables || false;
+
+                // Trigger visibility updates
+                document.getElementById('envUrlConfig').style.display = feature_config.useEnvUrl ? 'block' : 'none';
+                document.getElementById('envVariablesSection').style.display = feature_config.useEnvVariables ? 'block' : 'none';
+            }
+
+            // Restore environment variables
+            if (env_variables && env_variables.length > 0) {
+                envVariables = [];
+                envVarCounter = 0;
+                const envVarsList = document.getElementById('envVariablesList');
+                envVarsList.innerHTML = '';
+
+                env_variables.forEach(envVar => {
+                    const id = envVarCounter++;
+                    envVariables.push({ id, name: envVar.name, description: envVar.description });
+
+                    const varItem = document.createElement('div');
+                    varItem.className = 'env-var-item';
+                    varItem.dataset.envVarId = id;
+                    varItem.innerHTML = `
+                        <input type="text"
+                               class="env-var-name"
+                               placeholder="Variable name (e.g., userId)"
+                               value="${envVar.name || ''}"
+                               data-env-var-id="${id}">
+                        <input type="text"
+                               class="env-var-description"
+                               placeholder="Description (e.g., Test user ID)"
+                               value="${envVar.description || ''}"
+                               data-env-var-id="${id}">
+                        <button class="btn-remove-var" onclick="removeEnvVariable(${id})" title="Remove">✕</button>
+                    `;
+                    envVarsList.appendChild(varItem);
+                });
+            }
+
+            // Restore scenarios
+            if (scenarios_data && scenarios_data.length > 0) {
+                scenarios = [];
+                scenarioCounter = 0;
+                document.getElementById('scenariosList').innerHTML = '';
+
+                scenarios_data.forEach(scenarioData => {
+                    addScenario(scenarioData);
+                });
+
+                showModal('Success', 'Your saved work has been loaded!');
+                updateLastSavedDisplay(saved_at);
+            } else {
+                addScenario();
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading work:', error);
+        // Start with empty scenario on error
+        addScenario();
+    });
+}
+
+// Update last saved display
+function updateLastSavedDisplay(timestamp) {
+    const lastSavedDiv = document.getElementById('lastSaved');
+    if (timestamp) {
+        const date = new Date(timestamp);
+        const timeString = date.toLocaleTimeString();
+        lastSavedDiv.textContent = `Last saved: ${timeString}`;
+    }
 }
