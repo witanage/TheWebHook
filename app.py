@@ -1005,6 +1005,89 @@ def karate_generator():
     return render_template("karate-generator.html", username=username, is_admin=is_admin)
 
 
+@app.route("/api/karate-generator/save", methods=["POST"])
+@login_required
+def save_karate_work():
+    """Save Karate generator work to database"""
+    user_id = session["user_id"]
+    data = request.json
+
+    # Validate required fields
+    if not data.get("feature_config") or not data.get("scenarios_data"):
+        return jsonify({"success": False, "error": "Missing required data"}), 400
+
+    work_name = data.get("work_name", "My Work")
+    feature_config = data.get("feature_config")
+    scenarios_data = data.get("scenarios_data")
+    env_variables = data.get("env_variables", [])
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            # Delete previous save (only keep one save per user for now)
+            cursor.execute("DELETE FROM karate_saved_work WHERE user_id = %s", (user_id,))
+
+            # Insert new save
+            cursor.execute("""
+                INSERT INTO karate_saved_work (user_id, work_name, feature_config, scenarios_data, env_variables)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (user_id, work_name, json.dumps(feature_config), json.dumps(scenarios_data), json.dumps(env_variables)))
+            conn.commit()
+
+            log(f"User {user_id} saved Karate generator work")
+            return jsonify({
+                "success": True,
+                "message": "Work saved successfully",
+                "saved_at": datetime.now(timezone.utc).isoformat()
+            })
+    except Exception as e:
+        conn.rollback()
+        log(f"Error saving Karate work for user {user_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/karate-generator/load", methods=["GET"])
+@login_required
+def load_karate_work():
+    """Load Karate generator work from database"""
+    user_id = session["user_id"]
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT work_name, feature_config, scenarios_data, env_variables, updated_at
+                FROM karate_saved_work
+                WHERE user_id = %s
+                ORDER BY updated_at DESC
+                LIMIT 1
+            """, (user_id,))
+
+            result = cursor.fetchone()
+
+            if result:
+                log(f"User {user_id} loaded Karate generator work")
+                return jsonify({
+                    "success": True,
+                    "data": {
+                        "work_name": result["work_name"],
+                        "feature_config": json.loads(result["feature_config"]) if isinstance(result["feature_config"], str) else result["feature_config"],
+                        "scenarios_data": json.loads(result["scenarios_data"]) if isinstance(result["scenarios_data"], str) else result["scenarios_data"],
+                        "env_variables": json.loads(result["env_variables"]) if result["env_variables"] and isinstance(result["env_variables"], str) else (result["env_variables"] or []),
+                        "saved_at": result["updated_at"].isoformat() if result["updated_at"] else None
+                    }
+                })
+            else:
+                return jsonify({"success": False, "error": "No saved work found"}), 404
+    except Exception as e:
+        log(f"Error loading Karate work for user {user_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def http_status_test(code):
     """

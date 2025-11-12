@@ -8,8 +8,9 @@ let envVarCounter = 0;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    // Add first scenario by default
-    addScenario();
+    // Try to load saved work from database
+    loadWork();
+
 
     // Environment URL checkbox handler
     const useEnvUrlCheckbox = document.getElementById('useEnvUrl');
@@ -80,9 +81,97 @@ function addScenario(data = null) {
     scenarios.push(scenarioData);
 
     const scenarioCard = createScenarioCard(scenarioData);
-    document.getElementById('scenariosList').appendChild(scenarioCard);
+
+    // Create a wrapper for scenario card + add button
+    const scenarioWrapper = document.createElement('div');
+    scenarioWrapper.className = 'scenario-wrapper';
+    scenarioWrapper.appendChild(scenarioCard);
+
+    // Add "Add Scenario" button after the card
+    const addScenarioBtn = document.createElement('div');
+    addScenarioBtn.className = 'add-scenario-after';
+    addScenarioBtn.innerHTML = `
+        <button class="btn-add-scenario-after" onclick="addScenarioAfter(${id})" title="Add scenario after this one">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Scenario
+        </button>
+    `;
+    scenarioWrapper.appendChild(addScenarioBtn);
+
+    document.getElementById('scenariosList').appendChild(scenarioWrapper);
 
     // Show/hide empty state
+    updateEmptyState();
+}
+
+// Add scenario after a specific scenario
+function addScenarioAfter(afterId) {
+    // Find the index of the scenario to insert after
+    const afterIndex = scenarios.findIndex(s => s.id === afterId);
+    if (afterIndex === -1) {
+        // If not found, just append at the end
+        addScenario();
+        return;
+    }
+
+    // Create new scenario data
+    const id = scenarioCounter++;
+    const scenarioData = {
+        id: id,
+        name: '',
+        method: 'GET',
+        endpoint: '',
+        status: 200,
+        request: '',
+        response: '',
+        extractVars: [],
+        assertions: [],
+        tags: '',
+        sourceScenarioId: null,
+        duplicateNumber: null
+    };
+
+    // Insert into scenarios array after the specified index
+    scenarios.splice(afterIndex + 1, 0, scenarioData);
+
+    // Create the card
+    const scenarioCard = createScenarioCard(scenarioData);
+
+    // Create a wrapper for scenario card + add button
+    const scenarioWrapper = document.createElement('div');
+    scenarioWrapper.className = 'scenario-wrapper';
+    scenarioWrapper.appendChild(scenarioCard);
+
+    // Add "Add Scenario" button after the card
+    const addScenarioBtn = document.createElement('div');
+    addScenarioBtn.className = 'add-scenario-after';
+    addScenarioBtn.innerHTML = `
+        <button class="btn-add-scenario-after" onclick="addScenarioAfter(${id})" title="Add scenario after this one">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Scenario
+        </button>
+    `;
+    scenarioWrapper.appendChild(addScenarioBtn);
+
+    // Find the DOM element to insert after
+    const scenariosList = document.getElementById('scenariosList');
+    const wrappers = scenariosList.querySelectorAll('.scenario-wrapper');
+    if (wrappers[afterIndex]) {
+        // Insert after the found wrapper
+        wrappers[afterIndex].insertAdjacentElement('afterend', scenarioWrapper);
+    } else {
+        // Fallback: append at the end
+        scenariosList.appendChild(scenarioWrapper);
+    }
+
+    // Update scenario numbers
+    updateScenarioNumbers();
     updateEmptyState();
 }
 
@@ -492,10 +581,15 @@ function removeScenario(id) {
         // Remove from array
         scenarios = scenarios.filter(s => s.id !== id);
 
-        // Remove from DOM
+        // Remove from DOM (remove the wrapper which contains the card and add button)
         const card = document.querySelector(`.scenario-card[data-scenario-id="${id}"]`);
         if (card) {
-            card.remove();
+            const wrapper = card.closest('.scenario-wrapper');
+            if (wrapper) {
+                wrapper.remove();
+            } else {
+                card.remove();
+            }
         }
 
         // Update scenario numbers
@@ -647,7 +741,6 @@ function formatScenarioJSON(id, type) {
 function generateKarateFeature() {
     // Get feature-level configuration
     const featureName = document.getElementById('featureName').value.trim();
-    const baseUrl = document.getElementById('baseUrl').value.trim();
     const useEnvUrl = document.getElementById('useEnvUrl').checked;
     const envUrlDomain = document.getElementById('envUrlDomain').value.trim();
     const includeHeaders = document.getElementById('includeHeaders').checked;
@@ -730,7 +823,6 @@ function generateKarateFeature() {
     // Generate the feature file
     generatedFeature = buildKarateFeature({
         featureName,
-        baseUrl,
         useEnvUrl,
         envUrlDomain,
         useEnvVariables,
@@ -745,6 +837,9 @@ function generateKarateFeature() {
     // Display the result
     document.getElementById('karateOutput').textContent = generatedFeature;
     document.getElementById('outputSection').style.display = 'block';
+
+    // Auto-save after successful generation
+    saveWork();
 
     // Scroll to output
     document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -797,6 +892,12 @@ function convertToSchemaMatchers(obj) {
 function buildKarateFeature(config) {
     let feature = '';
 
+    // Sanitize feature name for use in filenames
+    const sanitizedFeatureName = config.featureName
+        .replace(/[^a-zA-Z0-9]/g, '_')  // Replace non-alphanumeric with underscore
+        .replace(/_+/g, '_')             // Collapse multiple underscores
+        .replace(/^_|_$/g, '');          // Remove leading/trailing underscores
+
     // Feature header
     feature += `Feature: ${config.featureName}\n\n`;
 
@@ -822,15 +923,13 @@ function buildKarateFeature(config) {
     }
 
     // Background (optional)
-    if (config.useEnvUrl || config.baseUrl || config.useEnvVariables || config.includeHeaders || config.includeAuth) {
+    if (config.useEnvUrl || config.useEnvVariables || config.includeHeaders || config.includeAuth) {
         feature += `Background:\n`;
 
-        // Environment-based URL or static URL
+        // Environment-based URL
         if (config.useEnvUrl && config.envUrlDomain) {
             feature += `  * def env = karate.properties['env']\n`;
             feature += `  Given url 'https://' + env + '${config.envUrlDomain}'\n`;
-        } else if (config.baseUrl) {
-            feature += `  * url '${config.baseUrl}'\n`;
         }
 
         // Environment-specific variables
@@ -882,13 +981,13 @@ function buildKarateFeature(config) {
         const availableVars = getPreviousExtractedVars(config.scenarios, index);
         const usedVars = getUsedVariablesInScenario(scenario, availableVars);
 
-        // Retrieve variables from previous scenarios using karate.get()
+        // Retrieve variables from previous scenarios using read()
         if (usedVars.length > 0) {
             if (config.includeComments) {
                 feature += `  # Retrieve variables from previous scenarios\n`;
             }
             usedVars.forEach(varName => {
-                feature += `  * def ${varName} = karate.get('${varName}')\n`;
+                feature += `  * def ${varName} = read('../../../../target/temp-data/${sanitizedFeatureName}_${varName}.txt')\n`;
             });
             feature += `\n`;
         }
@@ -896,9 +995,6 @@ function buildKarateFeature(config) {
         if (config.includeComments) {
             feature += `  # Arrange: Set up the request\n`;
         }
-
-        // Set path (handle Karate variable syntax)
-        feature += `  * def endpoint = '${scenario.endpoint}'\n`;
 
         // Set request body if present
         if (scenario.request) {
@@ -913,12 +1009,13 @@ function buildKarateFeature(config) {
         }
 
         // Make the request
+        // Handle endpoint path - use it directly to allow Karate variable interpolation
         if (scenario.request && ['POST', 'PUT', 'PATCH'].includes(scenario.method)) {
-            feature += `  Given path endpoint\n`;
+            feature += `  Given path '${scenario.endpoint}'\n`;
             feature += `  And request requestBody\n`;
             feature += `  When method ${scenario.method}\n`;
         } else {
-            feature += `  Given path endpoint\n`;
+            feature += `  Given path '${scenario.endpoint}'\n`;
             feature += `  When method ${scenario.method}\n`;
         }
 
@@ -950,7 +1047,7 @@ function buildKarateFeature(config) {
             }
             scenario.extractVars.forEach(v => {
                 feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
-                feature += `  * karate.set('${v.varName}', ${v.varName})\n`;
+                feature += `  * karate.write(${v.varName}, 'temp-data/${sanitizedFeatureName}_${v.varName}.txt')\n`;
             });
         }
 
@@ -1041,7 +1138,6 @@ function getUsedVariablesInScenario(scenario, availableVars) {
 function clearAll() {
     showConfirmModal('Clear All', 'Are you sure you want to clear all scenarios and configuration?', () => {
         document.getElementById('featureName').value = 'API Test';
-        document.getElementById('baseUrl').value = '';
         document.getElementById('useEnvUrl').checked = false;
         document.getElementById('envUrlDomain').value = '';
         document.getElementById('envUrlConfig').style.display = 'none';
@@ -1074,7 +1170,6 @@ function clearAll() {
 // Load Sample Data
 function loadSampleData() {
     document.getElementById('featureName').value = 'User Management API';
-    document.getElementById('baseUrl').value = 'https://api.example.com';
 
     // Clear existing scenarios
     scenarios = [];
@@ -1194,4 +1289,153 @@ function downloadFeatureFile() {
     window.URL.revokeObjectURL(url);
 
     showModal('Success', `Feature file downloaded as ${filename}`);
+}
+
+// Save work to database
+function saveWork() {
+    // Collect all current data
+    const featureConfig = {
+        featureName: document.getElementById('featureName').value.trim(),
+        useEnvUrl: document.getElementById('useEnvUrl').checked,
+        envUrlDomain: document.getElementById('envUrlDomain').value.trim(),
+        includeHeaders: document.getElementById('includeHeaders').checked,
+        includeAuth: document.getElementById('includeAuth').checked,
+        strictValidation: document.getElementById('strictValidation').checked,
+        includeComments: document.getElementById('includeComments').checked,
+        useEnvVariables: document.getElementById('useEnvVariables').checked
+    };
+
+    // Collect all scenarios data
+    const scenariosData = scenarios.map(scenario => collectScenarioData(scenario.id));
+
+    // Collect environment variables
+    const envVars = collectEnvVariables();
+
+    // Send to server
+    fetch('/api/karate-generator/save', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            work_name: 'My Karate Work',
+            feature_config: featureConfig,
+            scenarios_data: scenariosData,
+            env_variables: envVars
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showModal('Success', 'Your work has been saved successfully!');
+            updateLastSavedDisplay(data.saved_at);
+        } else {
+            showModal('Error', 'Failed to save work: ' + (data.error || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error saving work:', error);
+        showModal('Error', 'Failed to save work: ' + error.message);
+    });
+}
+
+// Load work from database
+function loadWork() {
+    fetch('/api/karate-generator/load')
+    .then(response => {
+        if (response.status === 404) {
+            // No saved work found, start with empty scenario
+            addScenario();
+            return null;
+        }
+        if (!response.ok) {
+            throw new Error('Failed to load saved work');
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (!result) return; // No saved work
+
+        if (result.success && result.data) {
+            const { feature_config, scenarios_data, env_variables, saved_at } = result.data;
+
+            // Restore feature configuration
+            if (feature_config) {
+                document.getElementById('featureName').value = feature_config.featureName || 'API Test';
+                document.getElementById('useEnvUrl').checked = feature_config.useEnvUrl || false;
+                document.getElementById('envUrlDomain').value = feature_config.envUrlDomain || '';
+                document.getElementById('includeHeaders').checked = feature_config.includeHeaders !== undefined ? feature_config.includeHeaders : true;
+                document.getElementById('includeAuth').checked = feature_config.includeAuth || false;
+                document.getElementById('strictValidation').checked = feature_config.strictValidation !== undefined ? feature_config.strictValidation : true;
+                document.getElementById('includeComments').checked = feature_config.includeComments !== undefined ? feature_config.includeComments : true;
+                document.getElementById('useEnvVariables').checked = feature_config.useEnvVariables || false;
+
+                // Trigger visibility updates
+                document.getElementById('envUrlConfig').style.display = feature_config.useEnvUrl ? 'block' : 'none';
+                document.getElementById('envVariablesSection').style.display = feature_config.useEnvVariables ? 'block' : 'none';
+            }
+
+            // Restore environment variables
+            if (env_variables && env_variables.length > 0) {
+                envVariables = [];
+                envVarCounter = 0;
+                const envVarsList = document.getElementById('envVariablesList');
+                envVarsList.innerHTML = '';
+
+                env_variables.forEach(envVar => {
+                    const id = envVarCounter++;
+                    envVariables.push({ id, name: envVar.name, description: envVar.description });
+
+                    const varItem = document.createElement('div');
+                    varItem.className = 'env-var-item';
+                    varItem.dataset.envVarId = id;
+                    varItem.innerHTML = `
+                        <input type="text"
+                               class="env-var-name"
+                               placeholder="Variable name (e.g., userId)"
+                               value="${envVar.name || ''}"
+                               data-env-var-id="${id}">
+                        <input type="text"
+                               class="env-var-description"
+                               placeholder="Description (e.g., Test user ID)"
+                               value="${envVar.description || ''}"
+                               data-env-var-id="${id}">
+                        <button class="btn-remove-var" onclick="removeEnvVariable(${id})" title="Remove">✕</button>
+                    `;
+                    envVarsList.appendChild(varItem);
+                });
+            }
+
+            // Restore scenarios
+            if (scenarios_data && scenarios_data.length > 0) {
+                scenarios = [];
+                scenarioCounter = 0;
+                document.getElementById('scenariosList').innerHTML = '';
+
+                scenarios_data.forEach(scenarioData => {
+                    addScenario(scenarioData);
+                });
+
+                showModal('Success', 'Your saved work has been loaded!');
+                updateLastSavedDisplay(saved_at);
+            } else {
+                addScenario();
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error loading work:', error);
+        // Start with empty scenario on error
+        addScenario();
+    });
+}
+
+// Update last saved display
+function updateLastSavedDisplay(timestamp) {
+    const lastSavedDiv = document.getElementById('lastSaved');
+    if (timestamp) {
+        const date = new Date(timestamp);
+        const timeString = date.toLocaleTimeString();
+        lastSavedDiv.textContent = `Last saved: ${timeString}`;
+    }
 }

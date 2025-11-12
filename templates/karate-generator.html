@@ -32,71 +32,79 @@
                     <label for="featureName">Feature Name</label>
                     <input type="text" id="featureName" placeholder="e.g., User Management API Tests" value="API Test">
                 </div>
-
-                <div class="form-group form-group-wide">
-                    <label for="baseUrl">Base URL (Optional)</label>
-                    <input type="text" id="baseUrl" placeholder="e.g., https://api.example.com">
-                    <small style="color: var(--text-secondary); font-size: 12px; margin-top: 4px; display: block;">
-                        Leave empty if using environment-based URL below
-                    </small>
-                </div>
             </div>
         </div>
 
-        <!-- Advanced Options -->
-        <div class="advanced-options">
-            <details>
-                <summary>Feature-Level Options</summary>
-                <div class="advanced-content">
-                    <div class="form-group">
-                        <label>
+        <!-- Feature-Level Options -->
+        <div class="config-panel">
+            <h3 class="section-title">Feature-Level Options</h3>
+
+            <div class="options-grid">
+                <!-- URL Configuration -->
+                <div class="option-card">
+                    <div class="option-header">
+                        <label class="option-checkbox">
                             <input type="checkbox" id="useEnvUrl">
-                            Use Environment-Based URL
+                            <span class="option-title">Environment-Based URL</span>
                         </label>
                     </div>
-                    <div class="form-group" id="envUrlConfig" style="display: none; margin-left: 24px;">
-                        <label for="envUrlDomain" style="font-size: 13px;">URL Pattern</label>
-                        <input type="text" id="envUrlDomain" placeholder="e.g., .abc.com/api" style="margin-top: 4px;">
-                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">
-                            Will generate: * def env = karate.properties['env']<br>
+                    <div class="option-content" id="envUrlConfig" style="display: none;">
+                        <label for="envUrlDomain">URL Pattern</label>
+                        <input type="text" id="envUrlDomain" placeholder="e.g., .abc.com/api">
+                        <small class="option-help">
+                            Generates: * def env = karate.properties['env']<br>
                             Given url 'https://' + env + '<span id="domainPreview">.abc.com/api</span>'
                         </small>
                     </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="includeHeaders" checked>
-                            Include Headers Section
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="includeAuth">
-                            Include Authentication
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="strictValidation" checked>
-                            Strict Schema Validation
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="includeComments" checked>
-                            Include Comments
-                        </label>
-                    </div>
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="useEnvVariables">
-                            Use Environment-Specific Variables
-                        </label>
-                        <small style="color: var(--text-secondary); font-size: 11px; margin-top: 4px; display: block;">
-                            Define variables that change based on environment (e.g., userId, apiKey)
-                        </small>
-                    </div>
                 </div>
-            </details>
+
+                <!-- Environment Variables -->
+                <div class="option-card">
+                    <div class="option-header">
+                        <label class="option-checkbox">
+                            <input type="checkbox" id="useEnvVariables">
+                            <span class="option-title">Environment-Specific Variables</span>
+                        </label>
+                    </div>
+                    <small class="option-description">Define variables that change per environment (e.g., userId, apiKey)</small>
+                </div>
+
+                <!-- Headers -->
+                <div class="option-card">
+                    <label class="option-checkbox">
+                        <input type="checkbox" id="includeHeaders" checked>
+                        <span class="option-title">Include Headers Section</span>
+                    </label>
+                    <small class="option-description">Add Content-Type and Accept headers</small>
+                </div>
+
+                <!-- Authentication -->
+                <div class="option-card">
+                    <label class="option-checkbox">
+                        <input type="checkbox" id="includeAuth">
+                        <span class="option-title">Include Authentication</span>
+                    </label>
+                    <small class="option-description">Add Bearer token authorization header</small>
+                </div>
+
+                <!-- Validation -->
+                <div class="option-card">
+                    <label class="option-checkbox">
+                        <input type="checkbox" id="strictValidation" checked>
+                        <span class="option-title">Strict Schema Validation</span>
+                    </label>
+                    <small class="option-description">Use exact match (==) instead of contains</small>
+                </div>
+
+                <!-- Comments -->
+                <div class="option-card">
+                    <label class="option-checkbox">
+                        <input type="checkbox" id="includeComments" checked>
+                        <span class="option-title">Include Comments</span>
+                    </label>
+                    <small class="option-description">Add helpful comments in generated code</small>
+                </div>
+            </div>
         </div>
 
         <!-- Environment Variables Section -->
@@ -142,8 +150,17 @@
                 </svg>
                 Generate Feature File
             </button>
+            <button class="btn-success" onclick="saveWork()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                Save Work
+            </button>
             <button class="btn-secondary" onclick="loadSampleData()">Load Sample</button>
             <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+            <div id="lastSaved" style="font-size: 12px; color: var(--text-secondary); margin-left: 12px; align-self: center;"></div>
         </div>
     </div>
 
