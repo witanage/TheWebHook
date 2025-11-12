@@ -892,6 +892,12 @@ function convertToSchemaMatchers(obj) {
 function buildKarateFeature(config) {
     let feature = '';
 
+    // Sanitize feature name for use in filenames
+    const sanitizedFeatureName = config.featureName
+        .replace(/[^a-zA-Z0-9]/g, '_')  // Replace non-alphanumeric with underscore
+        .replace(/_+/g, '_')             // Collapse multiple underscores
+        .replace(/^_|_$/g, '');          // Remove leading/trailing underscores
+
     // Feature header
     feature += `Feature: ${config.featureName}\n\n`;
 
@@ -981,7 +987,7 @@ function buildKarateFeature(config) {
                 feature += `  # Retrieve variables from previous scenarios\n`;
             }
             usedVars.forEach(varName => {
-                feature += `  * def ${varName} = read('../../../../target/temp-data/${varName}.txt')\n`;
+                feature += `  * def ${varName} = read('../../../../target/temp-data/${sanitizedFeatureName}_${varName}.txt')\n`;
             });
             feature += `\n`;
         }
@@ -1041,7 +1047,7 @@ function buildKarateFeature(config) {
             }
             scenario.extractVars.forEach(v => {
                 feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
-                feature += `  * karate.write(${v.varName}, 'temp-data/${v.varName}.txt')\n`;
+                feature += `  * karate.write(${v.varName}, 'temp-data/${sanitizedFeatureName}_${v.varName}.txt')\n`;
             });
         }
 
