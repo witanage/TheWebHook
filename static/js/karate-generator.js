@@ -58,6 +58,7 @@ function addScenario(data = null) {
         response: '',
         extractVars: [], // Array of {varName: 'userId', jsonPath: 'response.id'}
         assertions: [], // Array of custom assertion strings
+        tags: '', // Comma-separated tags like @ac0149,@smoke
         sourceScenarioId: null, // null means not a duplicate
         duplicateNumber: null   // null means not a duplicate
     };
@@ -71,6 +72,9 @@ function addScenario(data = null) {
     }
     if (scenarioData.assertions === undefined) {
         scenarioData.assertions = [];
+    }
+    if (scenarioData.tags === undefined) {
+        scenarioData.tags = '';
     }
 
     scenarios.push(scenarioData);
@@ -186,6 +190,16 @@ function createScenarioCard(data) {
                        data-scenario-id="${data.id}"
                        placeholder="e.g., Get user details"
                        value="${data.name}">
+            </div>
+
+            <div class="form-group">
+                <label>Tags (optional)</label>
+                <input type="text"
+                       class="scenario-tags"
+                       data-scenario-id="${data.id}"
+                       placeholder="e.g., @ac0149,@smoke or @regression"
+                       value="${data.tags || ''}">
+                <small style="color: #666; font-size: 0.85em;">💡 Separate multiple tags with commas</small>
             </div>
 
             <div class="form-group">
@@ -548,6 +562,7 @@ function updateEmptyState() {
 // Collect scenario data from form
 function collectScenarioData(id) {
     const name = document.querySelector(`.scenario-name[data-scenario-id="${id}"]`)?.value.trim();
+    const tags = document.querySelector(`.scenario-tags[data-scenario-id="${id}"]`)?.value.trim();
     const method = document.querySelector(`.scenario-method[data-scenario-id="${id}"]`)?.value;
     const endpoint = document.querySelector(`.scenario-endpoint[data-scenario-id="${id}"]`)?.value.trim();
     const status = document.querySelector(`.scenario-status[data-scenario-id="${id}"]`)?.value;
@@ -581,6 +596,7 @@ function collectScenarioData(id) {
     return {
         id,
         name,
+        tags,
         method,
         endpoint,
         status: parseInt(status),
@@ -848,7 +864,19 @@ function buildKarateFeature(config) {
             feature += `\n`;
         }
 
-        feature += `Scenario: ${scenario.name}\n`;
+        // Add tags if present
+        if (scenario.tags && scenario.tags.trim()) {
+            // Split by comma, trim whitespace, ensure @ prefix
+            const tags = scenario.tags
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0)
+                .map(tag => tag.startsWith('@') ? tag : '@' + tag)
+                .join(' ');
+            feature += `  ${tags}\n`;
+        }
+
+        feature += `  Scenario: ${scenario.name}\n`;
 
         // Get variables from previous scenarios that are used in this scenario
         const availableVars = getPreviousExtractedVars(config.scenarios, index);
