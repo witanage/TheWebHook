@@ -3,6 +3,8 @@
 let generatedFeature = '';
 let scenarioCounter = 0;
 let scenarios = [];
+let envVariables = []; // Array of {name: 'userId', description: 'User ID for testing'}
+let envVarCounter = 0;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -21,6 +23,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     envUrlDomain.addEventListener('input', function() {
         domainPreview.textContent = this.value || '.abc.com/api';
+    });
+
+    // Environment variables checkbox handler
+    const useEnvVariablesCheckbox = document.getElementById('useEnvVariables');
+    const envVariablesSection = document.getElementById('envVariablesSection');
+
+    useEnvVariablesCheckbox.addEventListener('change', function() {
+        envVariablesSection.style.display = this.checked ? 'block' : 'none';
     });
 
     // Keyboard shortcuts
@@ -48,6 +58,7 @@ function addScenario(data = null) {
         response: '',
         extractVars: [], // Array of {varName: 'userId', jsonPath: 'response.id'}
         assertions: [], // Array of custom assertion strings
+        tags: '', // Comma-separated tags like @ac0149,@smoke
         sourceScenarioId: null, // null means not a duplicate
         duplicateNumber: null   // null means not a duplicate
     };
@@ -61,6 +72,9 @@ function addScenario(data = null) {
     }
     if (scenarioData.assertions === undefined) {
         scenarioData.assertions = [];
+    }
+    if (scenarioData.tags === undefined) {
+        scenarioData.tags = '';
     }
 
     scenarios.push(scenarioData);
@@ -176,6 +190,16 @@ function createScenarioCard(data) {
                        data-scenario-id="${data.id}"
                        placeholder="e.g., Get user details"
                        value="${data.name}">
+            </div>
+
+            <div class="form-group">
+                <label>Tags (optional)</label>
+                <input type="text"
+                       class="scenario-tags"
+                       data-scenario-id="${data.id}"
+                       placeholder="e.g., @smoke,@regression"
+                       value="${data.tags || ''}">
+                <small style="color: #666; font-size: 0.85em;">💡 Separate multiple tags with commas</small>
             </div>
 
             <div class="form-group">
@@ -371,6 +395,67 @@ function removeAssertion(scenarioId, assertionIndex) {
     }
 }
 
+// Add environment variable
+function addEnvVariable() {
+    const id = envVarCounter++;
+    envVariables.push({ id, name: '', description: '' });
+
+    const list = document.getElementById('envVariablesList');
+
+    // Remove empty hint if it exists
+    const emptyHint = list.querySelector('.empty-vars-hint');
+    if (emptyHint) emptyHint.remove();
+
+    const varItem = document.createElement('div');
+    varItem.className = 'env-var-item';
+    varItem.dataset.envVarId = id;
+    varItem.innerHTML = `
+        <input type="text"
+               class="env-var-name"
+               placeholder="Variable name (e.g., userId)"
+               data-env-var-id="${id}">
+        <input type="text"
+               class="env-var-description"
+               placeholder="Description (e.g., Test user ID)"
+               data-env-var-id="${id}">
+        <button class="btn-remove-var" onclick="removeEnvVariable(${id})" title="Remove">✕</button>
+    `;
+    list.appendChild(varItem);
+}
+
+// Remove environment variable
+function removeEnvVariable(id) {
+    envVariables = envVariables.filter(v => v.id !== id);
+
+    const list = document.getElementById('envVariablesList');
+    const item = list.querySelector(`[data-env-var-id="${id}"]`);
+    if (item) {
+        item.remove();
+    }
+
+    // Show empty hint if no variables left
+    if (list.querySelectorAll('.env-var-item').length === 0) {
+        list.innerHTML = '<div class="empty-vars-hint">No environment variables defined. Click "Add Variable" to define variables that change per environment.</div>';
+    }
+}
+
+// Collect environment variables from form
+function collectEnvVariables() {
+    const variables = [];
+    const nameInputs = document.querySelectorAll('.env-var-name');
+    const descriptionInputs = document.querySelectorAll('.env-var-description');
+
+    nameInputs.forEach((nameInput, idx) => {
+        const name = nameInput.value.trim();
+        const description = descriptionInputs[idx]?.value.trim() || '';
+        if (name) {
+            variables.push({ name, description });
+        }
+    });
+
+    return variables;
+}
+
 // Duplicate scenario
 function duplicateScenario(id) {
     const scenario = scenarios.find(s => s.id === id);
@@ -477,6 +562,7 @@ function updateEmptyState() {
 // Collect scenario data from form
 function collectScenarioData(id) {
     const name = document.querySelector(`.scenario-name[data-scenario-id="${id}"]`)?.value.trim();
+    const tags = document.querySelector(`.scenario-tags[data-scenario-id="${id}"]`)?.value.trim();
     const method = document.querySelector(`.scenario-method[data-scenario-id="${id}"]`)?.value;
     const endpoint = document.querySelector(`.scenario-endpoint[data-scenario-id="${id}"]`)?.value.trim();
     const status = document.querySelector(`.scenario-status[data-scenario-id="${id}"]`)?.value;
@@ -510,6 +596,7 @@ function collectScenarioData(id) {
     return {
         id,
         name,
+        tags,
         method,
         endpoint,
         status: parseInt(status),
@@ -532,12 +619,24 @@ function formatScenarioJSON(id, type) {
     }
 
     try {
-        // Handle Karate variable syntax - preserve #(varName) patterns
-        const preserved = input.replace(/"#\((\w+)\)"/g, '__KARATE_VAR_$1__');
+        // Handle Karate variable syntax - preserve #(anything) patterns
+        // Store all Karate variables and replace with placeholders
+        // Supports both single and double quotes
+        const karateVars = [];
+        const preserved = input.replace(/["']#\([^)]+\)["']/g, (match) => {
+            const index = karateVars.length;
+            karateVars.push(match.slice(1, -1)); // Remove the quotes
+            return `"__KARATE_VAR_${index}__"`;
+        });
+
         const parsed = JSON.parse(preserved);
         let formatted = JSON.stringify(parsed, null, 2);
+
         // Restore Karate variables
-        formatted = formatted.replace(/"__KARATE_VAR_(\w+)__"/g, '"#($1)"');
+        formatted = formatted.replace(/"__KARATE_VAR_(\d+)__"/g, (match, index) => {
+            return `"${karateVars[parseInt(index)]}"`;
+        });
+
         textarea.value = formatted;
     } catch (e) {
         showModal('JSON Error', 'Invalid JSON: ' + e.message);
@@ -568,6 +667,10 @@ function generateKarateFeature() {
         return;
     }
 
+    // Collect environment variables
+    const useEnvVariables = document.getElementById('useEnvVariables').checked;
+    const envVars = useEnvVariables ? collectEnvVariables() : [];
+
     // Collect all scenarios
     const scenarioDataList = [];
     for (const scenario of scenarios) {
@@ -596,7 +699,9 @@ function generateKarateFeature() {
         if (data.request) {
             try {
                 // Temporarily replace Karate variables for validation
-                const tempRequest = data.request.replace(/"#\(\w+\)"/g, '"__TEMP__"');
+                // Handles #(varName), #(obj.prop), #(array[0]), etc.
+                // Supports both single and double quotes
+                const tempRequest = data.request.replace(/["']#\([^)]+\)["']/g, '"__TEMP__"');
                 requestJson = JSON.parse(tempRequest);
             } catch (e) {
                 showModal('JSON Error', `Scenario #${scenario.id + 1} invalid request JSON: ${e.message}`);
@@ -605,7 +710,11 @@ function generateKarateFeature() {
         }
 
         try {
-            responseJson = JSON.parse(data.response);
+            // Temporarily replace Karate variables for validation
+            // Handles #(varName), #(obj.prop), #(array[0]), etc.
+            // Supports both single and double quotes
+            const tempResponse = data.response.replace(/["']#\([^)]+\)["']/g, '"__TEMP__"');
+            responseJson = JSON.parse(tempResponse);
         } catch (e) {
             showModal('JSON Error', `Scenario #${scenario.id + 1} invalid response JSON: ${e.message}`);
             return;
@@ -624,6 +733,8 @@ function generateKarateFeature() {
         baseUrl,
         useEnvUrl,
         envUrlDomain,
+        useEnvVariables,
+        envVariables: envVars,
         includeHeaders,
         includeAuth,
         strictValidation,
@@ -639,6 +750,49 @@ function generateKarateFeature() {
     document.getElementById('outputSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Convert JSON values to Karate schema matchers
+function convertToSchemaMatchers(obj) {
+    if (obj === null) {
+        return '#null';
+    }
+
+    if (Array.isArray(obj)) {
+        if (obj.length === 0) {
+            return '#array';
+        }
+        // Convert first element to show schema for array items
+        return [convertToSchemaMatchers(obj[0])];
+    }
+
+    if (typeof obj === 'object') {
+        const result = {};
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key)) {
+                result[key] = convertToSchemaMatchers(obj[key]);
+            }
+        }
+        return result;
+    }
+
+    if (typeof obj === 'string') {
+        // Check if it's a Karate variable pattern like #(varName)
+        if (/^#\([^)]+\)$/.test(obj)) {
+            return obj; // Preserve Karate variables as-is
+        }
+        return '#string';
+    }
+
+    if (typeof obj === 'number') {
+        return '#number';
+    }
+
+    if (typeof obj === 'boolean') {
+        return '#boolean';
+    }
+
+    return obj;
+}
+
 // Build Karate Feature File Content
 function buildKarateFeature(config) {
     let feature = '';
@@ -652,8 +806,23 @@ function buildKarateFeature(config) {
         feature += `  # Scenarios: ${config.scenarios.length}\n\n`;
     }
 
+    // Add karate-config.js instructions for environment variables
+    if (config.useEnvVariables && config.envVariables && config.envVariables.length > 0 && config.includeComments) {
+        feature += `  # Configure environment-specific variables in karate-config.js:\n`;
+        feature += `  # function fn() {\n`;
+        feature += `  #   var env = karate.properties['env'] || 'dev';\n`;
+        feature += `  #   var config = {\n`;
+        config.envVariables.forEach(v => {
+            const comment = v.description ? ` // ${v.description}` : '';
+            feature += `  #     ${v.name}: karate.properties['${v.name}'] || getDefault${v.name}(env),${comment}\n`;
+        });
+        feature += `  #   };\n`;
+        feature += `  #   return config;\n`;
+        feature += `  # }\n\n`;
+    }
+
     // Background (optional)
-    if (config.useEnvUrl || config.baseUrl || config.includeHeaders || config.includeAuth) {
+    if (config.useEnvUrl || config.baseUrl || config.useEnvVariables || config.includeHeaders || config.includeAuth) {
         feature += `Background:\n`;
 
         // Environment-based URL or static URL
@@ -662,6 +831,17 @@ function buildKarateFeature(config) {
             feature += `  Given url 'https://' + env + '${config.envUrlDomain}'\n`;
         } else if (config.baseUrl) {
             feature += `  * url '${config.baseUrl}'\n`;
+        }
+
+        // Environment-specific variables
+        if (config.useEnvVariables && config.envVariables && config.envVariables.length > 0) {
+            if (config.includeComments) {
+                feature += `  # Read environment-specific variables from karate-config.js\n`;
+            }
+            config.envVariables.forEach(v => {
+                const comment = v.description ? ` # ${v.description}` : '';
+                feature += `  * def ${v.name} = karate.get('${v.name}')${comment}\n`;
+            });
         }
 
         if (config.includeHeaders) {
@@ -684,7 +864,34 @@ function buildKarateFeature(config) {
             feature += `\n`;
         }
 
-        feature += `Scenario: ${scenario.name}\n`;
+        // Add tags if present
+        if (scenario.tags && scenario.tags.trim()) {
+            // Split by comma, trim whitespace, ensure @ prefix
+            const tags = scenario.tags
+                .split(',')
+                .map(tag => tag.trim())
+                .filter(tag => tag.length > 0)
+                .map(tag => tag.startsWith('@') ? tag : '@' + tag)
+                .join(' ');
+            feature += `  ${tags}\n`;
+        }
+
+        feature += `  Scenario: ${scenario.name}\n`;
+
+        // Get variables from previous scenarios that are used in this scenario
+        const availableVars = getPreviousExtractedVars(config.scenarios, index);
+        const usedVars = getUsedVariablesInScenario(scenario, availableVars);
+
+        // Retrieve variables from previous scenarios using karate.get()
+        if (usedVars.length > 0) {
+            if (config.includeComments) {
+                feature += `  # Retrieve variables from previous scenarios\n`;
+            }
+            usedVars.forEach(varName => {
+                feature += `  * def ${varName} = karate.get('${varName}')\n`;
+            });
+            feature += `\n`;
+        }
 
         if (config.includeComments) {
             feature += `  # Arrange: Set up the request\n`;
@@ -722,16 +929,17 @@ function buildKarateFeature(config) {
         // Validate status code
         feature += `  Then status ${scenario.status}\n`;
 
-        // Validate response schema
+        // Validate response schema using schema matchers (validates types, not exact values)
+        const schemaResponse = convertToSchemaMatchers(scenario.responseJson);
         if (config.strictValidation) {
             feature += `  And match response ==\n`;
             feature += `    """\n`;
-            feature += indentJSON(scenario.responseJson, 4);
+            feature += indentJSON(schemaResponse, 4);
             feature += `    """\n`;
         } else {
             feature += `  And match response contains\n`;
             feature += `    """\n`;
-            feature += indentJSON(scenario.responseJson, 4);
+            feature += indentJSON(schemaResponse, 4);
             feature += `    """\n`;
         }
 
@@ -742,6 +950,7 @@ function buildKarateFeature(config) {
             }
             scenario.extractVars.forEach(v => {
                 feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+                feature += `  * karate.set('${v.varName}', ${v.varName})\n`;
             });
         }
 
@@ -781,6 +990,53 @@ function indentText(text, spaces) {
     return lines.map(line => ' '.repeat(spaces) + line).join('\n') + '\n';
 }
 
+// Get all variable names extracted in previous scenarios
+function getPreviousExtractedVars(scenarios, currentIndex) {
+    const extractedVars = [];
+    for (let i = 0; i < currentIndex; i++) {
+        const scenario = scenarios[i];
+        if (scenario.extractVars && scenario.extractVars.length > 0) {
+            scenario.extractVars.forEach(v => {
+                if (v.varName && !extractedVars.includes(v.varName)) {
+                    extractedVars.push(v.varName);
+                }
+            });
+        }
+    }
+    return extractedVars;
+}
+
+// Detect which variables from previous scenarios are used in current scenario
+function getUsedVariablesInScenario(scenario, availableVars) {
+    const usedVars = [];
+    const varPattern = /#\((\w+)\)/g;
+
+    // Check endpoint
+    if (scenario.endpoint) {
+        let match;
+        while ((match = varPattern.exec(scenario.endpoint)) !== null) {
+            const varName = match[1];
+            if (availableVars.includes(varName) && !usedVars.includes(varName)) {
+                usedVars.push(varName);
+            }
+        }
+    }
+
+    // Check request payload
+    if (scenario.request) {
+        varPattern.lastIndex = 0; // Reset regex
+        let match;
+        while ((match = varPattern.exec(scenario.request)) !== null) {
+            const varName = match[1];
+            if (availableVars.includes(varName) && !usedVars.includes(varName)) {
+                usedVars.push(varName);
+            }
+        }
+    }
+
+    return usedVars;
+}
+
 // Clear All
 function clearAll() {
     showConfirmModal('Clear All', 'Are you sure you want to clear all scenarios and configuration?', () => {
@@ -793,11 +1049,18 @@ function clearAll() {
         document.getElementById('includeAuth').checked = false;
         document.getElementById('strictValidation').checked = true;
         document.getElementById('includeComments').checked = true;
+        document.getElementById('useEnvVariables').checked = false;
+        document.getElementById('envVariablesSection').style.display = 'none';
 
         // Clear all scenarios
         scenarios = [];
         scenarioCounter = 0;
         document.getElementById('scenariosList').innerHTML = '';
+
+        // Clear environment variables
+        envVariables = [];
+        envVarCounter = 0;
+        document.getElementById('envVariablesList').innerHTML = '<div class="empty-vars-hint">No environment variables defined. Click "Add Variable" to define variables that change per environment.</div>';
 
         // Add one empty scenario
         addScenario();
