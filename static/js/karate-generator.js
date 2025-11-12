@@ -789,6 +789,21 @@ function buildKarateFeature(config) {
 
         feature += `Scenario: ${scenario.name}\n`;
 
+        // Get variables from previous scenarios that are used in this scenario
+        const availableVars = getPreviousExtractedVars(config.scenarios, index);
+        const usedVars = getUsedVariablesInScenario(scenario, availableVars);
+
+        // Retrieve variables from previous scenarios using karate.get()
+        if (usedVars.length > 0) {
+            if (config.includeComments) {
+                feature += `  # Retrieve variables from previous scenarios\n`;
+            }
+            usedVars.forEach(varName => {
+                feature += `  * def ${varName} = karate.get('${varName}')\n`;
+            });
+            feature += `\n`;
+        }
+
         if (config.includeComments) {
             feature += `  # Arrange: Set up the request\n`;
         }
@@ -845,6 +860,7 @@ function buildKarateFeature(config) {
             }
             scenario.extractVars.forEach(v => {
                 feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+                feature += `  * karate.set('${v.varName}', ${v.varName})\n`;
             });
         }
 
@@ -882,6 +898,53 @@ function indentJSON(json, spaces) {
 function indentText(text, spaces) {
     const lines = text.split('\n');
     return lines.map(line => ' '.repeat(spaces) + line).join('\n') + '\n';
+}
+
+// Get all variable names extracted in previous scenarios
+function getPreviousExtractedVars(scenarios, currentIndex) {
+    const extractedVars = [];
+    for (let i = 0; i < currentIndex; i++) {
+        const scenario = scenarios[i];
+        if (scenario.extractVars && scenario.extractVars.length > 0) {
+            scenario.extractVars.forEach(v => {
+                if (v.varName && !extractedVars.includes(v.varName)) {
+                    extractedVars.push(v.varName);
+                }
+            });
+        }
+    }
+    return extractedVars;
+}
+
+// Detect which variables from previous scenarios are used in current scenario
+function getUsedVariablesInScenario(scenario, availableVars) {
+    const usedVars = [];
+    const varPattern = /#\((\w+)\)/g;
+
+    // Check endpoint
+    if (scenario.endpoint) {
+        let match;
+        while ((match = varPattern.exec(scenario.endpoint)) !== null) {
+            const varName = match[1];
+            if (availableVars.includes(varName) && !usedVars.includes(varName)) {
+                usedVars.push(varName);
+            }
+        }
+    }
+
+    // Check request payload
+    if (scenario.request) {
+        varPattern.lastIndex = 0; // Reset regex
+        let match;
+        while ((match = varPattern.exec(scenario.request)) !== null) {
+            const varName = match[1];
+            if (availableVars.includes(varName) && !usedVars.includes(varName)) {
+                usedVars.push(varName);
+            }
+        }
+    }
+
+    return usedVars;
 }
 
 // Clear All
