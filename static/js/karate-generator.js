@@ -979,13 +979,13 @@ function buildKarateFeature(config) {
         const availableVars = getPreviousExtractedVars(config.scenarios, index);
         const usedVars = getUsedVariablesInScenario(scenario, availableVars);
 
-        // Retrieve variables from previous scenarios using karate.get()
+        // Retrieve variables from previous scenarios using read()
         if (usedVars.length > 0) {
             if (config.includeComments) {
                 feature += `  # Retrieve variables from previous scenarios\n`;
             }
             usedVars.forEach(varName => {
-                feature += `  * def ${varName} = karate.get('${varName}')\n`;
+                feature += `  * def ${varName} = read('../../../../target/temp-data/${varName}.txt')\n`;
             });
             feature += `\n`;
         }
@@ -1045,7 +1045,7 @@ function buildKarateFeature(config) {
             }
             scenario.extractVars.forEach(v => {
                 feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
-                feature += `  * karate.set('${v.varName}', ${v.varName})\n`;
+                feature += `  * karate.write(${v.varName}, 'temp-data/${v.varName}.txt')\n`;
             });
         }
 
