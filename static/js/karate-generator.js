@@ -741,7 +741,6 @@ function formatScenarioJSON(id, type) {
 function generateKarateFeature() {
     // Get feature-level configuration
     const featureName = document.getElementById('featureName').value.trim();
-    const baseUrl = document.getElementById('baseUrl').value.trim();
     const useEnvUrl = document.getElementById('useEnvUrl').checked;
     const envUrlDomain = document.getElementById('envUrlDomain').value.trim();
     const includeHeaders = document.getElementById('includeHeaders').checked;
@@ -824,7 +823,6 @@ function generateKarateFeature() {
     // Generate the feature file
     generatedFeature = buildKarateFeature({
         featureName,
-        baseUrl,
         useEnvUrl,
         envUrlDomain,
         useEnvVariables,
@@ -919,15 +917,13 @@ function buildKarateFeature(config) {
     }
 
     // Background (optional)
-    if (config.useEnvUrl || config.baseUrl || config.useEnvVariables || config.includeHeaders || config.includeAuth) {
+    if (config.useEnvUrl || config.useEnvVariables || config.includeHeaders || config.includeAuth) {
         feature += `Background:\n`;
 
-        // Environment-based URL or static URL
+        // Environment-based URL
         if (config.useEnvUrl && config.envUrlDomain) {
             feature += `  * def env = karate.properties['env']\n`;
             feature += `  Given url 'https://' + env + '${config.envUrlDomain}'\n`;
-        } else if (config.baseUrl) {
-            feature += `  * url '${config.baseUrl}'\n`;
         }
 
         // Environment-specific variables
@@ -1136,7 +1132,6 @@ function getUsedVariablesInScenario(scenario, availableVars) {
 function clearAll() {
     showConfirmModal('Clear All', 'Are you sure you want to clear all scenarios and configuration?', () => {
         document.getElementById('featureName').value = 'API Test';
-        document.getElementById('baseUrl').value = '';
         document.getElementById('useEnvUrl').checked = false;
         document.getElementById('envUrlDomain').value = '';
         document.getElementById('envUrlConfig').style.display = 'none';
@@ -1169,7 +1164,6 @@ function clearAll() {
 // Load Sample Data
 function loadSampleData() {
     document.getElementById('featureName').value = 'User Management API';
-    document.getElementById('baseUrl').value = 'https://api.example.com';
 
     // Clear existing scenarios
     scenarios = [];
@@ -1296,7 +1290,6 @@ function saveWork() {
     // Collect all current data
     const featureConfig = {
         featureName: document.getElementById('featureName').value.trim(),
-        baseUrl: document.getElementById('baseUrl').value.trim(),
         useEnvUrl: document.getElementById('useEnvUrl').checked,
         envUrlDomain: document.getElementById('envUrlDomain').value.trim(),
         includeHeaders: document.getElementById('includeHeaders').checked,
@@ -1363,7 +1356,6 @@ function loadWork() {
             // Restore feature configuration
             if (feature_config) {
                 document.getElementById('featureName').value = feature_config.featureName || 'API Test';
-                document.getElementById('baseUrl').value = feature_config.baseUrl || '';
                 document.getElementById('useEnvUrl').checked = feature_config.useEnvUrl || false;
                 document.getElementById('envUrlDomain').value = feature_config.envUrlDomain || '';
                 document.getElementById('includeHeaders').checked = feature_config.includeHeaders !== undefined ? feature_config.includeHeaders : true;

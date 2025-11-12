@@ -82,6 +82,97 @@
     grid-column: 1 / -1;
 }
 
+/* Feature-Level Options Grid */
+.options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.option-card {
+    background: var(--input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 16px;
+    transition: all 0.2s;
+}
+
+.option-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 8px var(--primary-color-alpha);
+}
+
+.option-header {
+    margin-bottom: 8px;
+}
+
+.option-checkbox {
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    gap: 10px;
+}
+
+.option-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin: 2px 0 0 0;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.option-title {
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.option-description {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.option-content {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border-color);
+}
+
+.option-content label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.option-content input[type="text"] {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.option-content input[type="text"]:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-alpha);
+}
+
+.option-help {
+    display: block;
+    color: var(--text-secondary);
+    font-size: 11px;
+    margin-top: 8px;
+    line-height: 1.5;
+}
+
 /* Scenarios Section */
 .scenarios-section {
     background: var(--card-bg);
