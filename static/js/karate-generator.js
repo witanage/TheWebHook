@@ -986,9 +986,6 @@ function buildKarateFeature(config) {
             feature += `  # Arrange: Set up the request\n`;
         }
 
-        // Set path (handle Karate variable syntax)
-        feature += `  * def endpoint = '${scenario.endpoint}'\n`;
-
         // Set request body if present
         if (scenario.request) {
             feature += `  * def requestBody =\n`;
@@ -1002,12 +999,13 @@ function buildKarateFeature(config) {
         }
 
         // Make the request
+        // Handle endpoint path - use it directly to allow Karate variable interpolation
         if (scenario.request && ['POST', 'PUT', 'PATCH'].includes(scenario.method)) {
-            feature += `  Given path endpoint\n`;
+            feature += `  Given path '${scenario.endpoint}'\n`;
             feature += `  And request requestBody\n`;
             feature += `  When method ${scenario.method}\n`;
         } else {
-            feature += `  Given path endpoint\n`;
+            feature += `  Given path '${scenario.endpoint}'\n`;
             feature += `  When method ${scenario.method}\n`;
         }
 
