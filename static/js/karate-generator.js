@@ -81,9 +81,97 @@ function addScenario(data = null) {
     scenarios.push(scenarioData);
 
     const scenarioCard = createScenarioCard(scenarioData);
-    document.getElementById('scenariosList').appendChild(scenarioCard);
+
+    // Create a wrapper for scenario card + add button
+    const scenarioWrapper = document.createElement('div');
+    scenarioWrapper.className = 'scenario-wrapper';
+    scenarioWrapper.appendChild(scenarioCard);
+
+    // Add "Add Scenario" button after the card
+    const addScenarioBtn = document.createElement('div');
+    addScenarioBtn.className = 'add-scenario-after';
+    addScenarioBtn.innerHTML = `
+        <button class="btn-add-scenario-after" onclick="addScenarioAfter(${id})" title="Add scenario after this one">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Scenario
+        </button>
+    `;
+    scenarioWrapper.appendChild(addScenarioBtn);
+
+    document.getElementById('scenariosList').appendChild(scenarioWrapper);
 
     // Show/hide empty state
+    updateEmptyState();
+}
+
+// Add scenario after a specific scenario
+function addScenarioAfter(afterId) {
+    // Find the index of the scenario to insert after
+    const afterIndex = scenarios.findIndex(s => s.id === afterId);
+    if (afterIndex === -1) {
+        // If not found, just append at the end
+        addScenario();
+        return;
+    }
+
+    // Create new scenario data
+    const id = scenarioCounter++;
+    const scenarioData = {
+        id: id,
+        name: '',
+        method: 'GET',
+        endpoint: '',
+        status: 200,
+        request: '',
+        response: '',
+        extractVars: [],
+        assertions: [],
+        tags: '',
+        sourceScenarioId: null,
+        duplicateNumber: null
+    };
+
+    // Insert into scenarios array after the specified index
+    scenarios.splice(afterIndex + 1, 0, scenarioData);
+
+    // Create the card
+    const scenarioCard = createScenarioCard(scenarioData);
+
+    // Create a wrapper for scenario card + add button
+    const scenarioWrapper = document.createElement('div');
+    scenarioWrapper.className = 'scenario-wrapper';
+    scenarioWrapper.appendChild(scenarioCard);
+
+    // Add "Add Scenario" button after the card
+    const addScenarioBtn = document.createElement('div');
+    addScenarioBtn.className = 'add-scenario-after';
+    addScenarioBtn.innerHTML = `
+        <button class="btn-add-scenario-after" onclick="addScenarioAfter(${id})" title="Add scenario after this one">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Scenario
+        </button>
+    `;
+    scenarioWrapper.appendChild(addScenarioBtn);
+
+    // Find the DOM element to insert after
+    const scenariosList = document.getElementById('scenariosList');
+    const wrappers = scenariosList.querySelectorAll('.scenario-wrapper');
+    if (wrappers[afterIndex]) {
+        // Insert after the found wrapper
+        wrappers[afterIndex].insertAdjacentElement('afterend', scenarioWrapper);
+    } else {
+        // Fallback: append at the end
+        scenariosList.appendChild(scenarioWrapper);
+    }
+
+    // Update scenario numbers
+    updateScenarioNumbers();
     updateEmptyState();
 }
 
@@ -493,10 +581,15 @@ function removeScenario(id) {
         // Remove from array
         scenarios = scenarios.filter(s => s.id !== id);
 
-        // Remove from DOM
+        // Remove from DOM (remove the wrapper which contains the card and add button)
         const card = document.querySelector(`.scenario-card[data-scenario-id="${id}"]`);
         if (card) {
-            card.remove();
+            const wrapper = card.closest('.scenario-wrapper');
+            if (wrapper) {
+                wrapper.remove();
+            } else {
+                card.remove();
+            }
         }
 
         // Update scenario numbers
