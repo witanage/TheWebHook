@@ -605,8 +605,9 @@ function formatScenarioJSON(id, type) {
     try {
         // Handle Karate variable syntax - preserve #(anything) patterns
         // Store all Karate variables and replace with placeholders
+        // Supports both single and double quotes
         const karateVars = [];
-        const preserved = input.replace(/"#\([^)]+\)"/g, (match) => {
+        const preserved = input.replace(/["']#\([^)]+\)["']/g, (match) => {
             const index = karateVars.length;
             karateVars.push(match.slice(1, -1)); // Remove the quotes
             return `"__KARATE_VAR_${index}__"`;
@@ -683,7 +684,8 @@ function generateKarateFeature() {
             try {
                 // Temporarily replace Karate variables for validation
                 // Handles #(varName), #(obj.prop), #(array[0]), etc.
-                const tempRequest = data.request.replace(/"#\([^)]+\)"/g, '"__TEMP__"');
+                // Supports both single and double quotes
+                const tempRequest = data.request.replace(/["']#\([^)]+\)["']/g, '"__TEMP__"');
                 requestJson = JSON.parse(tempRequest);
             } catch (e) {
                 showModal('JSON Error', `Scenario #${scenario.id + 1} invalid request JSON: ${e.message}`);
@@ -694,7 +696,8 @@ function generateKarateFeature() {
         try {
             // Temporarily replace Karate variables for validation
             // Handles #(varName), #(obj.prop), #(array[0]), etc.
-            const tempResponse = data.response.replace(/"#\([^)]+\)"/g, '"__TEMP__"');
+            // Supports both single and double quotes
+            const tempResponse = data.response.replace(/["']#\([^)]+\)["']/g, '"__TEMP__"');
             responseJson = JSON.parse(tempResponse);
         } catch (e) {
             showModal('JSON Error', `Scenario #${scenario.id + 1} invalid response JSON: ${e.message}`);
