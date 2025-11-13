@@ -396,7 +396,7 @@ function createScenarioCard(data) {
 
         <div class="extract-vars-section">
             <div class="extract-vars-header">
-                <label>Extract Variables from Response (for use in later scenarios)</label>
+                <label>Extract Variables from Primary Response (for use in later scenarios)</label>
                 <button class="btn-add-var" onclick="addExtractVar(${data.id})" title="Add Variable">
                     ➕ Add Variable
                 </button>
@@ -405,7 +405,7 @@ function createScenarioCard(data) {
                 ${extractVarsHTML || '<div class="empty-vars-hint">No variables to extract. Click "Add Variable" to extract values from this response.</div>'}
             </div>
             <div class="extract-vars-help">
-                <small>💡 Examples: <code>userId</code> ← <code>response.id</code> or <code>authToken</code> ← <code>response.data.token</code></small>
+                <small>💡 Examples: <code>userId</code> ← <code>response.id</code> or <code>authToken</code> ← <code>response.data.token</code>. These will be saved for use in later scenarios.</small>
             </div>
         </div>
 
@@ -420,7 +420,7 @@ function createScenarioCard(data) {
                 ${assertionsHTML || '<div class="empty-vars-hint">No custom assertions. Click "Add Assertion" to add validation rules.</div>'}
             </div>
             <div class="assertions-help">
-                <small>💡 Examples: <code>match response.id == '#number'</code> or <code>match response.email == '#regex .+@.+'</code></small>
+                <small>💡 Examples: <code>match response.id == '#number'</code> or <code>match response.email == '#regex .+@.+'</code>. When validation call is enabled, use <code>primaryResponse</code> for primary response and extracted variables from validation.</small>
             </div>
         </div>
 
@@ -484,7 +484,7 @@ function createScenarioCard(data) {
                             ${validationExtractVarsHTML || '<div class="empty-vars-hint">No variables to extract from validation response. Click "Add Variable" to extract values.</div>'}
                         </div>
                         <div class="validation-extract-vars-help">
-                            <small>💡 Extract values from validation response to compare with primary response. Example: <code>auditValue</code> ← <code>response.expectedValue</code>, then assert <code>match primaryResponse.actualValue == auditValue</code></small>
+                            <small>💡 Extract values from validation response for use in Custom Assertions below. Example: <code>auditValue</code> ← <code>response.expectedValue</code>, then in assertions use <code>match primaryResponse.actualValue == auditValue</code></small>
                         </div>
                     </div>
                 </div>
@@ -1266,7 +1266,7 @@ function buildKarateFeature(config) {
             // Extract variables from validation response to use in assertions
             if (scenario.validationExtractVars && scenario.validationExtractVars.length > 0) {
                 if (config.includeComments) {
-                    feature += `  # Extract variables from validation response to compare with primary response\n`;
+                    feature += `  # Extract variables from validation response\n`;
                 }
                 scenario.validationExtractVars.forEach(v => {
                     feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
@@ -1274,13 +1274,19 @@ function buildKarateFeature(config) {
             }
         }
 
-        // Extract variables
+        // Extract variables from primary response for use in subsequent scenarios
         if (scenario.extractVars && scenario.extractVars.length > 0) {
             if (config.includeComments) {
-                feature += `\n  # Extract variables for use in subsequent scenarios\n`;
+                feature += `\n  # Extract variables from primary response for use in subsequent scenarios\n`;
             }
             scenario.extractVars.forEach(v => {
-                feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+                // If validation call is enabled, need to use primaryResponse instead of response
+                let jsonPath = v.jsonPath;
+                if (scenario.useValidationCall && scenario.validationEndpoint) {
+                    // Replace 'response' with 'primaryResponse' since response now refers to validation response
+                    jsonPath = jsonPath.replace(/\bresponse\b/g, 'primaryResponse');
+                }
+                feature += `  * def ${v.varName} = ${jsonPath}\n`;
                 feature += `  * karate.write(${v.varName}, 'temp-data/${sanitizedFeatureName}_${v.varName}.txt')\n`;
             });
         }
@@ -1290,7 +1296,7 @@ function buildKarateFeature(config) {
             if (config.includeComments) {
                 feature += `\n  # Custom assertions\n`;
                 if (scenario.useValidationCall && scenario.validationExtractVars && scenario.validationExtractVars.length > 0) {
-                    feature += `  # You can compare primaryResponse with extracted validation variables\n`;
+                    feature += `  # Available for assertions: primaryResponse, response (validation), and all extracted variables\n`;
                 }
             }
             scenario.assertions.forEach(assertion => {
