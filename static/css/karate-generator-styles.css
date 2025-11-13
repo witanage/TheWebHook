@@ -706,6 +706,75 @@
     box-shadow: 0 0 0 2px var(--primary-color-alpha);
 }
 
+.validation-extract-vars-section {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--border-color);
+}
+
+.validation-extract-vars-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.validation-extract-vars-header label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.validation-extract-vars-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.validation-extract-var-item {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+    background: var(--card-bg);
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.validation-extract-var-name,
+.validation-extract-var-path {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--input-bg);
+    color: var(--text-primary);
+    font-size: 13px;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.validation-extract-var-name:focus,
+.validation-extract-var-path:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-alpha);
+}
+
+.validation-extract-vars-help {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.validation-extract-vars-help code {
+    background: var(--code-bg);
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-size: 11px;
+    color: var(--primary-color);
+}
+
 /* Environment Variables Section */
 .env-variables-section {
     background: var(--card-bg);

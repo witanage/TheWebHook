@@ -66,7 +66,7 @@ function addScenario(data = null) {
         validationMethod: 'GET',
         validationEndpoint: '',
         validationRequest: '',
-        useValidationForAssertions: false // Whether to use validation response for assertions
+        validationExtractVars: [] // Array of {varName: 'auditValue', jsonPath: 'response.value'} from validation response
     };
 
     // Ensure duplicate tracking fields exist
@@ -94,8 +94,8 @@ function addScenario(data = null) {
     if (scenarioData.validationRequest === undefined) {
         scenarioData.validationRequest = '';
     }
-    if (scenarioData.useValidationForAssertions === undefined) {
-        scenarioData.useValidationForAssertions = false;
+    if (scenarioData.validationExtractVars === undefined) {
+        scenarioData.validationExtractVars = [];
     }
 
     scenarios.push(scenarioData);
@@ -258,6 +258,26 @@ function createScenarioCard(data) {
                    data-scenario-id="${data.id}"
                    data-assertion-index="${idx}">
             <button class="btn-remove-var" onclick="removeAssertion(${data.id}, ${idx})" title="Remove">✕</button>
+        </div>
+    `).join('');
+
+    // Create validation extract vars HTML
+    const validationExtractVarsHTML = (data.validationExtractVars || []).map((v, idx) => `
+        <div class="validation-extract-var-item" data-var-index="${idx}">
+            <input type="text"
+                   class="validation-extract-var-name"
+                   placeholder="variableName"
+                   value="${v.varName || ''}"
+                   data-scenario-id="${data.id}"
+                   data-var-index="${idx}">
+            <span class="extract-arrow">←</span>
+            <input type="text"
+                   class="validation-extract-var-path"
+                   placeholder="response.value"
+                   value="${v.jsonPath || ''}"
+                   data-scenario-id="${data.id}"
+                   data-var-index="${idx}">
+            <button class="btn-remove-var" onclick="removeValidationExtractVar(${data.id}, ${idx})" title="Remove">✕</button>
         </div>
     `).join('');
 
@@ -453,15 +473,19 @@ function createScenarioCard(data) {
                                   placeholder='Use #(varName) syntax, e.g.: {"checkId": "#(userId)"}'>${data.validationRequest || ''}</textarea>
                     </div>
 
-                    <div class="form-group">
-                        <label class="validation-assertions-checkbox">
-                            <input type="checkbox"
-                                   class="validation-assertions-enabled"
-                                   data-scenario-id="${data.id}"
-                                   ${data.useValidationForAssertions ? 'checked' : ''}>
-                            <span>Use validation response for assertions (instead of primary response)</span>
-                        </label>
-                        <small style="color: #666; font-size: 0.85em; display: block; margin-top: 4px;">💡 If enabled, assertions will match against the validation call's response instead of the primary response</small>
+                    <div class="validation-extract-vars-section">
+                        <div class="validation-extract-vars-header">
+                            <label>Extract Variables from Validation Response (to use in assertions)</label>
+                            <button class="btn-add-var" onclick="addValidationExtractVar(${data.id})" title="Add Variable">
+                                ➕ Add Variable
+                            </button>
+                        </div>
+                        <div class="validation-extract-vars-list" id="validationExtractVarsList_${data.id}">
+                            ${validationExtractVarsHTML || '<div class="empty-vars-hint">No variables to extract from validation response. Click "Add Variable" to extract values.</div>'}
+                        </div>
+                        <div class="validation-extract-vars-help">
+                            <small>💡 Extract values from validation response to compare with primary response. Example: <code>auditValue</code> ← <code>response.expectedValue</code>, then assert <code>match primaryResponse.actualValue == auditValue</code></small>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -574,6 +598,57 @@ function toggleValidationCall(scenarioId) {
 
     if (checkbox && content) {
         content.style.display = checkbox.checked ? 'block' : 'none';
+    }
+}
+
+// Add validation extract variable field
+function addValidationExtractVar(scenarioId) {
+    const scenario = scenarios.find(s => s.id === scenarioId);
+    if (!scenario) return;
+
+    const data = collectScenarioData(scenarioId);
+    if (!data.validationExtractVars) data.validationExtractVars = [];
+
+    const varIndex = data.validationExtractVars.length;
+    data.validationExtractVars.push({ varName: '', jsonPath: '' });
+
+    const list = document.getElementById(`validationExtractVarsList_${scenarioId}`);
+
+    // Remove empty hint if it exists
+    const emptyHint = list.querySelector('.empty-vars-hint');
+    if (emptyHint) emptyHint.remove();
+
+    const varItem = document.createElement('div');
+    varItem.className = 'validation-extract-var-item';
+    varItem.dataset.varIndex = varIndex;
+    varItem.innerHTML = `
+        <input type="text"
+               class="validation-extract-var-name"
+               placeholder="variableName"
+               data-scenario-id="${scenarioId}"
+               data-var-index="${varIndex}">
+        <span class="extract-arrow">←</span>
+        <input type="text"
+               class="validation-extract-var-path"
+               placeholder="response.value"
+               data-scenario-id="${scenarioId}"
+               data-var-index="${varIndex}">
+        <button class="btn-remove-var" onclick="removeValidationExtractVar(${scenarioId}, ${varIndex})" title="Remove">✕</button>
+    `;
+    list.appendChild(varItem);
+}
+
+// Remove validation extract variable field
+function removeValidationExtractVar(scenarioId, varIndex) {
+    const list = document.getElementById(`validationExtractVarsList_${scenarioId}`);
+    const item = list.querySelector(`.validation-extract-var-item[data-var-index="${varIndex}"]`);
+    if (item) {
+        item.remove();
+    }
+
+    // Show empty hint if no variables left
+    if (list.querySelectorAll('.validation-extract-var-item').length === 0) {
+        list.innerHTML = '<div class="empty-vars-hint">No variables to extract from validation response. Click "Add Variable" to extract values.</div>';
     }
 }
 
@@ -785,7 +860,19 @@ function collectScenarioData(id) {
     const validationMethod = document.querySelector(`.validation-method[data-scenario-id="${id}"]`)?.value || 'GET';
     const validationEndpoint = document.querySelector(`.validation-endpoint[data-scenario-id="${id}"]`)?.value.trim() || '';
     const validationRequest = document.querySelector(`.validation-request[data-scenario-id="${id}"]`)?.value.trim() || '';
-    const useValidationForAssertions = document.querySelector(`.validation-assertions-enabled[data-scenario-id="${id}"]`)?.checked || false;
+
+    // Collect validation extract variables
+    const validationExtractVars = [];
+    const validationVarNames = document.querySelectorAll(`.validation-extract-var-name[data-scenario-id="${id}"]`);
+    const validationVarPaths = document.querySelectorAll(`.validation-extract-var-path[data-scenario-id="${id}"]`);
+
+    validationVarNames.forEach((nameInput, idx) => {
+        const varName = nameInput.value.trim();
+        const jsonPath = validationVarPaths[idx]?.value.trim();
+        if (varName && jsonPath) {
+            validationExtractVars.push({ varName, jsonPath });
+        }
+    });
 
     return {
         id,
@@ -802,7 +889,7 @@ function collectScenarioData(id) {
         validationMethod,
         validationEndpoint,
         validationRequest,
-        useValidationForAssertions
+        validationExtractVars
     };
 }
 
@@ -1155,10 +1242,8 @@ function buildKarateFeature(config) {
                 feature += `\n  # Optional: Make validation call (secondary API request)\n`;
             }
 
-            // Save primary response if we need it later
-            if (scenario.useValidationForAssertions) {
-                feature += `  * def primaryResponse = response\n`;
-            }
+            // Save primary response for comparison
+            feature += `  * def primaryResponse = response\n`;
 
             // Set validation request body if present
             if (scenario.validationRequest) {
@@ -1178,12 +1263,14 @@ function buildKarateFeature(config) {
                 feature += `  When method ${scenario.validationMethod}\n`;
             }
 
-            // Store validation response for assertions
-            if (scenario.useValidationForAssertions) {
+            // Extract variables from validation response to use in assertions
+            if (scenario.validationExtractVars && scenario.validationExtractVars.length > 0) {
                 if (config.includeComments) {
-                    feature += `  # Store validation response for assertions\n`;
+                    feature += `  # Extract variables from validation response to compare with primary response\n`;
                 }
-                feature += `  * def validationResponse = response\n`;
+                scenario.validationExtractVars.forEach(v => {
+                    feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+                });
             }
         }
 
@@ -1201,20 +1288,13 @@ function buildKarateFeature(config) {
         // Custom assertions
         if (scenario.assertions && scenario.assertions.length > 0) {
             if (config.includeComments) {
-                if (scenario.useValidationCall && scenario.useValidationForAssertions) {
-                    feature += `\n  # Custom assertions (using validation response)\n`;
-                } else {
-                    feature += `\n  # Custom assertions\n`;
+                feature += `\n  # Custom assertions\n`;
+                if (scenario.useValidationCall && scenario.validationExtractVars && scenario.validationExtractVars.length > 0) {
+                    feature += `  # You can compare primaryResponse with extracted validation variables\n`;
                 }
             }
             scenario.assertions.forEach(assertion => {
-                // If using validation response for assertions, replace 'response' with 'validationResponse'
-                let processedAssertion = assertion;
-                if (scenario.useValidationCall && scenario.useValidationForAssertions) {
-                    // Replace 'response' with 'validationResponse' but preserve it in other contexts
-                    processedAssertion = assertion.replace(/\bresponse\b/g, 'validationResponse');
-                }
-                feature += `  And ${processedAssertion}\n`;
+                feature += `  And ${assertion}\n`;
             });
         }
 
