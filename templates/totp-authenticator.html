@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}TOTP Authenticator{% endblock %}
+{% block page_title %}TOTP Authenticator{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/totp-authenticator-styles.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/toast-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="totp-container">
+    <!-- Header with Add Button -->
+    <div class="totp-header">
+        <button class="btn btn-primary" id="addAccountBtn">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Account
+        </button>
+    </div>
+
+    <!-- Accounts Grid -->
+    <div class="accounts-grid" id="accountsGrid">
+        <!-- Accounts will be dynamically loaded here -->
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <h3>No Accounts Added</h3>
+        <p>Add your first account to start generating 2FA codes</p>
+        <button class="btn btn-primary" onclick="document.getElementById('addAccountBtn').click()">
+            Add Account
+        </button>
+    </div>
+</div>
+
+<!-- Add/Edit Account Modal -->
+<div class="modal" id="accountModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Add Account</h2>
+            <button class="close-btn" onclick="closeAccountModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="accountForm">
+                <input type="hidden" id="accountId">
+
+                <div class="form-group">
+                    <label for="serviceName">Service Name *</label>
+                    <input type="text" id="serviceName" class="form-control" placeholder="e.g., Google, GitHub, AWS" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="accountIdentifier">Account/Email</label>
+                    <input type="text" id="accountIdentifier" class="form-control" placeholder="e.g., user@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="secretKey">Secret Key *</label>
+                    <input type="text" id="secretKey" class="form-control" placeholder="Enter your TOTP secret key" required>
+                    <small class="form-text">Enter the secret key provided by the service (usually shown during 2FA setup)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="issuer">Issuer</label>
+                    <input type="text" id="issuer" class="form-control" placeholder="e.g., Google">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="digits">Digits</label>
+                        <select id="digits" class="form-control">
+                            <option value="6" selected>6 digits</option>
+                            <option value="7">7 digits</option>
+                            <option value="8">8 digits</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="period">Period (seconds)</label>
+                        <select id="period" class="form-control">
+                            <option value="30" selected>30 seconds</option>
+                            <option value="60">60 seconds</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="colorPicker">Color</label>
+                    <div class="color-picker-wrapper">
+                        <input type="color" id="colorPicker" value="#007bff">
+                        <div class="color-presets">
+                            <button type="button" class="color-preset" data-color="#007bff" style="background: #007bff;"></button>
+                            <button type="button" class="color-preset" data-color="#28a745" style="background: #28a745;"></button>
+                            <button type="button" class="color-preset" data-color="#dc3545" style="background: #dc3545;"></button>
+                            <button type="button" class="color-preset" data-color="#ffc107" style="background: #ffc107;"></button>
+                            <button type="button" class="color-preset" data-color="#6f42c1" style="background: #6f42c1;"></button>
+                            <button type="button" class="color-preset" data-color="#fd7e14" style="background: #fd7e14;"></button>
+                            <button type="button" class="color-preset" data-color="#17a2b8" style="background: #17a2b8;"></button>
+                            <button type="button" class="color-preset" data-color="#e83e8c" style="background: #e83e8c;"></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAccountModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveAccountBtn">Save Account</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal" id="deleteModal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Delete Account</h2>
+            <button class="close-btn" onclick="closeDeleteModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete this account? This action cannot be undone.</p>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
+<script src="{{ url_for('static', filename='js/totp-authenticator.js') }}"></script>
+{% endblock %}

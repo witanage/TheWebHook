@@ -1,0 +1,495 @@
+/* ===============================================
+   TOTP Authenticator Styles
+   =============================================== */
+
+.totp-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* ===============================================
+   Header
+   =============================================== */
+.totp-header {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 2rem;
+}
+
+/* ===============================================
+   Accounts Grid
+   =============================================== */
+.accounts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* ===============================================
+   Account Card
+   =============================================== */
+.account-card {
+    background: var(--card-background, #ffffff);
+    border: 1px solid var(--border-color, #e1e4e8);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.account-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--account-color, #007bff);
+    transition: height 0.3s ease;
+}
+
+.account-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.account-card:hover::before {
+    height: 6px;
+}
+
+/* Account Header */
+.account-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.account-info {
+    flex: 1;
+}
+
+.account-service {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--text-color, #24292e);
+    margin: 0 0 0.25rem 0;
+}
+
+.account-identifier {
+    font-size: 0.875rem;
+    color: var(--text-secondary, #6a737d);
+    margin: 0;
+}
+
+.account-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.icon-btn {
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--text-secondary, #6a737d);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.icon-btn:hover {
+    background: var(--hover-background, #f6f8fa);
+    color: var(--text-color, #24292e);
+}
+
+.icon-btn.delete:hover {
+    background: #ffeef0;
+    color: #d73a49;
+}
+
+/* TOTP Code Display */
+.totp-code-wrapper {
+    margin: 1.5rem 0;
+}
+
+.totp-code {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--account-color, #007bff);
+    letter-spacing: 0.25rem;
+    text-align: center;
+    margin: 0;
+    padding: 1rem;
+    background: var(--code-background, #f6f8fa);
+    border-radius: 8px;
+    user-select: all;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.totp-code:hover {
+    background: var(--hover-background, #ebedef);
+    transform: scale(1.02);
+}
+
+.totp-code.copied {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Progress Bar */
+.progress-wrapper {
+    margin-top: 1rem;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #6a737d);
+    margin-bottom: 0.5rem;
+}
+
+.progress-bar-container {
+    width: 100%;
+    height: 6px;
+    background: var(--progress-background, #e1e4e8);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--account-color, #007bff);
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+.progress-bar.warning {
+    background: #ffc107;
+}
+
+.progress-bar.danger {
+    background: #dc3545;
+}
+
+/* Copy Button */
+.copy-btn {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+/* ===============================================
+   Empty State
+   =============================================== */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    display: none;
+}
+
+.empty-state.show {
+    display: block;
+}
+
+.empty-state svg {
+    color: var(--text-secondary, #6a737d);
+    margin-bottom: 1rem;
+}
+
+.empty-state h3 {
+    color: var(--text-color, #24292e);
+    margin: 1rem 0 0.5rem 0;
+    font-size: 1.5rem;
+}
+
+.empty-state p {
+    color: var(--text-secondary, #6a737d);
+    margin: 0 0 2rem 0;
+}
+
+/* ===============================================
+   Modal Styles
+   =============================================== */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease;
+}
+
+.modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: var(--card-background, #ffffff);
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+}
+
+.modal-content.modal-small {
+    max-width: 400px;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--border-color, #e1e4e8);
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-color, #24292e);
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--text-secondary, #6a737d);
+    transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+    background: var(--hover-background, #f6f8fa);
+    color: var(--text-color, #24292e);
+}
+
+.modal-body {
+    padding: 1.5rem;
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+/* ===============================================
+   Form Styles
+   =============================================== */
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-weight: 500;
+    color: var(--text-color, #24292e);
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--border-color, #e1e4e8);
+    border-radius: 6px;
+    font-size: 0.875rem;
+    background: var(--input-background, #ffffff);
+    color: var(--text-color, #24292e);
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary, #6a737d);
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* Color Picker */
+.color-picker-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+#colorPicker {
+    width: 60px;
+    height: 40px;
+    border: 1px solid var(--border-color, #e1e4e8);
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.color-presets {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.color-preset {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border-color, #e1e4e8);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.color-preset:hover {
+    transform: scale(1.1);
+    border-color: var(--text-color, #24292e);
+}
+
+/* ===============================================
+   Button Styles
+   =============================================== */
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: #ffffff;
+}
+
+.btn-primary:hover {
+    background: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-secondary {
+    background: var(--secondary-button-bg, #6c757d);
+    color: #ffffff;
+}
+
+.btn-secondary:hover {
+    background: var(--secondary-button-hover, #5a6268);
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: #ffffff;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+/* ===============================================
+   Responsive Design
+   =============================================== */
+@media (max-width: 768px) {
+    .totp-container {
+        padding: 1rem;
+    }
+
+    .accounts-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .totp-code {
+        font-size: 1.5rem;
+        letter-spacing: 0.15rem;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .modal-content {
+        width: 95%;
+    }
+}
+
+/* ===============================================
+   Dark Mode Support
+   =============================================== */
+[data-theme="dark"] {
+    --card-background: #1e1e1e;
+    --border-color: #30363d;
+    --text-color: #e1e4e8;
+    --text-secondary: #8b949e;
+    --hover-background: #30363d;
+    --code-background: #161b22;
+    --progress-background: #30363d;
+    --input-background: #161b22;
+    --secondary-button-bg: #484f58;
+    --secondary-button-hover: #30363d;
+}
+
+[data-theme="dark"] .totp-code.copied {
+    background: #1a4d2e;
+    color: #4ade80;
+}
+
+[data-theme="dark"] .icon-btn.delete:hover {
+    background: #4a1d1d;
+    color: #f85149;
+}
