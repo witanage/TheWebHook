@@ -61,7 +61,12 @@ function addScenario(data = null) {
         assertions: [], // Array of custom assertion strings
         tags: '', // Comma-separated tags like @ac0149,@smoke
         sourceScenarioId: null, // null means not a duplicate
-        duplicateNumber: null   // null means not a duplicate
+        duplicateNumber: null,   // null means not a duplicate
+        useValidationCall: false, // Whether to make a secondary API call
+        validationMethod: 'GET',
+        validationEndpoint: '',
+        validationRequest: '',
+        validationExtractVars: [] // Array of {varName: 'auditValue', jsonPath: 'response.value'} from validation response
     };
 
     // Ensure duplicate tracking fields exist
@@ -76,6 +81,21 @@ function addScenario(data = null) {
     }
     if (scenarioData.tags === undefined) {
         scenarioData.tags = '';
+    }
+    if (scenarioData.useValidationCall === undefined) {
+        scenarioData.useValidationCall = false;
+    }
+    if (scenarioData.validationMethod === undefined) {
+        scenarioData.validationMethod = 'GET';
+    }
+    if (scenarioData.validationEndpoint === undefined) {
+        scenarioData.validationEndpoint = '';
+    }
+    if (scenarioData.validationRequest === undefined) {
+        scenarioData.validationRequest = '';
+    }
+    if (scenarioData.validationExtractVars === undefined) {
+        scenarioData.validationExtractVars = [];
     }
 
     scenarios.push(scenarioData);
@@ -241,6 +261,26 @@ function createScenarioCard(data) {
         </div>
     `).join('');
 
+    // Create validation extract vars HTML
+    const validationExtractVarsHTML = (data.validationExtractVars || []).map((v, idx) => `
+        <div class="validation-extract-var-item" data-var-index="${idx}">
+            <input type="text"
+                   class="validation-extract-var-name"
+                   placeholder="variableName"
+                   value="${v.varName || ''}"
+                   data-scenario-id="${data.id}"
+                   data-var-index="${idx}">
+            <span class="extract-arrow">←</span>
+            <input type="text"
+                   class="validation-extract-var-path"
+                   placeholder="response.value"
+                   value="${v.jsonPath || ''}"
+                   data-scenario-id="${data.id}"
+                   data-var-index="${idx}">
+            <button class="btn-remove-var" onclick="removeValidationExtractVar(${data.id}, ${idx})" title="Remove">✕</button>
+        </div>
+    `).join('');
+
     // Calculate scenario number text with duplicate tracking
     let scenarioNumberText;
     if (data.sourceScenarioId !== null && data.duplicateNumber !== null) {
@@ -356,7 +396,7 @@ function createScenarioCard(data) {
 
         <div class="extract-vars-section">
             <div class="extract-vars-header">
-                <label>Extract Variables from Response (for use in later scenarios)</label>
+                <label>Extract Variables from Primary Response (for use in later scenarios)</label>
                 <button class="btn-add-var" onclick="addExtractVar(${data.id})" title="Add Variable">
                     ➕ Add Variable
                 </button>
@@ -365,7 +405,7 @@ function createScenarioCard(data) {
                 ${extractVarsHTML || '<div class="empty-vars-hint">No variables to extract. Click "Add Variable" to extract values from this response.</div>'}
             </div>
             <div class="extract-vars-help">
-                <small>💡 Examples: <code>userId</code> ← <code>response.id</code> or <code>authToken</code> ← <code>response.data.token</code></small>
+                <small>💡 Examples: <code>userId</code> ← <code>response.id</code> or <code>authToken</code> ← <code>response.data.token</code>. These will be saved for use in later scenarios.</small>
             </div>
         </div>
 
@@ -380,7 +420,74 @@ function createScenarioCard(data) {
                 ${assertionsHTML || '<div class="empty-vars-hint">No custom assertions. Click "Add Assertion" to add validation rules.</div>'}
             </div>
             <div class="assertions-help">
-                <small>💡 Examples: <code>match response.id == '#number'</code> or <code>match response.email == '#regex .+@.+'</code></small>
+                <small>💡 Examples: <code>match response.id == '#number'</code> or <code>match response.email == '#regex .+@.+'</code>. When validation call is enabled, use <code>primaryResponse</code> for primary response and extracted variables from validation.</small>
+            </div>
+        </div>
+
+        <div class="validation-call-section">
+            <div class="validation-call-header">
+                <label class="validation-call-checkbox">
+                    <input type="checkbox"
+                           class="validation-call-enabled"
+                           data-scenario-id="${data.id}"
+                           ${data.useValidationCall ? 'checked' : ''}
+                           onchange="toggleValidationCall(${data.id})">
+                    <span>Optional Validation Call (Secondary API Request)</span>
+                </label>
+            </div>
+            <div class="validation-call-content" id="validationCallContent_${data.id}" style="display: ${data.useValidationCall ? 'block' : 'none'};">
+                <div class="validation-call-config">
+                    <div class="form-group">
+                        <label>Validation Method</label>
+                        <select class="validation-method" data-scenario-id="${data.id}">
+                            <option value="GET" ${data.validationMethod === 'GET' ? 'selected' : ''}>GET</option>
+                            <option value="POST" ${data.validationMethod === 'POST' ? 'selected' : ''}>POST</option>
+                            <option value="PUT" ${data.validationMethod === 'PUT' ? 'selected' : ''}>PUT</option>
+                            <option value="DELETE" ${data.validationMethod === 'DELETE' ? 'selected' : ''}>DELETE</option>
+                            <option value="PATCH" ${data.validationMethod === 'PATCH' ? 'selected' : ''}>PATCH</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Validation Endpoint</label>
+                        <input type="text"
+                               class="validation-endpoint"
+                               data-scenario-id="${data.id}"
+                               placeholder="e.g., /api/validate or /api/check/#(userId)"
+                               value="${data.validationEndpoint || ''}">
+                        <small style="color: #666; font-size: 0.85em;">💡 You can use variables from previous scenarios</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Validation Request Payload (Optional)
+                            <button class="btn-icon" onclick="formatScenarioJSON(${data.id}, 'validation-request')" title="Format">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="16 18 22 12 16 6"></polyline>
+                                    <polyline points="8 6 2 12 8 18"></polyline>
+                                </svg>
+                            </button>
+                        </label>
+                        <textarea class="validation-request"
+                                  data-scenario-id="${data.id}"
+                                  placeholder='Use #(varName) syntax, e.g.: {"checkId": "#(userId)"}'>${data.validationRequest || ''}</textarea>
+                    </div>
+
+                    <div class="validation-extract-vars-section">
+                        <div class="validation-extract-vars-header">
+                            <label>Extract Variables from Validation Response (to use in assertions)</label>
+                            <button class="btn-add-var" onclick="addValidationExtractVar(${data.id})" title="Add Variable">
+                                ➕ Add Variable
+                            </button>
+                        </div>
+                        <div class="validation-extract-vars-list" id="validationExtractVarsList_${data.id}">
+                            ${validationExtractVarsHTML || '<div class="empty-vars-hint">No variables to extract from validation response. Click "Add Variable" to extract values.</div>'}
+                        </div>
+                        <div class="validation-extract-vars-help">
+                            <small>💡 Extract values from validation response for use in Custom Assertions below. Example: <code>auditValue</code> ← <code>response.expectedValue</code>, then in assertions use <code>match primaryResponse.actualValue == auditValue</code></small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -481,6 +588,67 @@ function removeAssertion(scenarioId, assertionIndex) {
     // Show empty hint if no assertions left
     if (list.querySelectorAll('.assertion-item').length === 0) {
         list.innerHTML = '<div class="empty-vars-hint">No custom assertions. Click "Add Assertion" to add validation rules.</div>';
+    }
+}
+
+// Toggle validation call section visibility
+function toggleValidationCall(scenarioId) {
+    const checkbox = document.querySelector(`.validation-call-enabled[data-scenario-id="${scenarioId}"]`);
+    const content = document.getElementById(`validationCallContent_${scenarioId}`);
+
+    if (checkbox && content) {
+        content.style.display = checkbox.checked ? 'block' : 'none';
+    }
+}
+
+// Add validation extract variable field
+function addValidationExtractVar(scenarioId) {
+    const scenario = scenarios.find(s => s.id === scenarioId);
+    if (!scenario) return;
+
+    const data = collectScenarioData(scenarioId);
+    if (!data.validationExtractVars) data.validationExtractVars = [];
+
+    const varIndex = data.validationExtractVars.length;
+    data.validationExtractVars.push({ varName: '', jsonPath: '' });
+
+    const list = document.getElementById(`validationExtractVarsList_${scenarioId}`);
+
+    // Remove empty hint if it exists
+    const emptyHint = list.querySelector('.empty-vars-hint');
+    if (emptyHint) emptyHint.remove();
+
+    const varItem = document.createElement('div');
+    varItem.className = 'validation-extract-var-item';
+    varItem.dataset.varIndex = varIndex;
+    varItem.innerHTML = `
+        <input type="text"
+               class="validation-extract-var-name"
+               placeholder="variableName"
+               data-scenario-id="${scenarioId}"
+               data-var-index="${varIndex}">
+        <span class="extract-arrow">←</span>
+        <input type="text"
+               class="validation-extract-var-path"
+               placeholder="response.value"
+               data-scenario-id="${scenarioId}"
+               data-var-index="${varIndex}">
+        <button class="btn-remove-var" onclick="removeValidationExtractVar(${scenarioId}, ${varIndex})" title="Remove">✕</button>
+    `;
+    list.appendChild(varItem);
+}
+
+// Remove validation extract variable field
+function removeValidationExtractVar(scenarioId, varIndex) {
+    const list = document.getElementById(`validationExtractVarsList_${scenarioId}`);
+    const item = list.querySelector(`.validation-extract-var-item[data-var-index="${varIndex}"]`);
+    if (item) {
+        item.remove();
+    }
+
+    // Show empty hint if no variables left
+    if (list.querySelectorAll('.validation-extract-var-item').length === 0) {
+        list.innerHTML = '<div class="empty-vars-hint">No variables to extract from validation response. Click "Add Variable" to extract values.</div>';
     }
 }
 
@@ -687,6 +855,25 @@ function collectScenarioData(id) {
         }
     });
 
+    // Collect validation call data
+    const useValidationCall = document.querySelector(`.validation-call-enabled[data-scenario-id="${id}"]`)?.checked || false;
+    const validationMethod = document.querySelector(`.validation-method[data-scenario-id="${id}"]`)?.value || 'GET';
+    const validationEndpoint = document.querySelector(`.validation-endpoint[data-scenario-id="${id}"]`)?.value.trim() || '';
+    const validationRequest = document.querySelector(`.validation-request[data-scenario-id="${id}"]`)?.value.trim() || '';
+
+    // Collect validation extract variables
+    const validationExtractVars = [];
+    const validationVarNames = document.querySelectorAll(`.validation-extract-var-name[data-scenario-id="${id}"]`);
+    const validationVarPaths = document.querySelectorAll(`.validation-extract-var-path[data-scenario-id="${id}"]`);
+
+    validationVarNames.forEach((nameInput, idx) => {
+        const varName = nameInput.value.trim();
+        const jsonPath = validationVarPaths[idx]?.value.trim();
+        if (varName && jsonPath) {
+            validationExtractVars.push({ varName, jsonPath });
+        }
+    });
+
     return {
         id,
         name,
@@ -697,13 +884,22 @@ function collectScenarioData(id) {
         request,
         response,
         extractVars,
-        assertions
+        assertions,
+        useValidationCall,
+        validationMethod,
+        validationEndpoint,
+        validationRequest,
+        validationExtractVars
     };
 }
 
 // Format JSON in scenario
 function formatScenarioJSON(id, type) {
-    const textarea = document.querySelector(`.scenario-${type}[data-scenario-id="${id}"]`);
+    // Handle validation-request specially since it doesn't have the 'scenario-' prefix
+    const selector = type === 'validation-request'
+        ? `.validation-request[data-scenario-id="${id}"]`
+        : `.scenario-${type}[data-scenario-id="${id}"]`;
+    const textarea = document.querySelector(selector);
     if (!textarea) return;
 
     const input = textarea.value.trim();
@@ -1040,13 +1236,57 @@ function buildKarateFeature(config) {
             feature += `    """\n`;
         }
 
-        // Extract variables
+        // Optional validation call (secondary API request)
+        if (scenario.useValidationCall && scenario.validationEndpoint) {
+            if (config.includeComments) {
+                feature += `\n  # Optional: Make validation call (secondary API request)\n`;
+            }
+
+            // Save primary response for comparison
+            feature += `  * def primaryResponse = response\n`;
+
+            // Set validation request body if present
+            if (scenario.validationRequest) {
+                feature += `  * def validationRequestBody =\n`;
+                feature += `    """\n`;
+                feature += indentText(scenario.validationRequest, 4);
+                feature += `    """\n`;
+            }
+
+            // Make the validation request
+            if (scenario.validationRequest && ['POST', 'PUT', 'PATCH'].includes(scenario.validationMethod)) {
+                feature += `  Given path '${scenario.validationEndpoint}'\n`;
+                feature += `  And request validationRequestBody\n`;
+                feature += `  When method ${scenario.validationMethod}\n`;
+            } else {
+                feature += `  Given path '${scenario.validationEndpoint}'\n`;
+                feature += `  When method ${scenario.validationMethod}\n`;
+            }
+
+            // Extract variables from validation response to use in assertions
+            if (scenario.validationExtractVars && scenario.validationExtractVars.length > 0) {
+                if (config.includeComments) {
+                    feature += `  # Extract variables from validation response\n`;
+                }
+                scenario.validationExtractVars.forEach(v => {
+                    feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+                });
+            }
+        }
+
+        // Extract variables from primary response for use in subsequent scenarios
         if (scenario.extractVars && scenario.extractVars.length > 0) {
             if (config.includeComments) {
-                feature += `\n  # Extract variables for use in subsequent scenarios\n`;
+                feature += `\n  # Extract variables from primary response for use in subsequent scenarios\n`;
             }
             scenario.extractVars.forEach(v => {
-                feature += `  * def ${v.varName} = ${v.jsonPath}\n`;
+                // If validation call is enabled, need to use primaryResponse instead of response
+                let jsonPath = v.jsonPath;
+                if (scenario.useValidationCall && scenario.validationEndpoint) {
+                    // Replace 'response' with 'primaryResponse' since response now refers to validation response
+                    jsonPath = jsonPath.replace(/\bresponse\b/g, 'primaryResponse');
+                }
+                feature += `  * def ${v.varName} = ${jsonPath}\n`;
                 feature += `  * karate.write(${v.varName}, 'temp-data/${sanitizedFeatureName}_${v.varName}.txt')\n`;
             });
         }
@@ -1055,6 +1295,9 @@ function buildKarateFeature(config) {
         if (scenario.assertions && scenario.assertions.length > 0) {
             if (config.includeComments) {
                 feature += `\n  # Custom assertions\n`;
+                if (scenario.useValidationCall && scenario.validationExtractVars && scenario.validationExtractVars.length > 0) {
+                    feature += `  # Available for assertions: primaryResponse, response (validation), and all extracted variables\n`;
+                }
             }
             scenario.assertions.forEach(assertion => {
                 feature += `  And ${assertion}\n`;
