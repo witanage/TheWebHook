@@ -55,13 +55,20 @@ function loadAccounts(showLoading = false) {
     }
 
     fetch('/api/totp/accounts')
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 accounts = data.accounts;
+                console.log(`Loaded ${accounts.length} accounts`);
                 renderAccounts();
                 startAllTimers();
             } else {
+                console.error('Failed to load accounts:', data.message);
                 showToast('Failed to load accounts', 'error');
             }
         })
@@ -83,6 +90,8 @@ function renderAccounts() {
     const grid = document.getElementById('accountsGrid');
     const emptyState = document.getElementById('emptyState');
 
+    console.log(`Rendering ${accounts.length} accounts`);
+
     if (accounts.length === 0) {
         grid.innerHTML = '';
         emptyState.classList.add('show');
@@ -91,6 +100,7 @@ function renderAccounts() {
 
     emptyState.classList.remove('show');
     grid.innerHTML = accounts.map(account => createAccountCard(account)).join('');
+    console.log('Account cards rendered to DOM');
 
     // Add event listeners to dynamically created elements
     accounts.forEach(account => {
@@ -476,7 +486,19 @@ function openEditModal(accountId) {
 }
 
 function closeAccountModal() {
-    document.getElementById('accountModal').classList.remove('active');
+    const modal = document.getElementById('accountModal');
+    const form = document.getElementById('accountForm');
+    const saveBtn = document.getElementById('saveAccountBtn');
+
+    // Reset form
+    form.reset();
+
+    // Reset button state if it was left in loading state
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save Account';
+
+    // Close modal
+    modal.classList.remove('active');
     currentEditId = null;
 }
 
@@ -537,24 +559,33 @@ function handleSaveAccount(e) {
         return response.json();
     })
     .then(data => {
+        console.log('Save response:', data);
+
+        // Always restore button state first
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
+
         if (data.success) {
             const isEdit = currentEditId !== null;
+            console.log(`Account ${isEdit ? 'updated' : 'created'} successfully, ID: ${data.account_id || currentEditId}`);
             showToast(isEdit ? 'Account updated successfully' : 'Account added successfully', 'success');
 
-            // Close modal first for immediate feedback
+            // Close modal
             closeAccountModal();
 
-            // Then reload accounts immediately
-            loadAccounts(isEdit);
+            // Reload accounts to show the new/updated account
+            console.log('Reloading accounts...');
+            loadAccounts(false);
         } else {
+            console.error('Save failed:', data.message);
             showToast(data.message || 'Failed to save account', 'error');
-            saveBtn.disabled = false;
-            saveBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error saving account:', error);
         showToast('Failed to save account', 'error');
+
+        // Restore button state on error
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalText;
     });
