@@ -33,14 +33,10 @@ function setupEventListeners() {
         });
     });
 
-    // Delete Confirmation
-    document.getElementById('confirmDeleteBtn').addEventListener('click', handleDeleteAccount);
-
-    // Close modals on outside click
-    window.addEventListener('click', function(event) {
-        if (event.target.classList.contains('modal')) {
+    // Close account modal on outside click
+    document.getElementById('accountModal').addEventListener('click', function(event) {
+        if (event.target === this) {
             closeAccountModal();
-            closeDeleteModal();
         }
     });
 }
@@ -155,7 +151,7 @@ function createAccountCard(account) {
                 </div>
             </div>
 
-            <button class="btn btn-primary copy-btn" id="copy-${account.id}">
+            <button class="btn-primary copy-btn" id="copy-${account.id}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                     <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -445,7 +441,7 @@ function openAddModal() {
     document.getElementById('accountForm').reset();
     document.getElementById('accountId').value = '';
     document.getElementById('colorPicker').value = '#007bff';
-    document.getElementById('accountModal').classList.add('show');
+    document.getElementById('accountModal').classList.add('active');
 }
 
 function openEditModal(accountId) {
@@ -462,22 +458,24 @@ function openEditModal(accountId) {
     document.getElementById('digits').value = account.digits;
     document.getElementById('period').value = account.period;
     document.getElementById('colorPicker').value = account.color;
-    document.getElementById('accountModal').classList.add('show');
+    document.getElementById('accountModal').classList.add('active');
 }
 
 function closeAccountModal() {
-    document.getElementById('accountModal').classList.remove('show');
+    document.getElementById('accountModal').classList.remove('active');
     currentEditId = null;
 }
 
 function openDeleteModal(accountId) {
     currentDeleteId = accountId;
-    document.getElementById('deleteModal').classList.add('show');
-}
+    const account = accounts.find(a => a.id === accountId);
+    const serviceName = account ? account.service_name : 'this account';
 
-function closeDeleteModal() {
-    document.getElementById('deleteModal').classList.remove('show');
-    currentDeleteId = null;
+    showConfirmModal(
+        'Delete Account',
+        `Are you sure you want to delete "${serviceName}"? This action cannot be undone.`,
+        handleDeleteAccount
+    );
 }
 
 // ===============================================
@@ -534,14 +532,16 @@ function handleSaveAccount(e) {
 function handleDeleteAccount() {
     if (!currentDeleteId) return;
 
-    fetch(`/api/totp/accounts/${currentDeleteId}`, {
+    const deleteId = currentDeleteId;
+    currentDeleteId = null;
+
+    fetch(`/api/totp/accounts/${deleteId}`, {
         method: 'DELETE'
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             showToast('Account deleted successfully', 'success');
-            closeDeleteModal();
             loadAccounts();
         } else {
             showToast(data.message || 'Failed to delete account', 'error');

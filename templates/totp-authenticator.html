@@ -12,7 +12,7 @@
 <div class="totp-container">
     <!-- Header with Add Button -->
     <div class="totp-header">
-        <button class="btn btn-primary" id="addAccountBtn">
+        <button class="btn-primary" id="addAccountBtn">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <line x1="12" y1="5" x2="12" y2="19"></line>
                 <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -34,25 +34,20 @@
         </svg>
         <h3>No Accounts Added</h3>
         <p>Add your first account to start generating 2FA codes</p>
-        <button class="btn btn-primary" onclick="document.getElementById('addAccountBtn').click()">
+        <button class="btn-primary" onclick="document.getElementById('addAccountBtn').click()">
             Add Account
         </button>
     </div>
 </div>
 
 <!-- Add/Edit Account Modal -->
-<div class="modal" id="accountModal">
-    <div class="modal-content">
+<div class="modal-overlay" id="accountModal">
+    <div class="modal modal-large">
         <div class="modal-header">
-            <h2 id="modalTitle">Add Account</h2>
-            <button class="close-btn" onclick="closeAccountModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
+            <h3 id="modalTitle">Add Account</h3>
+            <button class="modal-close" onclick="closeAccountModal()">✕</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-content scrollable">
             <form id="accountForm">
                 <input type="hidden" id="accountId">
 
@@ -112,34 +107,11 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="closeAccountModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="saveAccountBtn">Save Account</button>
-                </div>
             </form>
         </div>
-    </div>
-</div>
-
-<!-- Delete Confirmation Modal -->
-<div class="modal" id="deleteModal">
-    <div class="modal-content modal-small">
-        <div class="modal-header">
-            <h2>Delete Account</h2>
-            <button class="close-btn" onclick="closeDeleteModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-            </button>
-        </div>
-        <div class="modal-body">
-            <p>Are you sure you want to delete this account? This action cannot be undone.</p>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
-                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
-            </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeAccountModal()">Cancel</button>
+            <button type="submit" class="btn-primary" form="accountForm" id="saveAccountBtn">Save Account</button>
         </div>
     </div>
 </div>

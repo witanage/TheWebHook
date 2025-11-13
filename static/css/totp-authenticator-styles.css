@@ -217,96 +217,15 @@
 }
 
 /* ===============================================
-   Modal Styles
+   Modal Customizations (Base modal styles inherited)
    =============================================== */
-.modal {
-    display: none;
-    position: fixed;
-    z-index: 1000;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(4px);
-    animation: fadeIn 0.2s ease;
+/* Additional spacing for form in modal */
+#accountModal .modal-content {
+    padding: 0;
 }
 
-.modal.show {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-.modal-content {
-    background-color: var(--card-background, #ffffff);
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    max-width: 600px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-    animation: slideUp 0.3s ease;
-}
-
-.modal-content.modal-small {
-    max-width: 400px;
-}
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color, #e1e4e8);
-}
-
-.modal-header h2 {
-    margin: 0;
-    font-size: 1.5rem;
-    color: var(--text-color, #24292e);
-}
-
-.close-btn {
-    background: transparent;
-    border: none;
-    padding: 0.5rem;
-    cursor: pointer;
-    border-radius: 6px;
-    color: var(--text-secondary, #6a737d);
-    transition: all 0.2s ease;
-}
-
-.close-btn:hover {
-    background: var(--hover-background, #f6f8fa);
-    color: var(--text-color, #24292e);
-}
-
-.modal-body {
-    padding: 1.5rem;
-}
-
-.modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-    margin-top: 1.5rem;
+#accountModal .form-group:last-of-type {
+    margin-bottom: 0;
 }
 
 /* ===============================================
@@ -390,55 +309,34 @@
 }
 
 /* ===============================================
-   Button Styles
+   Button Customizations (Base button styles inherited)
    =============================================== */
-.btn {
-    padding: 0.75rem 1.5rem;
-    border: none;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
+/* Additional button styles specific to TOTP app */
+.totp-header .btn-primary,
+.empty-state .btn-primary,
+.copy-btn {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
-    text-decoration: none;
 }
 
-.btn-primary {
-    background: #007bff;
-    color: #ffffff;
+.copy-btn {
+    width: 100%;
+    margin-top: 1rem;
+    justify-content: center;
+}
+
+.copy-btn svg {
+    flex-shrink: 0;
 }
 
 .btn-primary:hover {
-    background: #0056b3;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.btn-secondary {
-    background: var(--secondary-button-bg, #6c757d);
-    color: #ffffff;
-}
-
-.btn-secondary:hover {
-    background: var(--secondary-button-hover, #5a6268);
-}
-
-.btn-danger {
-    background: #dc3545;
-    color: #ffffff;
-}
-
-.btn-danger:hover {
-    background: #c82333;
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
+.btn-primary:active {
+    transform: translateY(0);
 }
 
 /* ===============================================
