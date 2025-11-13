@@ -44,7 +44,16 @@ function setupEventListeners() {
 // ===============================================
 // Load Accounts
 // ===============================================
-function loadAccounts() {
+function loadAccounts(showLoading = false) {
+    const grid = document.getElementById('accountsGrid');
+    const emptyState = document.getElementById('emptyState');
+
+    // Show loading state if requested
+    if (showLoading && accounts.length > 0) {
+        grid.style.opacity = '0.5';
+        grid.style.pointerEvents = 'none';
+    }
+
     fetch('/api/totp/accounts')
         .then(response => response.json())
         .then(data => {
@@ -59,6 +68,11 @@ function loadAccounts() {
         .catch(error => {
             console.error('Error loading accounts:', error);
             showToast('Failed to load accounts', 'error');
+        })
+        .finally(() => {
+            // Restore grid state
+            grid.style.opacity = '1';
+            grid.style.pointerEvents = 'auto';
         });
 }
 
@@ -115,7 +129,7 @@ function createAccountCard(account) {
     const progress = (timeRemaining / account.period) * 100;
 
     return `
-        <div class="account-card" style="--account-color: ${account.color}">
+        <div class="account-card" data-account-id="${account.id}" style="--account-color: ${account.color}">
             <div class="account-header">
                 <div class="account-info">
                     <h3 class="account-service">${escapeHtml(account.service_name)}</h3>
@@ -502,6 +516,12 @@ function handleSaveAccount(e) {
 
     const url = currentEditId ? `/api/totp/accounts/${currentEditId}` : '/api/totp/accounts';
     const method = currentEditId ? 'PUT' : 'POST';
+    const saveBtn = document.getElementById('saveAccountBtn');
+    const originalText = saveBtn.innerHTML;
+
+    // Show loading state
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Saving...';
 
     fetch(url, {
         method: method,
@@ -510,19 +530,33 @@ function handleSaveAccount(e) {
         },
         body: JSON.stringify(accountData)
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
-            showToast(currentEditId ? 'Account updated successfully' : 'Account added successfully', 'success');
+            const isEdit = currentEditId !== null;
+            showToast(isEdit ? 'Account updated successfully' : 'Account added successfully', 'success');
+
+            // Close modal first for immediate feedback
             closeAccountModal();
-            loadAccounts();
+
+            // Then reload accounts immediately
+            loadAccounts(isEdit);
         } else {
             showToast(data.message || 'Failed to save account', 'error');
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
         }
     })
     .catch(error => {
         console.error('Error saving account:', error);
         showToast('Failed to save account', 'error');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalText;
     });
 }
 
@@ -535,21 +569,44 @@ function handleDeleteAccount() {
     const deleteId = currentDeleteId;
     currentDeleteId = null;
 
+    // Optimistically remove from UI
+    const cardToRemove = document.querySelector(`[data-account-id="${deleteId}"]`);
+    if (cardToRemove) {
+        cardToRemove.style.opacity = '0.5';
+        cardToRemove.style.pointerEvents = 'none';
+    }
+
     fetch(`/api/totp/accounts/${deleteId}`, {
         method: 'DELETE'
     })
-    .then(response => response.json())
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             showToast('Account deleted successfully', 'success');
+            // Reload to get fresh data
             loadAccounts();
         } else {
             showToast(data.message || 'Failed to delete account', 'error');
+            // Restore the card on error
+            if (cardToRemove) {
+                cardToRemove.style.opacity = '1';
+                cardToRemove.style.pointerEvents = 'auto';
+            }
         }
     })
     .catch(error => {
         console.error('Error deleting account:', error);
         showToast('Failed to delete account', 'error');
+        // Restore the card on error
+        if (cardToRemove) {
+            cardToRemove.style.opacity = '1';
+            cardToRemove.style.pointerEvents = 'auto';
+        }
     });
 }
 
