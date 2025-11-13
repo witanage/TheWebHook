@@ -61,7 +61,12 @@ function addScenario(data = null) {
         assertions: [], // Array of custom assertion strings
         tags: '', // Comma-separated tags like @ac0149,@smoke
         sourceScenarioId: null, // null means not a duplicate
-        duplicateNumber: null   // null means not a duplicate
+        duplicateNumber: null,   // null means not a duplicate
+        useValidationCall: false, // Whether to make a secondary API call
+        validationMethod: 'GET',
+        validationEndpoint: '',
+        validationRequest: '',
+        useValidationForAssertions: false // Whether to use validation response for assertions
     };
 
     // Ensure duplicate tracking fields exist
@@ -76,6 +81,21 @@ function addScenario(data = null) {
     }
     if (scenarioData.tags === undefined) {
         scenarioData.tags = '';
+    }
+    if (scenarioData.useValidationCall === undefined) {
+        scenarioData.useValidationCall = false;
+    }
+    if (scenarioData.validationMethod === undefined) {
+        scenarioData.validationMethod = 'GET';
+    }
+    if (scenarioData.validationEndpoint === undefined) {
+        scenarioData.validationEndpoint = '';
+    }
+    if (scenarioData.validationRequest === undefined) {
+        scenarioData.validationRequest = '';
+    }
+    if (scenarioData.useValidationForAssertions === undefined) {
+        scenarioData.useValidationForAssertions = false;
     }
 
     scenarios.push(scenarioData);
@@ -383,6 +403,69 @@ function createScenarioCard(data) {
                 <small>💡 Examples: <code>match response.id == '#number'</code> or <code>match response.email == '#regex .+@.+'</code></small>
             </div>
         </div>
+
+        <div class="validation-call-section">
+            <div class="validation-call-header">
+                <label class="validation-call-checkbox">
+                    <input type="checkbox"
+                           class="validation-call-enabled"
+                           data-scenario-id="${data.id}"
+                           ${data.useValidationCall ? 'checked' : ''}
+                           onchange="toggleValidationCall(${data.id})">
+                    <span>Optional Validation Call (Secondary API Request)</span>
+                </label>
+            </div>
+            <div class="validation-call-content" id="validationCallContent_${data.id}" style="display: ${data.useValidationCall ? 'block' : 'none'};">
+                <div class="validation-call-config">
+                    <div class="form-group">
+                        <label>Validation Method</label>
+                        <select class="validation-method" data-scenario-id="${data.id}">
+                            <option value="GET" ${data.validationMethod === 'GET' ? 'selected' : ''}>GET</option>
+                            <option value="POST" ${data.validationMethod === 'POST' ? 'selected' : ''}>POST</option>
+                            <option value="PUT" ${data.validationMethod === 'PUT' ? 'selected' : ''}>PUT</option>
+                            <option value="DELETE" ${data.validationMethod === 'DELETE' ? 'selected' : ''}>DELETE</option>
+                            <option value="PATCH" ${data.validationMethod === 'PATCH' ? 'selected' : ''}>PATCH</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Validation Endpoint</label>
+                        <input type="text"
+                               class="validation-endpoint"
+                               data-scenario-id="${data.id}"
+                               placeholder="e.g., /api/validate or /api/check/#(userId)"
+                               value="${data.validationEndpoint || ''}">
+                        <small style="color: #666; font-size: 0.85em;">💡 You can use variables from previous scenarios</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>
+                            Validation Request Payload (Optional)
+                            <button class="btn-icon" onclick="formatScenarioJSON(${data.id}, 'validation-request')" title="Format">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="16 18 22 12 16 6"></polyline>
+                                    <polyline points="8 6 2 12 8 18"></polyline>
+                                </svg>
+                            </button>
+                        </label>
+                        <textarea class="validation-request"
+                                  data-scenario-id="${data.id}"
+                                  placeholder='Use #(varName) syntax, e.g.: {"checkId": "#(userId)"}'>${data.validationRequest || ''}</textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="validation-assertions-checkbox">
+                            <input type="checkbox"
+                                   class="validation-assertions-enabled"
+                                   data-scenario-id="${data.id}"
+                                   ${data.useValidationForAssertions ? 'checked' : ''}>
+                            <span>Use validation response for assertions (instead of primary response)</span>
+                        </label>
+                        <small style="color: #666; font-size: 0.85em; display: block; margin-top: 4px;">💡 If enabled, assertions will match against the validation call's response instead of the primary response</small>
+                    </div>
+                </div>
+            </div>
+        </div>
     `;
 
     return card;
@@ -481,6 +564,16 @@ function removeAssertion(scenarioId, assertionIndex) {
     // Show empty hint if no assertions left
     if (list.querySelectorAll('.assertion-item').length === 0) {
         list.innerHTML = '<div class="empty-vars-hint">No custom assertions. Click "Add Assertion" to add validation rules.</div>';
+    }
+}
+
+// Toggle validation call section visibility
+function toggleValidationCall(scenarioId) {
+    const checkbox = document.querySelector(`.validation-call-enabled[data-scenario-id="${scenarioId}"]`);
+    const content = document.getElementById(`validationCallContent_${scenarioId}`);
+
+    if (checkbox && content) {
+        content.style.display = checkbox.checked ? 'block' : 'none';
     }
 }
 
@@ -687,6 +780,13 @@ function collectScenarioData(id) {
         }
     });
 
+    // Collect validation call data
+    const useValidationCall = document.querySelector(`.validation-call-enabled[data-scenario-id="${id}"]`)?.checked || false;
+    const validationMethod = document.querySelector(`.validation-method[data-scenario-id="${id}"]`)?.value || 'GET';
+    const validationEndpoint = document.querySelector(`.validation-endpoint[data-scenario-id="${id}"]`)?.value.trim() || '';
+    const validationRequest = document.querySelector(`.validation-request[data-scenario-id="${id}"]`)?.value.trim() || '';
+    const useValidationForAssertions = document.querySelector(`.validation-assertions-enabled[data-scenario-id="${id}"]`)?.checked || false;
+
     return {
         id,
         name,
@@ -697,13 +797,22 @@ function collectScenarioData(id) {
         request,
         response,
         extractVars,
-        assertions
+        assertions,
+        useValidationCall,
+        validationMethod,
+        validationEndpoint,
+        validationRequest,
+        useValidationForAssertions
     };
 }
 
 // Format JSON in scenario
 function formatScenarioJSON(id, type) {
-    const textarea = document.querySelector(`.scenario-${type}[data-scenario-id="${id}"]`);
+    // Handle validation-request specially since it doesn't have the 'scenario-' prefix
+    const selector = type === 'validation-request'
+        ? `.validation-request[data-scenario-id="${id}"]`
+        : `.scenario-${type}[data-scenario-id="${id}"]`;
+    const textarea = document.querySelector(selector);
     if (!textarea) return;
 
     const input = textarea.value.trim();
@@ -1040,6 +1149,44 @@ function buildKarateFeature(config) {
             feature += `    """\n`;
         }
 
+        // Optional validation call (secondary API request)
+        if (scenario.useValidationCall && scenario.validationEndpoint) {
+            if (config.includeComments) {
+                feature += `\n  # Optional: Make validation call (secondary API request)\n`;
+            }
+
+            // Save primary response if we need it later
+            if (scenario.useValidationForAssertions) {
+                feature += `  * def primaryResponse = response\n`;
+            }
+
+            // Set validation request body if present
+            if (scenario.validationRequest) {
+                feature += `  * def validationRequestBody =\n`;
+                feature += `    """\n`;
+                feature += indentText(scenario.validationRequest, 4);
+                feature += `    """\n`;
+            }
+
+            // Make the validation request
+            if (scenario.validationRequest && ['POST', 'PUT', 'PATCH'].includes(scenario.validationMethod)) {
+                feature += `  Given path '${scenario.validationEndpoint}'\n`;
+                feature += `  And request validationRequestBody\n`;
+                feature += `  When method ${scenario.validationMethod}\n`;
+            } else {
+                feature += `  Given path '${scenario.validationEndpoint}'\n`;
+                feature += `  When method ${scenario.validationMethod}\n`;
+            }
+
+            // Store validation response for assertions
+            if (scenario.useValidationForAssertions) {
+                if (config.includeComments) {
+                    feature += `  # Store validation response for assertions\n`;
+                }
+                feature += `  * def validationResponse = response\n`;
+            }
+        }
+
         // Extract variables
         if (scenario.extractVars && scenario.extractVars.length > 0) {
             if (config.includeComments) {
@@ -1054,10 +1201,20 @@ function buildKarateFeature(config) {
         // Custom assertions
         if (scenario.assertions && scenario.assertions.length > 0) {
             if (config.includeComments) {
-                feature += `\n  # Custom assertions\n`;
+                if (scenario.useValidationCall && scenario.useValidationForAssertions) {
+                    feature += `\n  # Custom assertions (using validation response)\n`;
+                } else {
+                    feature += `\n  # Custom assertions\n`;
+                }
             }
             scenario.assertions.forEach(assertion => {
-                feature += `  And ${assertion}\n`;
+                // If using validation response for assertions, replace 'response' with 'validationResponse'
+                let processedAssertion = assertion;
+                if (scenario.useValidationCall && scenario.useValidationForAssertions) {
+                    // Replace 'response' with 'validationResponse' but preserve it in other contexts
+                    processedAssertion = assertion.replace(/\bresponse\b/g, 'validationResponse');
+                }
+                feature += `  And ${processedAssertion}\n`;
             });
         }
 
