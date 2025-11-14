@@ -44,7 +44,7 @@ function setupEventListeners() {
 // ===============================================
 // Load Accounts
 // ===============================================
-function loadAccounts(showLoading = false) {
+async function loadAccounts(showLoading = false) {
     const grid = document.getElementById('accountsGrid');
     const emptyState = document.getElementById('emptyState');
 
@@ -54,33 +54,30 @@ function loadAccounts(showLoading = false) {
         grid.style.pointerEvents = 'none';
     }
 
-    fetch('/api/totp/accounts')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                accounts = data.accounts;
-                console.log(`Loaded ${accounts.length} accounts`);
-                renderAccounts();
-                startAllTimers();
-            } else {
-                console.error('Failed to load accounts:', data.message);
-                showToast('Failed to load accounts', 'error');
-            }
-        })
-        .catch(error => {
-            console.error('Error loading accounts:', error);
+    try {
+        const response = await fetch('/api/totp/accounts');
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            accounts = data.accounts;
+            console.log(`Loaded ${accounts.length} accounts`);
+            renderAccounts();
+            startAllTimers();
+        } else {
+            console.error('Failed to load accounts:', data.message);
             showToast('Failed to load accounts', 'error');
-        })
-        .finally(() => {
-            // Restore grid state
-            grid.style.opacity = '1';
-            grid.style.pointerEvents = 'auto';
-        });
+        }
+    } catch (error) {
+        console.error('Error loading accounts:', error);
+        showToast('Failed to load accounts', 'error');
+    } finally {
+        // Restore grid state
+        grid.style.opacity = '1';
+        grid.style.pointerEvents = 'auto';
+    }
 }
 
 // ===============================================
@@ -95,12 +92,24 @@ function renderAccounts() {
     if (accounts.length === 0) {
         grid.innerHTML = '';
         emptyState.classList.add('show');
+        console.log('Empty state shown');
         return;
     }
 
     emptyState.classList.remove('show');
+
+    // Clear grid first
+    grid.innerHTML = '';
+
+    // Force a reflow to ensure the clear is applied
+    grid.offsetHeight;
+
+    // Render all account cards
     grid.innerHTML = accounts.map(account => createAccountCard(account)).join('');
-    console.log('Account cards rendered to DOM');
+    console.log(`${accounts.length} account cards rendered to DOM`);
+
+    // Force another reflow to ensure rendering is complete
+    grid.offsetHeight;
 
     // Add event listeners to dynamically created elements
     accounts.forEach(account => {
@@ -128,6 +137,8 @@ function renderAccounts() {
             deleteBtn.addEventListener('click', () => openDeleteModal(account.id));
         }
     });
+
+    console.log('Event listeners attached to all account cards');
 }
 
 // ===============================================
@@ -490,16 +501,21 @@ function closeAccountModal() {
     const form = document.getElementById('accountForm');
     const saveBtn = document.getElementById('saveAccountBtn');
 
-    // Reset form
-    form.reset();
-
-    // Reset button state if it was left in loading state
-    saveBtn.disabled = false;
-    saveBtn.textContent = 'Save Account';
-
-    // Close modal
+    // Close modal immediately
     modal.classList.remove('active');
-    currentEditId = null;
+
+    // Reset state after a short delay to allow modal animation
+    setTimeout(() => {
+        // Reset form
+        form.reset();
+
+        // Reset button state
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Account';
+
+        // Clear edit state
+        currentEditId = null;
+    }, 100);
 }
 
 function openDeleteModal(accountId) {
@@ -517,7 +533,7 @@ function openDeleteModal(accountId) {
 // ===============================================
 // Save Account
 // ===============================================
-function handleSaveAccount(e) {
+async function handleSaveAccount(e) {
     e.preventDefault();
 
     const accountData = {
@@ -540,61 +556,63 @@ function handleSaveAccount(e) {
     const method = currentEditId ? 'PUT' : 'POST';
     const saveBtn = document.getElementById('saveAccountBtn');
     const originalText = saveBtn.innerHTML;
+    const isEdit = currentEditId !== null;
 
     // Show loading state
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10" opacity="0.25"></circle><path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path></svg> Saving...';
 
-    fetch(url, {
-        method: method,
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(accountData)
-    })
-    .then(response => {
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(accountData)
+        });
+
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
-        return response.json();
-    })
-    .then(data => {
+
+        const data = await response.json();
         console.log('Save response:', data);
 
-        // Always restore button state first
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = originalText;
-
         if (data.success) {
-            const isEdit = currentEditId !== null;
             console.log(`Account ${isEdit ? 'updated' : 'created'} successfully, ID: ${data.account_id || currentEditId}`);
-            showToast(isEdit ? 'Account updated successfully' : 'Account added successfully', 'success');
 
-            // Close modal
+            // Close modal first
             closeAccountModal();
 
-            // Reload accounts to show the new/updated account
+            // Wait for accounts to reload
             console.log('Reloading accounts...');
-            loadAccounts(false);
+            await loadAccounts(false);
+
+            // Show success message after accounts are loaded and rendered
+            showToast(isEdit ? 'Account updated successfully' : 'Account added successfully', 'success');
+            console.log('UI updated successfully');
         } else {
             console.error('Save failed:', data.message);
             showToast(data.message || 'Failed to save account', 'error');
+
+            // Restore button state on error
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalText;
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error saving account:', error);
         showToast('Failed to save account', 'error');
 
         // Restore button state on error
         saveBtn.disabled = false;
         saveBtn.innerHTML = originalText;
-    });
+    }
 }
 
 // ===============================================
 // Delete Account
 // ===============================================
-function handleDeleteAccount() {
+async function handleDeleteAccount() {
     if (!currentDeleteId) return;
 
     const deleteId = currentDeleteId;
@@ -607,38 +625,48 @@ function handleDeleteAccount() {
         cardToRemove.style.pointerEvents = 'none';
     }
 
-    fetch(`/api/totp/accounts/${deleteId}`, {
-        method: 'DELETE'
-    })
-    .then(response => {
+    try {
+        const response = await fetch(`/api/totp/accounts/${deleteId}`, {
+            method: 'DELETE'
+        });
+
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
-        return response.json();
-    })
-    .then(data => {
+
+        const data = await response.json();
+        console.log('Delete response:', data);
+
         if (data.success) {
+            console.log(`Account ${deleteId} deleted successfully`);
+
+            // Wait for accounts to reload
+            console.log('Reloading accounts after delete...');
+            await loadAccounts();
+
+            // Show success message after UI is updated
             showToast('Account deleted successfully', 'success');
-            // Reload to get fresh data
-            loadAccounts();
+            console.log('UI updated after deletion');
         } else {
+            console.error('Delete failed:', data.message);
             showToast(data.message || 'Failed to delete account', 'error');
+
             // Restore the card on error
             if (cardToRemove) {
                 cardToRemove.style.opacity = '1';
                 cardToRemove.style.pointerEvents = 'auto';
             }
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error deleting account:', error);
         showToast('Failed to delete account', 'error');
+
         // Restore the card on error
         if (cardToRemove) {
             cardToRemove.style.opacity = '1';
             cardToRemove.style.pointerEvents = 'auto';
         }
-    });
+    }
 }
 
 // ===============================================
