@@ -146,6 +146,30 @@ CREATE INDEX IF NOT EXISTS idx_rotating_endpoints_is_active ON rotating_endpoint
 CREATE INDEX IF NOT EXISTS idx_rotating_endpoints_user_active ON rotating_endpoints(user_id, is_active);
 
 -- =============================================================================
+-- TOTP AUTHENTICATOR TABLES
+-- =============================================================================
+
+-- TOTP accounts table (stores user's 2FA accounts)
+CREATE TABLE IF NOT EXISTS totp_accounts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    service_name VARCHAR(255) NOT NULL,
+    account_identifier VARCHAR(255),
+    secret_key VARCHAR(255) NOT NULL,
+    issuer VARCHAR(255),
+    digits INT DEFAULT 6,
+    period INT DEFAULT 30,
+    algorithm VARCHAR(10) DEFAULT 'SHA1',
+    color VARCHAR(7) DEFAULT '#007bff',
+    icon VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_service_name (service_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================================================
 -- DEFAULT DATA
 -- =============================================================================
 
@@ -155,7 +179,8 @@ INSERT INTO menu_items (title, description, icon, route, display_order, is_activ
     ('JSON Comparison Tool', 'Compare two JSON objects and visualize differences', '🔄', '/json-compare', 2, 1),
     ('HTTP Status Code Tester', 'Test and simulate different HTTP status codes', '🌐', '/http-codes', 3, 1),
     ('AWS Log Comparison Tool', 'Compare AWS CloudWatch log exports', '📊', '/aws-log-compare', 4, 1),
-    ('Karate Feature Generator', 'Generate Karate API test feature files from request/response payloads', '🥋', '/karate-generator', 5, 1)
+    ('Karate Feature Generator', 'Generate Karate API test feature files from request/response payloads', '🥋', '/karate-generator', 5, 1),
+    ('TOTP Authenticator', 'Two-factor authentication code generator like Authy', '🔐', '/totp-authenticator', 6, 1)
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),
     description = VALUES(description),
@@ -165,7 +190,7 @@ ON DUPLICATE KEY UPDATE
 -- =============================================================================
 -- SCHEMA VERSION
 -- =============================================================================
--- Schema version: 1.0
--- Last updated: 2025-11-11
--- Description: Consolidated schema from all migrations
+-- Schema version: 1.1
+-- Last updated: 2025-11-14
+-- Description: Added TOTP Authenticator table and menu item
 -- =============================================================================
