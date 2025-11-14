@@ -7,13 +7,63 @@ let timers = {};
 let currentEditId = null;
 let currentDeleteId = null;
 
+// NTP time synchronization
+let ntpTimeOffset = 0;  // Offset in milliseconds between local time and NTP time
+let ntpLastSync = 0;     // Timestamp of last NTP sync
+const NTP_SYNC_INTERVAL = 300000;  // Sync every 5 minutes (300000ms)
+
 // ===============================================
 // Initialization
 // ===============================================
 document.addEventListener('DOMContentLoaded', function() {
+    syncNTPTime();  // Initial NTP sync
     loadAccounts();
     setupEventListeners();
+
+    // Periodically sync with NTP
+    setInterval(syncNTPTime, NTP_SYNC_INTERVAL);
 });
+
+// ===============================================
+// NTP Time Synchronization
+// ===============================================
+async function syncNTPTime() {
+    try {
+        const localTime = Date.now();
+        const response = await fetch('/api/totp/ntp-time');
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch NTP time');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Calculate offset: NTP time - local time
+            ntpTimeOffset = data.timestamp - localTime;
+            ntpLastSync = localTime;
+
+            console.log(`NTP sync successful. Offset: ${ntpTimeOffset}ms (${(ntpTimeOffset / 1000).toFixed(3)}s)`);
+
+            if (data.fallback) {
+                console.warn('NTP server unavailable, using system time as fallback');
+            }
+
+            // Regenerate all TOTP codes with updated time
+            if (accounts.length > 0) {
+                renderAccounts();
+            }
+        }
+    } catch (error) {
+        console.error('NTP sync failed:', error);
+        // Continue using local time if NTP sync fails
+    }
+}
+
+function getNTPTime() {
+    // Return current time adjusted for NTP offset
+    return Date.now() + ntpTimeOffset;
+}
 
 // ===============================================
 // Event Listeners
@@ -202,7 +252,8 @@ function createAccountCard(account) {
 // ===============================================
 function generateTOTP(secret, digits = 6, period = 30) {
     try {
-        const epoch = Math.floor(Date.now() / 1000);
+        // Use NTP-synchronized time instead of local time
+        const epoch = Math.floor(getNTPTime() / 1000);
         const counter = Math.floor(epoch / period);
 
         // Decode base32 secret
@@ -384,7 +435,8 @@ function concatArrays(a, b) {
 // Time and Progress Functions
 // ===============================================
 function getTimeRemaining(period = 30) {
-    const epoch = Math.floor(Date.now() / 1000);
+    // Use NTP-synchronized time instead of local time
+    const epoch = Math.floor(getNTPTime() / 1000);
     return period - (epoch % period);
 }
 

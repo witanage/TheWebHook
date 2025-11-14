@@ -10,6 +10,8 @@ import sys
 import threading
 from queue import Queue, Empty
 import pyotp
+import ntplib
+import time
 
 import os
 from dotenv import load_dotenv
@@ -79,6 +81,67 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
 
 
 sys.excepthook = handle_uncaught_exception
+
+
+# ==================== NTP TIME SYNCHRONIZATION ====================
+
+# NTP configuration
+NTP_SERVERS = [
+    'pool.ntp.org',
+    'time.google.com',
+    'time.cloudflare.com',
+    'time.nist.gov'
+]
+NTP_CACHE_DURATION = 300  # Cache NTP time for 5 minutes
+ntp_offset_cache = {'offset': 0, 'timestamp': 0}
+ntp_cache_lock = threading.Lock()
+
+
+def get_ntp_offset():
+    """
+    Get the time offset from NTP servers.
+    Returns the offset in seconds between system time and NTP time.
+    Uses cached value if available and recent.
+    """
+    global ntp_offset_cache
+
+    with ntp_cache_lock:
+        # Check if we have a recent cached offset
+        if time.time() - ntp_offset_cache['timestamp'] < NTP_CACHE_DURATION:
+            return ntp_offset_cache['offset']
+
+    # Try multiple NTP servers
+    ntp_client = ntplib.NTPClient()
+
+    for server in NTP_SERVERS:
+        try:
+            response = ntp_client.request(server, version=3, timeout=2)
+            offset = response.offset
+
+            with ntp_cache_lock:
+                ntp_offset_cache = {
+                    'offset': offset,
+                    'timestamp': time.time()
+                }
+
+            log(f"NTP sync successful with {server}, offset: {offset:.3f}s")
+            return offset
+        except Exception as e:
+            log(f"NTP sync failed with {server}: {e}")
+            continue
+
+    # If all servers fail, return 0 (use system time)
+    log("All NTP servers failed, using system time")
+    return 0
+
+
+def get_ntp_time():
+    """
+    Get current time synchronized with NTP.
+    Returns Unix timestamp (seconds since epoch) adjusted for NTP offset.
+    """
+    offset = get_ntp_offset()
+    return time.time() + offset
 
 
 # ==================== MENU ITEMS FUNCTIONS ====================
@@ -2489,6 +2552,38 @@ def delete_totp_account(account_id):
         return jsonify({'success': False, 'message': 'Failed to delete account'}), 500
     finally:
         conn.close()
+
+
+@app.route("/api/totp/ntp-time", methods=["GET"])
+@login_required
+def get_ntp_synced_time():
+    """
+    Get current NTP-synchronized time for TOTP generation.
+    Returns Unix timestamp in milliseconds and seconds, plus offset information.
+    """
+    try:
+        ntp_time = get_ntp_time()
+        offset = get_ntp_offset()
+
+        return jsonify({
+            'success': True,
+            'timestamp': int(ntp_time * 1000),  # milliseconds for JavaScript
+            'timestamp_seconds': int(ntp_time),  # seconds for TOTP calculation
+            'offset': offset,
+            'cached': (time.time() - ntp_offset_cache['timestamp']) < NTP_CACHE_DURATION
+        })
+    except Exception as e:
+        log(f"Error getting NTP time: {e}")
+        # Fallback to system time if NTP fails
+        current_time = time.time()
+        return jsonify({
+            'success': True,
+            'timestamp': int(current_time * 1000),
+            'timestamp_seconds': int(current_time),
+            'offset': 0,
+            'cached': False,
+            'fallback': True
+        })
 
 
 # ==================== END TOTP AUTHENTICATOR ROUTES ====================
