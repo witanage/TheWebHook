@@ -90,13 +90,6 @@
             </div>
         </div>
 
-        <div class="card">
-            <h2 class="card-title">🔍 Endpoint</h2>
-            <pre class="code-block"><code>/httpcode/&lt;int:code&gt;</code></pre>
-            <p class="hint-text">Example: <code class="inline-code">/httpcode/404</code> returns a 404 Not Found
-                response.</p>
-        </div>
-
         <!-- Common Endpoint Links -->
         <div class="card">
             <h2 class="card-title">🌐 Common Endpoint Links</h2>
@@ -112,43 +105,6 @@
                 </div>
                 {% endfor %}
             </div>
-        </div>
-
-        <div class="card">
-            <h2 class="card-title">🧠 Function Description</h2>
-            <p class="card-text">
-                This route takes an integer <code class="inline-code">&lt;code&gt;</code> between
-                <strong>100</strong> and <strong>599</strong> representing an HTTP status code.
-                It returns a JSON response describing the code and request details.
-            </p>
-            <p class="card-text">Invalid status codes return <code class="error-code">400 Bad Request</code>.</p>
-        </div>
-
-        <div class="card">
-            <h2 class="card-title">📋 Example Response</h2>
-            <pre class="language-json"><code>{
-  "status": 200,
-  "message": "OK",
-  "method": "GET",
-  "path": "/httpcode/200",
-  "timestamp": "2025-10-19T13:20:32Z"
-}</code></pre>
-        </div>
-
-        <div class="card">
-            <h2 class="card-title">📦 Example with Request Body (POST)</h2>
-            <pre class="language-bash"><code>curl -X POST -H "Content-Type: application/json" \
--d '{"name": "Test"}' {{ request.host_url }}httpcode/201</code></pre>
-            <pre class="language-json"><code>{
-  "status": 201,
-  "message": "Created",
-  "method": "POST",
-  "path": "/httpcode/201",
-  "timestamp": "2025-10-19T13:21:10Z",
-  "received_data": {
-    "name": "Test"
-  }
-}</code></pre>
         </div>
 
         <div class="card">

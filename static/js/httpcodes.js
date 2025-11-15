@@ -149,23 +149,9 @@ async function handleSequenceEndpointUpdate(data) {
         const result = await response.json();
 
         if (result.success) {
-            // Find the updated endpoint
-            const updatedEndpoint = result.endpoints.find(ep => ep.id === data.id);
-
-            if (updatedEndpoint) {
-                // Mark as changed for animation
-                const prevState = previousEndpointStates.get(data.id);
-                const hasChanged = prevState && prevState.current_index !== updatedEndpoint.current_index;
-
-                // Update the stored state
-                previousEndpointStates.set(data.id, {
-                    current_index: updatedEndpoint.current_index,
-                    is_active: updatedEndpoint.is_active
-                });
-
-                // Render all endpoints with the updated data
-                displaySequenceEndpoints(result.endpoints);
-            }
+            // Render all endpoints with the updated data
+            // displaySequenceEndpoints will handle change detection and state updates
+            displaySequenceEndpoints(result.endpoints);
         }
     } catch (error) {
         console.error('Error updating sequence endpoint:', error);
