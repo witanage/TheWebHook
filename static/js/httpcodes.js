@@ -142,30 +142,33 @@ function setupSequenceSSE() {
     };
 }
 
-function handleSequenceEndpointUpdate(data) {
-    // Update the specific endpoint in the table with real-time data
-    const row = document.querySelector(`tr[data-endpoint-id="${data.id}"]`);
+async function handleSequenceEndpointUpdate(data) {
+    // Fetch the latest data from the server to get full endpoint details
+    try {
+        const response = await fetch('/api/sequence-endpoints');
+        const result = await response.json();
 
-    if (row) {
-        // Mark as changed for animation
-        const prevState = previousEndpointStates.get(data.id);
-        if (prevState && prevState.current_index !== data.current_index) {
-            row.classList.add('step-changed');
-            setTimeout(() => {
-                row.classList.remove('step-changed');
-            }, 1000);
+        if (result.success) {
+            // Find the updated endpoint
+            const updatedEndpoint = result.endpoints.find(ep => ep.id === data.id);
+
+            if (updatedEndpoint) {
+                // Mark as changed for animation
+                const prevState = previousEndpointStates.get(data.id);
+                const hasChanged = prevState && prevState.current_index !== updatedEndpoint.current_index;
+
+                // Update the stored state
+                previousEndpointStates.set(data.id, {
+                    current_index: updatedEndpoint.current_index,
+                    is_active: updatedEndpoint.is_active
+                });
+
+                // Render all endpoints with the updated data
+                displaySequenceEndpoints(result.endpoints);
+            }
         }
-
-        // Update the stored state
-        previousEndpointStates.set(data.id, {
-            current_index: data.current_index
-        });
-
-        // Update the row's data attribute
-        row.setAttribute('data-current-index', data.current_index);
-
-        // Reload the full data to refresh the UI
-        loadSequenceEndpoints();
+    } catch (error) {
+        console.error('Error updating sequence endpoint:', error);
     }
 }
 
@@ -365,9 +368,6 @@ function displaySequenceEndpoints(endpoints) {
         const url = `${window.location.origin}/sequence-endpoint/${userId}/${endpoint.endpoint_name}`;
         const description = endpoint.description ? `<div class="endpoint-desc">${endpoint.description}</div>` : '';
 
-        // Add real-time indicator badge
-        const liveIndicator = endpoint.is_active ? '<span class="live-indicator">LIVE</span>' : '';
-
         return `
             <tr class="seq-row ${endpoint.is_active ? 'active' : 'inactive'} ${hasChanged ? 'step-changed' : ''}" data-endpoint-id="${endpoint.id}" data-current-index="${endpoint.current_index}">
                 <td class="col-status">
@@ -384,7 +384,6 @@ function displaySequenceEndpoints(endpoints) {
                 </td>
                 <td class="col-progress">
                     <div class="current-info">
-                        ${liveIndicator}
                         <div class="step-info">${stepInfo}${delayInfo}</div>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: ${((endpoint.current_index + 1) / sequence.length * 100).toFixed(1)}%"></div>

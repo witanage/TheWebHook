@@ -642,33 +642,6 @@
     font-weight: 500;
 }
 
-/* Real-time LIVE indicator */
-.live-indicator {
-    display: inline-block;
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    color: white;
-    font-size: 0.65rem;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 4px;
-    letter-spacing: 0.5px;
-    animation: pulse-glow 2s ease-in-out infinite;
-    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
-    margin-bottom: 4px;
-    align-self: flex-start;
-}
-
-@keyframes pulse-glow {
-    0%, 100% {
-        opacity: 1;
-        box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
-    }
-    50% {
-        opacity: 0.8;
-        box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
-    }
-}
-
 /* Progress bar for current step */
 .progress-bar {
     width: 100%;
