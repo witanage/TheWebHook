@@ -878,43 +878,23 @@ async function processImageForOCR(imageFile) {
         const secretKey = extractSecretKey(text);
         console.log('Extracted secret key:', secretKey);
 
+        // Hide status div
+        statusDiv.style.display = 'none';
+
         if (secretKey) {
+            // Fill in the secret key field
             secretKeyInput.value = secretKey;
-            statusDiv.className = 'ocr-status success';
-            statusDiv.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                <span>Secret key extracted successfully!</span>
-            `;
-            setTimeout(() => {
-                statusDiv.style.display = 'none';
-            }, 3000);
             showToast('Secret key extracted successfully!', 'success');
         } else {
-            statusDiv.className = 'ocr-status error';
-            statusDiv.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="15" y1="9" x2="9" y2="15"></line>
-                    <line x1="9" y1="9" x2="15" y2="15"></line>
-                </svg>
-                <span>No secret key found in image. Please try a clearer screenshot.</span>
-            `;
             showToast('No secret key found in image', 'error');
         }
     } catch (error) {
         console.error('OCR processing error:', error);
         console.error('Error details:', error.message, error.stack);
-        statusDiv.className = 'ocr-status error';
-        statusDiv.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            <span>Failed to process image. Error: ${error.message || 'Unknown error'}</span>
-        `;
+
+        // Hide status div
+        statusDiv.style.display = 'none';
+
         showToast(`OCR failed: ${error.message || 'Please try again'}`, 'error');
     }
 }
