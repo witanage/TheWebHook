@@ -82,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 let sequenceStepCounter = 0;
 
 // Initialize sequence endpoints
-let autoRefreshInterval = null;
+let sequenceEventSource = null;
 let previousEndpointStates = new Map(); // Track previous states for change detection
 
 async function initSequenceEndpoints() {
@@ -100,24 +100,72 @@ async function initSequenceEndpoints() {
         await createSequenceEndpoint();
     });
 
-    // Start auto-refresh for real-time current step indicator
-    startAutoRefresh();
+    // Set up Server-Sent Events for real-time updates
+    setupSequenceSSE();
 }
 
-function startAutoRefresh() {
-    // Refresh every 3 seconds to show real-time progress
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
+function setupSequenceSSE() {
+    if (sequenceEventSource) {
+        sequenceEventSource.close();
     }
-    autoRefreshInterval = setInterval(async () => {
-        await loadSequenceEndpoints();
-    }, 3000);
+
+    // Connect to SSE endpoint
+    sequenceEventSource = new EventSource(`/events/${userId}`);
+
+    sequenceEventSource.onopen = () => {
+        console.log('Sequence endpoints SSE connection established');
+    };
+
+    sequenceEventSource.onmessage = (event) => {
+        try {
+            const data = JSON.parse(event.data);
+
+            // Handle sequence endpoint updates
+            if (data.type === 'sequence_endpoint_update') {
+                handleSequenceEndpointUpdate(data.data);
+            }
+        } catch (error) {
+            console.error('Error processing SSE message:', error);
+        }
+    };
+
+    sequenceEventSource.onerror = (error) => {
+        console.error('Sequence SSE error:', error);
+
+        // Attempt to reconnect after 5 seconds
+        setTimeout(() => {
+            if (sequenceEventSource.readyState === EventSource.CLOSED) {
+                console.log('Attempting to reconnect sequence SSE...');
+                setupSequenceSSE();
+            }
+        }, 5000);
+    };
 }
 
-function stopAutoRefresh() {
-    if (autoRefreshInterval) {
-        clearInterval(autoRefreshInterval);
-        autoRefreshInterval = null;
+function handleSequenceEndpointUpdate(data) {
+    // Update the specific endpoint in the table with real-time data
+    const row = document.querySelector(`tr[data-endpoint-id="${data.id}"]`);
+
+    if (row) {
+        // Mark as changed for animation
+        const prevState = previousEndpointStates.get(data.id);
+        if (prevState && prevState.current_index !== data.current_index) {
+            row.classList.add('step-changed');
+            setTimeout(() => {
+                row.classList.remove('step-changed');
+            }, 1000);
+        }
+
+        // Update the stored state
+        previousEndpointStates.set(data.id, {
+            current_index: data.current_index
+        });
+
+        // Update the row's data attribute
+        row.setAttribute('data-current-index', data.current_index);
+
+        // Reload the full data to refresh the UI
+        loadSequenceEndpoints();
     }
 }
 
