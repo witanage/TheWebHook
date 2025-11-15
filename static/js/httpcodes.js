@@ -81,9 +81,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let sequenceStepCounter = 0;
 
-// Initialize sequence endpoints
-let sequenceEventSource = null;
-let previousEndpointStates = new Map(); // Track previous states for change detection
+// Track previous states for change detection and animations
+let previousEndpointStates = new Map();
 
 async function initSequenceEndpoints() {
     await loadSequenceEndpoints();
@@ -100,61 +99,16 @@ async function initSequenceEndpoints() {
         await createSequenceEndpoint();
     });
 
-    // Set up Server-Sent Events for real-time updates
-    setupSequenceSSE();
-}
-
-function setupSequenceSSE() {
-    if (sequenceEventSource) {
-        sequenceEventSource.close();
-    }
-
-    // Connect to SSE endpoint
-    sequenceEventSource = new EventSource(`/events/${userId}`);
-
-    sequenceEventSource.onopen = () => {
-        console.log('Sequence endpoints SSE connection established');
-    };
-
-    sequenceEventSource.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-
-            // Handle sequence endpoint updates
-            if (data.type === 'sequence_endpoint_update') {
-                handleSequenceEndpointUpdate(data.data);
-            }
-        } catch (error) {
-            console.error('Error processing SSE message:', error);
-        }
-    };
-
-    sequenceEventSource.onerror = (error) => {
-        console.error('Sequence SSE error:', error);
-
-        // Attempt to reconnect after 5 seconds
-        setTimeout(() => {
-            if (sequenceEventSource.readyState === EventSource.CLOSED) {
-                console.log('Attempting to reconnect sequence SSE...');
-                setupSequenceSSE();
-            }
-        }, 5000);
-    };
-}
-
-async function handleSequenceEndpointUpdate(data) {
-    // Fetch the latest data from the server to get full endpoint details
-    try {
-        const response = await fetch('/api/sequence-endpoints');
-        const result = await response.json();
-
-        if (result.success) {
-            // Render all endpoints with the updated data
-            // displaySequenceEndpoints will handle change detection and state updates
-            displaySequenceEndpoints(result.endpoints);
-        }
-    } catch (error) {
-        console.error('Error updating sequence endpoint:', error);
+    // Event listener for refresh button
+    const refreshBtn = document.getElementById('refreshSequenceEndpoints');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '🔄 Refreshing...';
+            await loadSequenceEndpoints();
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh';
+        });
     }
 }
 

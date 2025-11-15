@@ -68,7 +68,10 @@
 
             <!-- List of Sequence Endpoints -->
             <div class="endpoints-list-section">
-                <h3 class="section-title">Your Sequence Endpoints</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 class="section-title" style="margin: 0;">Your Sequence Endpoints</h3>
+                    <button id="refreshSequenceEndpoints" class="btn btn-secondary" style="padding: 0.5rem 1rem;">🔄 Refresh</button>
+                </div>
                 <div class="table-responsive">
                     <table class="sequence-table" id="sequenceEndpointsTable">
                         <thead>

@@ -291,19 +291,6 @@ def notify_user_notification(user_id, webhook_id, webhook_data):
                 queue.put(json.dumps(event_data))
 
 
-def notify_sequence_endpoint_update(user_id, endpoint_data):
-    """Send SSE notification about sequence endpoint current_index update"""
-    with queue_lock:
-        if user_id in user_event_queues:
-            # Send to all active connections for this user
-            for queue in user_event_queues[user_id]:
-                event_data = {
-                    'type': 'sequence_endpoint_update',
-                    'data': endpoint_data
-                }
-                queue.put(json.dumps(event_data))
-
-
 @app.route("/", methods=["GET", "POST"])
 def login():
     conn = None
@@ -1555,14 +1542,6 @@ def sequence_endpoint_handler(user_id, endpoint_name):
                 WHERE id = %s
             """, (next_index, endpoint["id"]))
             conn.commit()
-
-            # Notify connected clients about the update via SSE
-            notify_sequence_endpoint_update(user_id, {
-                'id': endpoint["id"],
-                'endpoint_name': endpoint_name,
-                'current_index': next_index,
-                'total_steps': len(sequence_config)
-            })
 
             # Prepare response
             # Use custom payload if provided and HTTP code is 200, otherwise use default response
