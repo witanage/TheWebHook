@@ -149,11 +149,7 @@ function setupEventListeners() {
         }
     });
 
-    // OCR Secret Key Extraction
-    document.getElementById('uploadImageBtn').addEventListener('click', handleUploadImage);
-    document.getElementById('secretKeyImageUpload').addEventListener('change', handleImageSelect);
-
-    // Paste from clipboard listener (Ctrl+V)
+    // OCR Secret Key Extraction - Paste from clipboard listener (Ctrl+V)
     document.addEventListener('paste', handleClipboardPaste);
 }
 
@@ -802,12 +798,8 @@ function isValidBase32(str) {
 // ===============================================
 // OCR Secret Key Extraction
 // ===============================================
-function handleUploadImage() {
-    document.getElementById('secretKeyImageUpload').click();
-}
-
 async function handleClipboardPaste(event) {
-    // Only process if modal is open and secret key field is focused
+    // Only process if modal is open
     const modal = document.getElementById('accountModal');
     if (!modal.classList.contains('active')) return;
 
@@ -821,13 +813,6 @@ async function handleClipboardPaste(event) {
             await processImageForOCR(blob);
             return;
         }
-    }
-}
-
-async function handleImageSelect(event) {
-    const file = event.target.files[0];
-    if (file) {
-        await processImageForOCR(file);
     }
 }
 

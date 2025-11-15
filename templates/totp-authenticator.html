@@ -66,18 +66,7 @@
                 <div class="form-group">
                     <label for="secretKey">Secret Key *</label>
                     <input type="text" id="secretKey" class="form-control" placeholder="Enter your TOTP secret key" required>
-                    <div class="secret-key-actions">
-                        <button type="button" class="btn-secondary btn-sm" id="uploadImageBtn" title="Upload screenshot">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                <polyline points="21 15 16 10 5 21"></polyline>
-                            </svg>
-                            Upload Screenshot
-                        </button>
-                    </div>
-                    <input type="file" id="secretKeyImageUpload" accept="image/*" style="display: none;">
-                    <small class="form-text">Enter the secret key, upload a screenshot, or paste (Ctrl+V) to extract it automatically</small>
+                    <small class="form-text">Type the secret key manually, or take a screenshot of the area where the secret key or QR code is displayed, then paste it here with Ctrl+V to extract automatically</small>
                     <div id="ocrStatus" class="ocr-status" style="display: none;"></div>
                 </div>
 
