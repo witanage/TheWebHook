@@ -81,7 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 let sequenceStepCounter = 0;
 
-// Initialize sequence endpoints
+// Track previous states for change detection and animations
+let previousEndpointStates = new Map();
+
 async function initSequenceEndpoints() {
     await loadSequenceEndpoints();
 
@@ -96,6 +98,18 @@ async function initSequenceEndpoints() {
         e.preventDefault();
         await createSequenceEndpoint();
     });
+
+    // Event listener for refresh button
+    const refreshBtn = document.getElementById('refreshSequenceEndpoints');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', async () => {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '🔄 Refreshing...';
+            await loadSequenceEndpoints();
+            refreshBtn.disabled = false;
+            refreshBtn.textContent = '🔄 Refresh';
+        });
+    }
 }
 
 // Add a new sequence step to the form
@@ -248,10 +262,32 @@ function displaySequenceEndpoints(endpoints) {
         return;
     }
 
+    // Detect changes for animation
+    const changedEndpoints = new Set();
+    endpoints.forEach(endpoint => {
+        const prevState = previousEndpointStates.get(endpoint.id);
+        if (prevState && prevState.current_index !== endpoint.current_index) {
+            changedEndpoints.add(endpoint.id);
+        }
+        previousEndpointStates.set(endpoint.id, {
+            current_index: endpoint.current_index,
+            is_active: endpoint.is_active
+        });
+    });
+
     tbody.innerHTML = endpoints.map(endpoint => {
+        const hasChanged = changedEndpoints.has(endpoint.id);
         const sequence = typeof endpoint.sequence_config === 'string'
             ? JSON.parse(endpoint.sequence_config)
             : endpoint.sequence_config;
+
+        // Remove animation class after animation completes
+        if (hasChanged) {
+            setTimeout(() => {
+                const row = document.querySelector(`tr[data-endpoint-id="${endpoint.id}"]`);
+                if (row) row.classList.remove('step-changed');
+            }, 1000);
+        }
 
         // Build sequence display with better formatting
         const sequenceDisplay = sequence.map((step, idx) => {
@@ -273,7 +309,7 @@ function displaySequenceEndpoints(endpoints) {
         const description = endpoint.description ? `<div class="endpoint-desc">${endpoint.description}</div>` : '';
 
         return `
-            <tr class="seq-row ${endpoint.is_active ? 'active' : 'inactive'}">
+            <tr class="seq-row ${endpoint.is_active ? 'active' : 'inactive'} ${hasChanged ? 'step-changed' : ''}" data-endpoint-id="${endpoint.id}" data-current-index="${endpoint.current_index}">
                 <td class="col-status">
                     <span class="${statusClass}">${statusIcon}</span>
                 </td>
@@ -289,6 +325,9 @@ function displaySequenceEndpoints(endpoints) {
                 <td class="col-progress">
                     <div class="current-info">
                         <div class="step-info">${stepInfo}${delayInfo}</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${((endpoint.current_index + 1) / sequence.length * 100).toFixed(1)}%"></div>
+                        </div>
                     </div>
                 </td>
                 <td class="col-actions">
