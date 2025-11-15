@@ -6,6 +6,8 @@
 {% block extra_head %}
 <link href="{{ url_for('static', filename='css/totp-authenticator-styles.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/toast-styles.css') }}" rel="stylesheet">
+<!-- Tesseract.js for OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -64,7 +66,8 @@
                 <div class="form-group">
                     <label for="secretKey">Secret Key *</label>
                     <input type="text" id="secretKey" class="form-control" placeholder="Enter your TOTP secret key" required>
-                    <small class="form-text">Enter the secret key provided by the service (usually shown during 2FA setup)</small>
+                    <small class="form-text">Type the secret key manually, or take a screenshot of the area where the secret key or QR code is displayed, then paste it here with Ctrl+V to extract automatically</small>
+                    <div id="ocrStatus" class="ocr-status" style="display: none;"></div>
                 </div>
 
                 <div class="form-group">
