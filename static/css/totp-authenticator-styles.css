@@ -418,3 +418,83 @@
     background: #4a1d1d;
     color: #f85149;
 }
+
+/* ===============================================
+   Secret Key OCR Extraction
+   =============================================== */
+.secret-key-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.btn-sm svg {
+    flex-shrink: 0;
+}
+
+.ocr-status {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ocr-status.processing {
+    background: #e3f2fd;
+    color: #1976d2;
+    border: 1px solid #90caf9;
+}
+
+.ocr-status.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #81c784;
+}
+
+.ocr-status.error {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+}
+
+.ocr-status .spinner {
+    animation: spin 1s linear infinite;
+    width: 16px;
+    height: 16px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Dark mode for OCR status */
+[data-theme="dark"] .ocr-status.processing {
+    background: #1a2332;
+    color: #64b5f6;
+    border-color: #1976d2;
+}
+
+[data-theme="dark"] .ocr-status.success {
+    background: #1a2e1e;
+    color: #81c784;
+    border-color: #2e7d32;
+}
+
+[data-theme="dark"] .ocr-status.error {
+    background: #2e1a1a;
+    color: #ef9a9a;
+    border-color: #c62828;
+}

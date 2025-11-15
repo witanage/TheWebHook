@@ -148,6 +148,14 @@ function setupEventListeners() {
             closeAccountModal();
         }
     });
+
+    // OCR Secret Key Extraction
+    document.getElementById('uploadImageBtn').addEventListener('click', handleUploadImage);
+    document.getElementById('pasteImageBtn').addEventListener('click', handlePasteImage);
+    document.getElementById('secretKeyImageUpload').addEventListener('change', handleImageSelect);
+
+    // Paste from clipboard listener
+    document.addEventListener('paste', handleClipboardPaste);
 }
 
 // ===============================================
@@ -790,6 +798,174 @@ async function handleDeleteAccount() {
 // ===============================================
 function isValidBase32(str) {
     return /^[A-Z2-7]+=*$/.test(str);
+}
+
+// ===============================================
+// OCR Secret Key Extraction
+// ===============================================
+function handleUploadImage() {
+    document.getElementById('secretKeyImageUpload').click();
+}
+
+async function handlePasteImage() {
+    try {
+        const clipboardItems = await navigator.clipboard.read();
+        for (const item of clipboardItems) {
+            for (const type of item.types) {
+                if (type.startsWith('image/')) {
+                    const blob = await item.getBlob(type);
+                    await processImageForOCR(blob);
+                    return;
+                }
+            }
+        }
+        showToast('No image found in clipboard. Please copy an image first.', 'error');
+    } catch (error) {
+        console.error('Clipboard access error:', error);
+        showToast('Failed to access clipboard. Please use the upload button or enable clipboard permissions.', 'error');
+    }
+}
+
+async function handleClipboardPaste(event) {
+    // Only process if modal is open and secret key field is focused
+    const modal = document.getElementById('accountModal');
+    if (!modal.classList.contains('active')) return;
+
+    const items = event.clipboardData?.items;
+    if (!items) return;
+
+    for (const item of items) {
+        if (item.type.startsWith('image/')) {
+            event.preventDefault();
+            const blob = item.getAsFile();
+            await processImageForOCR(blob);
+            return;
+        }
+    }
+}
+
+async function handleImageSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        await processImageForOCR(file);
+    }
+}
+
+async function processImageForOCR(imageFile) {
+    const statusDiv = document.getElementById('ocrStatus');
+    const secretKeyInput = document.getElementById('secretKey');
+
+    // Show processing status
+    statusDiv.style.display = 'flex';
+    statusDiv.className = 'ocr-status processing';
+    statusDiv.innerHTML = `
+        <svg class="spinner" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" opacity="0.25"></circle>
+            <path d="M12 2a10 10 0 0 1 10 10" opacity="0.75"></path>
+        </svg>
+        <span>Extracting text from image...</span>
+    `;
+
+    try {
+        // Use Tesseract.js to perform OCR
+        const { data: { text } } = await Tesseract.recognize(
+            imageFile,
+            'eng',
+            {
+                logger: info => {
+                    if (info.status === 'recognizing text') {
+                        const progress = Math.round(info.progress * 100);
+                        statusDiv.querySelector('span').textContent = `Processing image... ${progress}%`;
+                    }
+                }
+            }
+        );
+
+        console.log('OCR extracted text:', text);
+
+        // Extract secret key from text
+        const secretKey = extractSecretKey(text);
+
+        if (secretKey) {
+            secretKeyInput.value = secretKey;
+            statusDiv.className = 'ocr-status success';
+            statusDiv.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Secret key extracted successfully!</span>
+            `;
+            setTimeout(() => {
+                statusDiv.style.display = 'none';
+            }, 3000);
+            showToast('Secret key extracted successfully!', 'success');
+        } else {
+            statusDiv.className = 'ocr-status error';
+            statusDiv.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                <span>No secret key found in image. Please try a clearer screenshot.</span>
+            `;
+            showToast('No secret key found in image', 'error');
+        }
+    } catch (error) {
+        console.error('OCR processing error:', error);
+        statusDiv.className = 'ocr-status error';
+        statusDiv.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="15" y1="9" x2="9" y2="15"></line>
+                <line x1="9" y1="9" x2="15" y2="15"></line>
+            </svg>
+            <span>Failed to process image. Please try again.</span>
+        `;
+        showToast('Failed to process image', 'error');
+    }
+}
+
+function extractSecretKey(text) {
+    /**
+     * Extract TOTP secret key from OCR text.
+     * Looks for base32 patterns (uppercase letters A-Z and digits 2-7).
+     * Common patterns:
+     * - "Secret: ABCD1234..."
+     * - "Key: ABCD1234..."
+     * - Standalone keys with 16+ characters
+     */
+
+    // Remove all whitespace and newlines
+    const cleanedText = text.replace(/\s+/g, '');
+
+    // Pattern 1: Look for "secret" or "key" followed by base32 string
+    const secretPattern = /(?:secret|key|code)[:=\s]*([A-Z2-7]{16,})/i;
+    let match = text.match(secretPattern);
+    if (match) {
+        return match[1].toUpperCase().replace(/\s/g, '');
+    }
+
+    // Pattern 2: Look for standalone base32 strings (16-64 characters)
+    const base32Pattern = /\b([A-Z2-7]{16,64})\b/g;
+    const matches = [...text.matchAll(base32Pattern)];
+
+    if (matches.length > 0) {
+        // Return the longest match (most likely the secret key)
+        const longestMatch = matches.reduce((longest, current) =>
+            current[1].length > longest[1].length ? current : longest
+        );
+        return longestMatch[1].toUpperCase().replace(/\s/g, '');
+    }
+
+    // Pattern 3: Look in cleaned text (no spaces) for long base32 sequences
+    const cleanedPattern = /([A-Z2-7]{16,64})/;
+    match = cleanedText.match(cleanedPattern);
+    if (match) {
+        return match[1].toUpperCase();
+    }
+
+    return null;
 }
 
 // ===============================================
