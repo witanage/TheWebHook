@@ -7,13 +7,122 @@ let timers = {};
 let currentEditId = null;
 let currentDeleteId = null;
 
+// TOTP code cache - stores codes fetched from backend
+let totpCodeCache = {};  // { account_id: { code: '123456', time_remaining: 25, fetched_at: timestamp } }
+
+// NTP time synchronization
+let ntpTimeOffset = 0;  // Offset in milliseconds between local time and NTP time
+let ntpLastSync = 0;     // Timestamp of last NTP sync
+const NTP_SYNC_INTERVAL = 300000;  // Sync every 5 minutes (300000ms)
+
 // ===============================================
 // Initialization
 // ===============================================
 document.addEventListener('DOMContentLoaded', function() {
+    syncNTPTime();  // Initial NTP sync
     loadAccounts();
     setupEventListeners();
+
+    // Periodically sync with NTP
+    setInterval(syncNTPTime, NTP_SYNC_INTERVAL);
 });
+
+// ===============================================
+// NTP Time Synchronization
+// ===============================================
+async function syncNTPTime() {
+    try {
+        const localTime = Date.now();
+        const response = await fetch('/api/totp/ntp-time');
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch NTP time');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Calculate offset: NTP time - local time
+            ntpTimeOffset = data.timestamp - localTime;
+            ntpLastSync = localTime;
+
+            console.log(`NTP sync successful. Offset: ${ntpTimeOffset}ms (${(ntpTimeOffset / 1000).toFixed(3)}s)`);
+
+            if (data.fallback) {
+                console.warn('NTP server unavailable, using system time as fallback');
+            }
+
+            // Regenerate all TOTP codes with updated time
+            if (accounts.length > 0) {
+                await fetchAllTOTPCodes();
+                renderAccounts();
+            }
+        }
+    } catch (error) {
+        console.error('NTP sync failed:', error);
+        // Continue using local time if NTP sync fails
+    }
+}
+
+function getNTPTime() {
+    // Return current time adjusted for NTP offset
+    return Date.now() + ntpTimeOffset;
+}
+
+// ===============================================
+// TOTP Code Generation (Backend API)
+// ===============================================
+async function fetchTOTPCode(accountId) {
+    /**
+     * Fetch TOTP code from backend using pyotp with NTP time.
+     * This ensures the code matches standard authenticators.
+     */
+    try {
+        const response = await fetch(`/api/totp/generate/${accountId}`);
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch TOTP code');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Cache the code
+            totpCodeCache[accountId] = {
+                code: data.code,
+                time_remaining: data.time_remaining,
+                period: data.period,
+                fetched_at: Date.now()
+            };
+            return data.code;
+        } else {
+            console.error('TOTP generation failed:', data.message);
+            return '000000';
+        }
+    } catch (error) {
+        console.error('Error fetching TOTP code:', error);
+        return '000000';
+    }
+}
+
+async function fetchAllTOTPCodes() {
+    /**
+     * Fetch TOTP codes for all accounts in parallel
+     */
+    const promises = accounts.map(account => fetchTOTPCode(account.id));
+    await Promise.all(promises);
+}
+
+function getCachedTOTPCode(accountId, digits = 6) {
+    /**
+     * Get cached TOTP code or return placeholder
+     */
+    const cached = totpCodeCache[accountId];
+    if (cached && cached.code) {
+        return cached.code;
+    }
+    return '0'.repeat(digits);
+}
 
 // ===============================================
 // Event Listeners
@@ -64,6 +173,10 @@ async function loadAccounts(showLoading = false) {
         if (data.success) {
             accounts = data.accounts;
             console.log(`Loaded ${accounts.length} accounts`);
+
+            // Fetch TOTP codes for all accounts
+            await fetchAllTOTPCodes();
+
             renderAccounts();
             startAllTimers();
         } else {
@@ -145,7 +258,8 @@ function renderAccounts() {
 // Create Account Card HTML
 // ===============================================
 function createAccountCard(account) {
-    const code = generateTOTP(account.secret_key, account.digits, account.period);
+    // Use cached TOTP code from backend (generated with NTP time)
+    const code = getCachedTOTPCode(account.id, account.digits);
     const timeRemaining = getTimeRemaining(account.period);
     const progress = (timeRemaining / account.period) * 100;
 
@@ -202,7 +316,8 @@ function createAccountCard(account) {
 // ===============================================
 function generateTOTP(secret, digits = 6, period = 30) {
     try {
-        const epoch = Math.floor(Date.now() / 1000);
+        // Use NTP-synchronized time instead of local time
+        const epoch = Math.floor(getNTPTime() / 1000);
         const counter = Math.floor(epoch / period);
 
         // Decode base32 secret
@@ -384,7 +499,8 @@ function concatArrays(a, b) {
 // Time and Progress Functions
 // ===============================================
 function getTimeRemaining(period = 30) {
-    const epoch = Math.floor(Date.now() / 1000);
+    // Use NTP-synchronized time instead of local time
+    const epoch = Math.floor(getNTPTime() / 1000);
     return period - (epoch % period);
 }
 
@@ -414,7 +530,7 @@ function startAllTimers() {
     });
 }
 
-function updateAccountTimer(accountId) {
+async function updateAccountTimer(accountId) {
     const account = accounts.find(a => a.id === accountId);
     if (!account) return;
 
@@ -434,9 +550,9 @@ function updateAccountTimer(accountId) {
         progressElement.className = `progress-bar ${getProgressClass(progress)}`;
     }
 
-    // Regenerate code when period expires
+    // Regenerate code when period expires (fetch from backend)
     if (timeRemaining === account.period) {
-        const code = generateTOTP(account.secret_key, account.digits, account.period);
+        const code = await fetchTOTPCode(accountId);
         const codeElement = document.getElementById(`code-${accountId}`);
         if (codeElement) {
             codeElement.textContent = formatCode(code, account.digits);
