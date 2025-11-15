@@ -143,7 +143,18 @@ async function toggleUserStatus(userId) {
         const result = await response.json();
 
         if (result.success) {
-            showSuccess(result.message);
+            // If user was just activated, prompt for app assignment
+            if (result.new_status === 1) {
+                // Show success message briefly, then open app assignment modal
+                showSuccess(result.message);
+                setTimeout(() => {
+                    document.getElementById('successModal').classList.remove('active');
+                    openMenuAssignmentModal(result.user_id, result.username);
+                }, 800);
+            } else {
+                // User was deactivated, show normal success message
+                showSuccess(result.message);
+            }
         } else {
             showError(result.error);
         }
