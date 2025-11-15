@@ -151,10 +151,9 @@ function setupEventListeners() {
 
     // OCR Secret Key Extraction
     document.getElementById('uploadImageBtn').addEventListener('click', handleUploadImage);
-    document.getElementById('pasteImageBtn').addEventListener('click', handlePasteImage);
     document.getElementById('secretKeyImageUpload').addEventListener('change', handleImageSelect);
 
-    // Paste from clipboard listener
+    // Paste from clipboard listener (Ctrl+V)
     document.addEventListener('paste', handleClipboardPaste);
 }
 
@@ -807,25 +806,6 @@ function handleUploadImage() {
     document.getElementById('secretKeyImageUpload').click();
 }
 
-async function handlePasteImage() {
-    try {
-        const clipboardItems = await navigator.clipboard.read();
-        for (const item of clipboardItems) {
-            for (const type of item.types) {
-                if (type.startsWith('image/')) {
-                    const blob = await item.getBlob(type);
-                    await processImageForOCR(blob);
-                    return;
-                }
-            }
-        }
-        showToast('No image found in clipboard. Please copy an image first.', 'error');
-    } catch (error) {
-        console.error('Clipboard access error:', error);
-        showToast('Failed to access clipboard. Please use the upload button or enable clipboard permissions.', 'error');
-    }
-}
-
 async function handleClipboardPaste(event) {
     // Only process if modal is open and secret key field is focused
     const modal = document.getElementById('accountModal');
@@ -867,24 +847,36 @@ async function processImageForOCR(imageFile) {
     `;
 
     try {
+        console.log('Starting OCR processing...');
+
         // Use Tesseract.js to perform OCR
-        const { data: { text } } = await Tesseract.recognize(
+        const result = await Tesseract.recognize(
             imageFile,
             'eng',
             {
                 logger: info => {
-                    if (info.status === 'recognizing text') {
-                        const progress = Math.round(info.progress * 100);
-                        statusDiv.querySelector('span').textContent = `Processing image... ${progress}%`;
+                    try {
+                        if (info.status === 'recognizing text') {
+                            const progress = Math.round(info.progress * 100);
+                            const spanElement = statusDiv.querySelector('span');
+                            if (spanElement) {
+                                spanElement.textContent = `Processing image... ${progress}%`;
+                            }
+                        }
+                    } catch (logError) {
+                        console.error('Progress update error:', logError);
+                        // Continue processing even if progress update fails
                     }
                 }
             }
         );
 
+        const text = result.data.text;
         console.log('OCR extracted text:', text);
 
         // Extract secret key from text
         const secretKey = extractSecretKey(text);
+        console.log('Extracted secret key:', secretKey);
 
         if (secretKey) {
             secretKeyInput.value = secretKey;
@@ -913,6 +905,7 @@ async function processImageForOCR(imageFile) {
         }
     } catch (error) {
         console.error('OCR processing error:', error);
+        console.error('Error details:', error.message, error.stack);
         statusDiv.className = 'ocr-status error';
         statusDiv.innerHTML = `
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -920,9 +913,9 @@ async function processImageForOCR(imageFile) {
                 <line x1="15" y1="9" x2="9" y2="15"></line>
                 <line x1="9" y1="9" x2="15" y2="15"></line>
             </svg>
-            <span>Failed to process image. Please try again.</span>
+            <span>Failed to process image. Error: ${error.message || 'Unknown error'}</span>
         `;
-        showToast('Failed to process image', 'error');
+        showToast(`OCR failed: ${error.message || 'Please try again'}`, 'error');
     }
 }
 
