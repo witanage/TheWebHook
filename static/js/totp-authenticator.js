@@ -7,6 +7,9 @@ let timers = {};
 let currentEditId = null;
 let currentDeleteId = null;
 
+// TOTP code cache - stores codes fetched from backend
+let totpCodeCache = {};  // { account_id: { code: '123456', time_remaining: 25, fetched_at: timestamp } }
+
 // NTP time synchronization
 let ntpTimeOffset = 0;  // Offset in milliseconds between local time and NTP time
 let ntpLastSync = 0;     // Timestamp of last NTP sync
@@ -51,6 +54,7 @@ async function syncNTPTime() {
 
             // Regenerate all TOTP codes with updated time
             if (accounts.length > 0) {
+                await fetchAllTOTPCodes();
                 renderAccounts();
             }
         }
@@ -63,6 +67,61 @@ async function syncNTPTime() {
 function getNTPTime() {
     // Return current time adjusted for NTP offset
     return Date.now() + ntpTimeOffset;
+}
+
+// ===============================================
+// TOTP Code Generation (Backend API)
+// ===============================================
+async function fetchTOTPCode(accountId) {
+    /**
+     * Fetch TOTP code from backend using pyotp with NTP time.
+     * This ensures the code matches standard authenticators.
+     */
+    try {
+        const response = await fetch(`/api/totp/generate/${accountId}`);
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch TOTP code');
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Cache the code
+            totpCodeCache[accountId] = {
+                code: data.code,
+                time_remaining: data.time_remaining,
+                period: data.period,
+                fetched_at: Date.now()
+            };
+            return data.code;
+        } else {
+            console.error('TOTP generation failed:', data.message);
+            return '000000';
+        }
+    } catch (error) {
+        console.error('Error fetching TOTP code:', error);
+        return '000000';
+    }
+}
+
+async function fetchAllTOTPCodes() {
+    /**
+     * Fetch TOTP codes for all accounts in parallel
+     */
+    const promises = accounts.map(account => fetchTOTPCode(account.id));
+    await Promise.all(promises);
+}
+
+function getCachedTOTPCode(accountId, digits = 6) {
+    /**
+     * Get cached TOTP code or return placeholder
+     */
+    const cached = totpCodeCache[accountId];
+    if (cached && cached.code) {
+        return cached.code;
+    }
+    return '0'.repeat(digits);
 }
 
 // ===============================================
@@ -114,6 +173,10 @@ async function loadAccounts(showLoading = false) {
         if (data.success) {
             accounts = data.accounts;
             console.log(`Loaded ${accounts.length} accounts`);
+
+            // Fetch TOTP codes for all accounts
+            await fetchAllTOTPCodes();
+
             renderAccounts();
             startAllTimers();
         } else {
@@ -195,7 +258,8 @@ function renderAccounts() {
 // Create Account Card HTML
 // ===============================================
 function createAccountCard(account) {
-    const code = generateTOTP(account.secret_key, account.digits, account.period);
+    // Use cached TOTP code from backend (generated with NTP time)
+    const code = getCachedTOTPCode(account.id, account.digits);
     const timeRemaining = getTimeRemaining(account.period);
     const progress = (timeRemaining / account.period) * 100;
 
@@ -466,7 +530,7 @@ function startAllTimers() {
     });
 }
 
-function updateAccountTimer(accountId) {
+async function updateAccountTimer(accountId) {
     const account = accounts.find(a => a.id === accountId);
     if (!account) return;
 
@@ -486,9 +550,9 @@ function updateAccountTimer(accountId) {
         progressElement.className = `progress-bar ${getProgressClass(progress)}`;
     }
 
-    // Regenerate code when period expires
+    // Regenerate code when period expires (fetch from backend)
     if (timeRemaining === account.period) {
-        const code = generateTOTP(account.secret_key, account.digits, account.period);
+        const code = await fetchTOTPCode(accountId);
         const codeElement = document.getElementById(`code-${accountId}`);
         if (codeElement) {
             codeElement.textContent = formatCode(code, account.digits);

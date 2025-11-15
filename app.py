@@ -2586,6 +2586,58 @@ def get_ntp_synced_time():
         })
 
 
+@app.route("/api/totp/generate/<int:account_id>", methods=["GET"])
+@login_required
+def generate_totp_code(account_id):
+    """
+    Generate TOTP code for a specific account using NTP-synchronized time.
+    This ensures the code matches standard authenticators.
+    """
+    user_id = session["user_id"]
+    conn = get_db_connection()
+
+    try:
+        with conn.cursor() as cursor:
+            # Fetch account details
+            cursor.execute(
+                "SELECT secret_key, digits, period FROM totp_accounts WHERE id = %s AND user_id = %s",
+                (account_id, user_id)
+            )
+            account = cursor.fetchone()
+
+            if not account:
+                return jsonify({'success': False, 'message': 'Account not found'}), 404
+
+            # Generate TOTP using NTP-synchronized time
+            totp = pyotp.TOTP(
+                account['secret_key'],
+                digits=account['digits'],
+                interval=account['period']
+            )
+
+            # Use NTP time for generation
+            ntp_time = get_ntp_time()
+            code = totp.at(ntp_time)
+
+            # Calculate time remaining
+            period = account['period']
+            epoch = int(ntp_time)
+            time_remaining = period - (epoch % period)
+
+            return jsonify({
+                'success': True,
+                'code': code,
+                'time_remaining': time_remaining,
+                'period': period
+            })
+
+    except Exception as e:
+        log(f"Error generating TOTP code for account {account_id}: {e}")
+        return jsonify({'success': False, 'message': 'Failed to generate code'}), 500
+    finally:
+        conn.close()
+
+
 # ==================== END TOTP AUTHENTICATOR ROUTES ====================
 
 
