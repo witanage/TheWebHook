@@ -2168,7 +2168,9 @@ def api_toggle_user_status(user_id):
             return jsonify({
                 'success': True,
                 'message': f'User {status_text} successfully',
-                'new_status': new_status
+                'new_status': new_status,
+                'username': user['username'],
+                'user_id': user_id
             })
     except Exception as e:
         log(f"Error toggling user status: {e}")
