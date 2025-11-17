@@ -73,6 +73,9 @@
 /* Users Table */
 .users-table {
     overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+    position: relative;
 }
 
 .users-table table {
@@ -91,6 +94,9 @@
     background: var(--bg-tertiary);
     font-weight: 600;
     color: var(--text-secondary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .users-table tr:hover {

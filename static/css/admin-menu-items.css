@@ -25,6 +25,9 @@
     border-radius: var(--radius);
     padding: 1.5rem;
     overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+    position: relative;
 }
 
 .menu-items-table table {
@@ -43,6 +46,9 @@
     background: var(--bg-tertiary);
     font-weight: 600;
     color: var(--text-secondary);
+    position: sticky;
+    top: 0;
+    z-index: 10;
 }
 
 .menu-items-table tr:hover {
