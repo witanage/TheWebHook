@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Code Formatter{% endblock %}
+
+{% block header_left %}
+<button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Menu
+</button>
+{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('static', filename='css/code-formatter-styles.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/toast-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="code-formatter-container">
+    <div class="page-header">
+        <p class="page-description">Beautify code like Postman API or convert to single-line format</p>
+    </div>
+
+    <div class="controls">
+        <label for="languageSelect">Language:</label>
+        <select id="languageSelect" class="language-select">
+            <option value="json" selected>JSON</option>
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="c">C</option>
+            <option value="cpp">C++</option>
+            <option value="csharp">C#</option>
+            <option value="go">Go</option>
+            <option value="rust">Rust</option>
+            <option value="swift">Swift</option>
+            <option value="kotlin">Kotlin</option>
+            <option value="ruby">Ruby</option>
+            <option value="php">PHP</option>
+            <option value="html">HTML</option>
+            <option value="xml">XML</option>
+            <option value="css">CSS</option>
+            <option value="scss">SCSS</option>
+            <option value="less">LESS</option>
+            <option value="sql">SQL</option>
+            <option value="bash">Bash</option>
+            <option value="shell">Shell</option>
+        </select>
+        <button class="btn-primary" onclick="formatStandard()">Beautify Code</button>
+        <button class="btn-secondary" onclick="formatOneLine()">Make One Line</button>
+        <button class="btn-secondary" onclick="copyFormatted()">Copy Formatted</button>
+        <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        <button class="btn-success" onclick="loadSample()">Load Sample</button>
+    </div>
+
+    <div class="editor-area">
+        <div class="editor-panel">
+            <div class="panel-header">Input Code</div>
+            <textarea id="inputCode" class="code-editor" placeholder="Paste your code here..."></textarea>
+        </div>
+        <div class="editor-panel">
+            <div class="panel-header">
+                <span>Formatted Code</span>
+                <span id="charCount" class="char-count">0 characters</span>
+            </div>
+            <textarea id="outputCode" class="code-editor" placeholder="Formatted code will appear here..." readonly></textarea>
+        </div>
+    </div>
+
+    <div class="info-section">
+        <div class="info-card">
+            <div class="info-icon">📝</div>
+            <div class="info-content">
+                <h4>Beautify</h4>
+                <p>Formats code with 2-space indentation like Postman API, proper line breaks, and clean structure</p>
+            </div>
+        </div>
+        <div class="info-card">
+            <div class="info-icon">📏</div>
+            <div class="info-content">
+                <h4>One Line</h4>
+                <p>Converts code to a single line, removing comments and extra whitespace</p>
+            </div>
+        </div>
+        <div class="info-card">
+            <div class="info-icon">📋</div>
+            <div class="info-content">
+                <h4>Easy Copy</h4>
+                <p>Formatted code is ready to copy with a single click</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/showToast-function.js') }}"></script>
+<script src="{{ url_for('static', filename='js/code-formatter.js') }}"></script>
+{% endblock %}
+
+{% block about_title %}About Code Formatter{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>💻 Code Formatter</h4>
+    <p>Beautify code like Postman API or convert to single-line format for easy sharing and minification.</p>
+</section>
+
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Multi-Language Support</strong> - Supports 20+ programming languages</li>
+        <li><strong>Postman-Style Beautify</strong> - Clean 2-space indentation like Postman API</li>
+        <li><strong>One-Line Conversion</strong> - Convert code to a single line</li>
+        <li><strong>Easy Copy</strong> - Copy formatted code with a single click</li>
+        <li><strong>Comment Removal</strong> - Automatically removes comments in one-line mode</li>
+        <li><strong>Clipboard Support</strong> - Paste directly from clipboard</li>
+        <li><strong>Character Count</strong> - See the length of formatted output</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <ol>
+        <li>Select your programming language from the dropdown</li>
+        <li>Paste or type your code in the input area</li>
+        <li>Click "Beautify Code" for clean formatting with 2-space indentation</li>
+        <li>Click "Make One Line" to convert code to a single line</li>
+        <li>Use "Copy Formatted Code" to copy the result</li>
+    </ol>
+</section>
+
+<section class="about-section">
+    <h5>🌐 Supported Languages</h5>
+    <ul class="feature-list">
+        <li>JavaScript, TypeScript, Python, Java</li>
+        <li>C, C++, C#, Go, Rust</li>
+        <li>Swift, Kotlin, Ruby, PHP</li>
+        <li>HTML, XML, CSS, SCSS, LESS</li>
+        <li>SQL, JSON, Bash, Shell</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>💡 Tips</h5>
+    <ul class="feature-list">
+        <li><strong>Beautify</strong> - Best for code readability and version control</li>
+        <li><strong>One Line</strong> - Useful for sharing code snippets or testing minification</li>
+        <li><strong>Preserve Logic</strong> - Formatting doesn't change code behavior</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
+{% endblock %}
