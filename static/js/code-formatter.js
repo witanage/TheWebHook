@@ -1,4 +1,4 @@
-// Code Formatter JavaScript
+// Code Formatter JavaScript - All formatting done on frontend
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -6,10 +6,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const outputCode = document.getElementById('outputCode');
 
     // Update character count on output change
-    const observer = new MutationObserver(updateCharCount);
-    observer.observe(outputCode, { characterData: true, childList: true, subtree: true });
-
-    // Also update on value change
     outputCode.addEventListener('input', updateCharCount);
 
     // Enable keyboard shortcuts
@@ -28,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 /**
- * Format code with IntelliJ-style standards
+ * Format code with Postman-style beautify (2-space indentation)
  */
 function formatStandard() {
     const inputCode = document.getElementById('inputCode').value.trim();
@@ -39,36 +35,14 @@ function formatStandard() {
         return;
     }
 
-    // Show loading state
-    const outputCode = document.getElementById('outputCode');
-    outputCode.value = 'Formatting...';
-
-    fetch('/api/code-formatter/format', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            code: inputCode,
-            language: language,
-            mode: 'standard'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            outputCode.value = data.formatted_code;
-            updateCharCount();
-            showToast('Code formatted successfully!', 'success');
-        } else {
-            outputCode.value = '';
-            showModal('Error', data.error || 'Failed to format code');
-        }
-    })
-    .catch(error => {
-        outputCode.value = '';
-        showModal('Error', 'Network error: ' + error.message);
-    });
+    try {
+        const outputCode = document.getElementById('outputCode');
+        outputCode.value = beautifyCode(inputCode, language);
+        updateCharCount();
+        showToast('Code beautified successfully!', 'success');
+    } catch (error) {
+        showModal('Error', 'Failed to format code: ' + error.message);
+    }
 }
 
 /**
@@ -83,36 +57,152 @@ function formatOneLine() {
         return;
     }
 
-    // Show loading state
-    const outputCode = document.getElementById('outputCode');
-    outputCode.value = 'Converting to one line...';
+    try {
+        const outputCode = document.getElementById('outputCode');
+        outputCode.value = minifyToOneLine(inputCode, language);
+        updateCharCount();
+        showToast('Code converted to one line!', 'success');
+    } catch (error) {
+        showModal('Error', 'Failed to convert code: ' + error.message);
+    }
+}
 
-    fetch('/api/code-formatter/format', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            code: inputCode,
-            language: language,
-            mode: 'oneline'
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            outputCode.value = data.formatted_code;
-            updateCharCount();
-            showToast('Code converted to one line!', 'success');
-        } else {
-            outputCode.value = '';
-            showModal('Error', data.error || 'Failed to convert code');
+/**
+ * Beautify code with 2-space indentation (Postman-style)
+ */
+function beautifyCode(code, language) {
+    // Special handling for JSON
+    if (language === 'json') {
+        try {
+            const parsed = JSON.parse(code);
+            return JSON.stringify(parsed, null, 2);
+        } catch (e) {
+            // Fall through to regular formatting if JSON parsing fails
         }
-    })
-    .catch(error => {
-        outputCode.value = '';
-        showModal('Error', 'Network error: ' + error.message);
-    });
+    }
+
+    // First, split code by common delimiters to ensure proper line breaks
+    if (['javascript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'swift', 'kotlin', 'typescript', 'css', 'scss', 'less', 'php'].includes(language)) {
+        // Add line breaks after opening braces and before closing braces
+        code = code.replace(/\{/g, '{\n');
+        code = code.replace(/\}/g, '\n}\n');
+        code = code.replace(/;/g, ';\n');
+        // Clean up multiple newlines
+        code = code.replace(/\n+/g, '\n');
+    }
+
+    const lines = code.split('\n');
+    const formattedLines = [];
+    let indentLevel = 0;
+    const indentChar = '  '; // 2 spaces (Postman/Beautify style)
+
+    for (let line of lines) {
+        const stripped = line.trim();
+
+        if (!stripped) {
+            continue;
+        }
+
+        // Decrease indent for closing braces/brackets
+        if (['javascript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'swift', 'kotlin', 'typescript', 'css', 'scss', 'less', 'php', 'json'].includes(language)) {
+            if (stripped.startsWith('}') || stripped.startsWith(']')) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+        } else if (language === 'python') {
+            // Python indentation based on dedent keywords
+            if (stripped.startsWith('elif ') || stripped.startsWith('else:') || stripped.startsWith('except') || stripped.startsWith('finally:')) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+        } else if (['html', 'xml'].includes(language)) {
+            if (stripped.startsWith('</')) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+        }
+
+        // Add indented line
+        formattedLines.push(indentChar.repeat(indentLevel) + stripped);
+
+        // Increase indent for opening braces/brackets
+        if (['javascript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'swift', 'kotlin', 'typescript', 'css', 'scss', 'less', 'php', 'json'].includes(language)) {
+            if (stripped.endsWith('{') || stripped.endsWith('[')) {
+                indentLevel++;
+            }
+            // Handle closing and opening on same line like "}, {"
+            if (/\},\s*\{/.test(stripped)) {
+                indentLevel = Math.max(0, indentLevel - 1);
+            }
+        } else if (language === 'python') {
+            // Python indentation based on colon
+            if (stripped.endsWith(':')) {
+                indentLevel++;
+            }
+        } else if (['html', 'xml'].includes(language)) {
+            // HTML/XML opening tags
+            if (/^<[^/][^>]*>$/.test(stripped) && !/^<[^>]*\/>$/.test(stripped)) {
+                indentLevel++;
+            }
+        } else if (language === 'sql') {
+            // SQL formatting - major keywords on new lines
+            const upperStripped = stripped.toUpperCase();
+            if (['FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'GROUP BY', 'ORDER BY', 'HAVING'].some(kw => upperStripped.startsWith(kw))) {
+                indentLevel = 1;
+            }
+        }
+    }
+
+    let formatted = formattedLines.join('\n');
+
+    // Clean up excessive blank lines
+    formatted = formatted.replace(/\n{3,}/g, '\n\n');
+
+    return formatted;
+}
+
+/**
+ * Minify code to a single line
+ */
+function minifyToOneLine(code, language) {
+    // Remove comments based on language
+    if (['javascript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'swift', 'kotlin', 'typescript'].includes(language)) {
+        // Remove single-line comments
+        code = code.replace(/\/\/.*?$/gm, '');
+        // Remove multi-line comments
+        code = code.replace(/\/\*.*?\*\//gs, '');
+    } else if (['python', 'ruby', 'bash', 'shell'].includes(language)) {
+        // Remove single-line comments
+        code = code.replace(/#.*?$/gm, '');
+    } else if (language === 'sql') {
+        // Remove SQL comments
+        code = code.replace(/--.*?$/gm, '');
+        code = code.replace(/\/\*.*?\*\//gs, '');
+    } else if (['html', 'xml'].includes(language)) {
+        // Remove HTML/XML comments
+        code = code.replace(/<!--.*?-->/gs, '');
+    } else if (['css', 'scss', 'less'].includes(language)) {
+        // Remove CSS comments
+        code = code.replace(/\/\*.*?\*\//gs, '');
+    }
+
+    // Replace multiple spaces with single space
+    code = code.replace(/[ \t]+/g, ' ');
+
+    // Remove all newlines and replace with space
+    code = code.replace(/\n+/g, ' ');
+
+    // Remove spaces around operators and special characters (language-specific)
+    if (['javascript', 'java', 'c', 'cpp', 'csharp', 'go', 'rust', 'swift', 'kotlin', 'typescript'].includes(language)) {
+        code = code.replace(/\s*([{}();,:])\s*/g, '$1');
+        code = code.replace(/\s*([=+\-*/<>!&|])\s*/g, '$1');
+    } else if (language === 'python') {
+        // Python needs spaces around operators
+        code = code.replace(/\s*([{}();,:])\s*/g, '$1');
+    }
+
+    // Clean up extra spaces
+    code = code.replace(/\s+/g, ' ');
+    code = code.trim();
+
+    return code;
 }
 
 /**
@@ -189,7 +279,6 @@ function clearAll() {
     document.getElementById('inputCode').value = '';
     document.getElementById('outputCode').value = '';
     updateCharCount();
-    showToast('Cleared all content', 'info');
 }
 
 /**
@@ -256,6 +345,8 @@ background-color: #f5f5f5;
 color: #333;
 font-size: 24px;
 }`,
+
+        json: `{"name":"John","age":30,"city":"New York","hobbies":["reading","gaming"]}`,
 
         sql: `SELECT users.name, orders.total
 FROM users

@@ -24,53 +24,41 @@
     </div>
 
     <div class="controls">
-        <div class="control-group">
-            <label for="languageSelect">Language:</label>
-            <select id="languageSelect" class="language-select">
-                <option value="javascript">JavaScript</option>
-                <option value="typescript">TypeScript</option>
-                <option value="python">Python</option>
-                <option value="java">Java</option>
-                <option value="c">C</option>
-                <option value="cpp">C++</option>
-                <option value="csharp">C#</option>
-                <option value="go">Go</option>
-                <option value="rust">Rust</option>
-                <option value="swift">Swift</option>
-                <option value="kotlin">Kotlin</option>
-                <option value="ruby">Ruby</option>
-                <option value="php">PHP</option>
-                <option value="html">HTML</option>
-                <option value="xml">XML</option>
-                <option value="css">CSS</option>
-                <option value="scss">SCSS</option>
-                <option value="less">LESS</option>
-                <option value="sql">SQL</option>
-                <option value="json">JSON</option>
-                <option value="bash">Bash</option>
-                <option value="shell">Shell</option>
-            </select>
-        </div>
-        <div class="button-group">
-            <button class="btn-primary" onclick="formatStandard()">Beautify Code</button>
-            <button class="btn-secondary" onclick="formatOneLine()">Make One Line</button>
-            <button class="btn-success" onclick="copyFormatted()">Copy Formatted Code</button>
-            <button class="btn-clear" onclick="clearAll()">Clear All</button>
-        </div>
+        <label for="languageSelect">Language:</label>
+        <select id="languageSelect" class="language-select">
+            <option value="javascript">JavaScript</option>
+            <option value="typescript">TypeScript</option>
+            <option value="python">Python</option>
+            <option value="java">Java</option>
+            <option value="c">C</option>
+            <option value="cpp">C++</option>
+            <option value="csharp">C#</option>
+            <option value="go">Go</option>
+            <option value="rust">Rust</option>
+            <option value="swift">Swift</option>
+            <option value="kotlin">Kotlin</option>
+            <option value="ruby">Ruby</option>
+            <option value="php">PHP</option>
+            <option value="html">HTML</option>
+            <option value="xml">XML</option>
+            <option value="css">CSS</option>
+            <option value="scss">SCSS</option>
+            <option value="less">LESS</option>
+            <option value="sql">SQL</option>
+            <option value="json">JSON</option>
+            <option value="bash">Bash</option>
+            <option value="shell">Shell</option>
+        </select>
+        <button class="btn-primary" onclick="formatStandard()">Beautify Code</button>
+        <button class="btn-secondary" onclick="formatOneLine()">Make One Line</button>
+        <button class="btn-secondary" onclick="copyFormatted()">Copy Formatted</button>
+        <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        <button class="btn-success" onclick="loadSample()">Load Sample</button>
     </div>
 
     <div class="editor-area">
         <div class="editor-panel">
-            <div class="panel-header">
-                <span>Input Code</span>
-                <button class="paste-btn" onclick="pasteFromClipboard()" title="Paste from clipboard">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-                    </svg>
-                    Paste
-                </button>
-            </div>
+            <div class="panel-header">Input Code</div>
             <textarea id="inputCode" class="code-editor" placeholder="Paste your code here..."></textarea>
         </div>
         <div class="editor-panel">
