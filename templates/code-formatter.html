@@ -20,7 +20,7 @@
 {% block content %}
 <div class="code-formatter-container">
     <div class="page-header">
-        <p class="page-description">Format code in any language with IntelliJ-style standards or convert to one-line</p>
+        <p class="page-description">Beautify code like Postman API or convert to single-line format</p>
     </div>
 
     <div class="controls">
@@ -52,8 +52,8 @@
             </select>
         </div>
         <div class="button-group">
-            <button class="btn-primary" onclick="formatStandard()">Format (IntelliJ Style)</button>
-            <button class="btn-secondary" onclick="formatOneLine()">Convert to One Line</button>
+            <button class="btn-primary" onclick="formatStandard()">Beautify Code</button>
+            <button class="btn-secondary" onclick="formatOneLine()">Make One Line</button>
             <button class="btn-success" onclick="copyFormatted()">Copy Formatted Code</button>
             <button class="btn-clear" onclick="clearAll()">Clear All</button>
         </div>
@@ -86,15 +86,15 @@
         <div class="info-card">
             <div class="info-icon">📝</div>
             <div class="info-content">
-                <h4>IntelliJ Style</h4>
-                <p>Formats code with standard 4-space indentation, proper line breaks, and clean structure</p>
+                <h4>Beautify</h4>
+                <p>Formats code with 2-space indentation like Postman API, proper line breaks, and clean structure</p>
             </div>
         </div>
         <div class="info-card">
             <div class="info-icon">📏</div>
             <div class="info-content">
                 <h4>One Line</h4>
-                <p>Minifies code to a single line, removing comments and extra whitespace</p>
+                <p>Converts code to a single line, removing comments and extra whitespace</p>
             </div>
         </div>
         <div class="info-card">
@@ -118,15 +118,15 @@
 {% block about_content %}
 <section class="about-section">
     <h4>💻 Code Formatter</h4>
-    <p>Format code in any language with IntelliJ-style standards or convert to one-line format for easy sharing.</p>
+    <p>Beautify code like Postman API or convert to single-line format for easy sharing and minification.</p>
 </section>
 
 <section class="about-section">
     <h5>✨ Key Features</h5>
     <ul class="feature-list">
         <li><strong>Multi-Language Support</strong> - Supports 20+ programming languages</li>
-        <li><strong>IntelliJ-Style Formatting</strong> - Standard 4-space indentation with clean structure</li>
-        <li><strong>One-Line Conversion</strong> - Minify code to a single line</li>
+        <li><strong>Postman-Style Beautify</strong> - Clean 2-space indentation like Postman API</li>
+        <li><strong>One-Line Conversion</strong> - Convert code to a single line</li>
         <li><strong>Easy Copy</strong> - Copy formatted code with a single click</li>
         <li><strong>Comment Removal</strong> - Automatically removes comments in one-line mode</li>
         <li><strong>Clipboard Support</strong> - Paste directly from clipboard</li>
@@ -139,8 +139,8 @@
     <ol>
         <li>Select your programming language from the dropdown</li>
         <li>Paste or type your code in the input area</li>
-        <li>Click "Format (IntelliJ Style)" for standard formatting</li>
-        <li>Click "Convert to One Line" to minify the code</li>
+        <li>Click "Beautify Code" for clean formatting with 2-space indentation</li>
+        <li>Click "Make One Line" to convert code to a single line</li>
         <li>Use "Copy Formatted Code" to copy the result</li>
     </ol>
 </section>
@@ -159,7 +159,7 @@
 <section class="about-section">
     <h5>💡 Tips</h5>
     <ul class="feature-list">
-        <li><strong>IntelliJ Style</strong> - Best for code readability and version control</li>
+        <li><strong>Beautify</strong> - Best for code readability and version control</li>
         <li><strong>One Line</strong> - Useful for sharing code snippets or testing minification</li>
         <li><strong>Preserve Logic</strong> - Formatting doesn't change code behavior</li>
     </ul>

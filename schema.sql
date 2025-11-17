@@ -181,7 +181,7 @@ INSERT INTO menu_items (title, description, icon, route, display_order, is_activ
     ('AWS Log Comparison Tool', 'Compare AWS CloudWatch log exports', '📊', '/aws-log-compare', 4, 1),
     ('Karate Feature Generator', 'Generate Karate API test feature files from request/response payloads', '🥋', '/karate-generator', 5, 1),
     ('TOTP Authenticator', 'Two-factor authentication code generator like Authy', '🔐', '/totp-authenticator', 6, 1),
-    ('Code Formatter', 'Format code in any language with IntelliJ-style standards or convert to one-line', '💻', '/code-formatter', 7, 1)
+    ('Code Formatter', 'Beautify code like Postman API or convert to single-line format', '💻', '/code-formatter', 7, 1)
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),
     description = VALUES(description),

@@ -2698,14 +2698,23 @@ def minify_code(code, language):
 
 
 def format_code_standard(code, language):
-    """Format code with standard IntelliJ-style indentation"""
+    """Format code with Postman-style beautify (2-space indentation)"""
     import re
+    import json
+
+    # Special handling for JSON
+    if language == "json":
+        try:
+            parsed = json.loads(code)
+            return json.dumps(parsed, indent=2, ensure_ascii=False)
+        except:
+            pass  # Fall back to regular formatting if JSON parsing fails
 
     # First, split code by common delimiters to ensure proper line breaks
-    if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less"]:
+    if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less", "php"]:
         # Add line breaks after opening braces and before closing braces
         code = re.sub(r'\{', '{\n', code)
-        code = re.sub(r'\}', '\n}', code)
+        code = re.sub(r'\}', '\n}\n', code)
         code = re.sub(r';', ';\n', code)
         # Clean up multiple newlines
         code = re.sub(r'\n+', '\n', code)
@@ -2713,7 +2722,7 @@ def format_code_standard(code, language):
     lines = code.split('\n')
     formatted_lines = []
     indent_level = 0
-    indent_char = '    '  # 4 spaces (IntelliJ default)
+    indent_char = '  '  # 2 spaces (Postman/Beautify style)
 
     for line in lines:
         stripped = line.strip()
@@ -2722,8 +2731,8 @@ def format_code_standard(code, language):
             continue
 
         # Decrease indent for closing braces/brackets
-        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less"]:
-            if stripped.startswith('}') or stripped.startswith(']') or stripped.startswith(')'):
+        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less", "php", "json"]:
+            if stripped.startswith('}') or stripped.startswith(']'):
                 indent_level = max(0, indent_level - 1)
         elif language == "python":
             # Python indentation based on dedent keywords
@@ -2737,17 +2746,16 @@ def format_code_standard(code, language):
         formatted_lines.append(indent_char * indent_level + stripped)
 
         # Increase indent for opening braces/brackets
-        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less"]:
-            if stripped.endswith('{') or stripped.endswith('[') or stripped.endswith('('):
+        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less", "php", "json"]:
+            if stripped.endswith('{') or stripped.endswith('['):
                 indent_level += 1
+            # Handle closing and opening on same line like "}, {"
+            if re.search(r'\},\s*\{', stripped):
+                indent_level = max(0, indent_level - 1)
         elif language == "python":
             # Python indentation based on colon
             if stripped.endswith(':'):
                 indent_level += 1
-            # Check for dedent (return, break, continue, pass, raise)
-            if stripped in ['return', 'break', 'continue', 'pass'] or stripped.startswith('return ') or stripped.startswith('raise '):
-                # Don't change indent here, will be handled by next line
-                pass
         elif language in ["html", "xml"]:
             # HTML/XML opening tags
             if re.match(r'<[^/][^>]*>$', stripped) and not re.match(r'<[^>]*/>$', stripped):
@@ -2755,10 +2763,8 @@ def format_code_standard(code, language):
         elif language == "sql":
             # SQL formatting - major keywords on new lines
             if any(stripped.upper().startswith(keyword) for keyword in ['FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'GROUP BY', 'ORDER BY', 'HAVING']):
-                # Keep at base level
-                indent_level = 0
+                indent_level = 1
 
-    # Handle special case: if closing and opening brace on same line
     formatted_code = '\n'.join(formatted_lines)
 
     # Clean up excessive blank lines
