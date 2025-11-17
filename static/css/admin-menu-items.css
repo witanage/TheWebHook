@@ -2,15 +2,26 @@
 
 .admin-container {
     max-width: 1400px;
-    margin: 2rem auto;
-    padding: 0 1rem;
+    margin: 0 auto;
+    padding: 1rem;
+    height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Admin Tabs */
+.admin-tabs {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
 }
 
 .admin-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
 }
 
 .admin-header h1 {
@@ -24,10 +35,11 @@
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
     padding: 1.5rem;
+    flex: 1;
     overflow-x: auto;
-    max-height: 600px;
     overflow-y: auto;
     position: relative;
+    min-height: 0;
 }
 
 .menu-items-table table {
