@@ -987,6 +987,27 @@ function exportResults() {
     window.URL.revokeObjectURL(url);
 }
 
+// Detect the format of the pasted content
+function detectFormat(text) {
+    const firstLine = text.split('\n')[0].trim();
+
+    // Check if it's JSON
+    if (firstLine.startsWith('{') || firstLine.startsWith('[')) {
+        return 'json';
+    }
+
+    // Check if it's CSV/TSV by looking for delimiters
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    const commaCount = (firstLine.match(/,/g) || []).length;
+
+    if (tabCount > 2 || commaCount > 2) {
+        return 'csv';
+    }
+
+    // Default to plain text
+    return 'text';
+}
+
 // Auto-detect TSV (tab-separated) format
 function detectDelimiter(text) {
     const firstLine = text.split('\n')[0];
@@ -995,8 +1016,96 @@ function detectDelimiter(text) {
     return tabCount > commaCount ? '\t' : ',';
 }
 
+// Parse JSON log format (each line is a JSON object)
+function parseJSONLogs(content) {
+    const lines = content.split('\n').filter(line => line.trim());
+    const rows = [];
+    const headersSet = new Set();
+
+    // Parse each line as JSON and collect all possible keys
+    lines.forEach(line => {
+        try {
+            const obj = JSON.parse(line);
+            Object.keys(obj).forEach(key => headersSet.add(key));
+            rows.push(obj);
+        } catch (e) {
+            // Skip invalid JSON lines
+        }
+    });
+
+    const headers = Array.from(headersSet);
+
+    // Ensure all rows have all headers
+    const normalizedRows = rows.map(row => {
+        const normalizedRow = {};
+        headers.forEach(header => {
+            normalizedRow[header] = row[header] !== undefined ? String(row[header]) : '';
+        });
+        return normalizedRow;
+    });
+
+    return { headers, rows: normalizedRows };
+}
+
+// Parse plain text log format
+function parseTextLogs(content) {
+    const lines = content.split('\n').filter(line => line.trim());
+
+    // Try to detect if logs have timestamps and extract structure
+    const timestampPattern = /^(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}[^\s]*)\s+(.*)$/;
+    const hasTimestamps = lines.some(line => timestampPattern.test(line));
+
+    const rows = [];
+    let headers = ['line_number', 'content'];
+
+    if (hasTimestamps) {
+        headers = ['line_number', 'timestamp', 'message'];
+
+        lines.forEach((line, index) => {
+            const match = line.match(timestampPattern);
+            if (match) {
+                rows.push({
+                    'line_number': String(index + 1),
+                    'timestamp': match[1],
+                    'message': match[2]
+                });
+            } else {
+                rows.push({
+                    'line_number': String(index + 1),
+                    'timestamp': '',
+                    'message': line
+                });
+            }
+        });
+    } else {
+        // Simple line-by-line format
+        lines.forEach((line, index) => {
+            rows.push({
+                'line_number': String(index + 1),
+                'content': line
+            });
+        });
+    }
+
+    return { headers, rows };
+}
+
 // Parse CSV/TSV content
 function parseCSV(csv) {
+    // Detect the format first
+    const format = detectFormat(csv);
+
+    // Handle JSON format
+    if (format === 'json') {
+        return parseJSONLogs(csv);
+    }
+
+    // Handle plain text format
+    if (format === 'text') {
+        return parseTextLogs(csv);
+    }
+
+    // Handle CSV/TSV format (existing logic)
     const delimiter = detectDelimiter(csv);
     const lines = csv.split('\n').filter(line => line.trim());
 
