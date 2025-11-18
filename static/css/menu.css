@@ -27,9 +27,14 @@
 
 .tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 1.5rem;
     margin-bottom: 2rem;
+}
+
+/* Center single card when alone in a row */
+.tool-card:last-child:nth-child(3n+1) {
+    grid-column: 2 / 3;
 }
 
 .tool-card {
@@ -132,6 +137,24 @@
 }
 
 /* Responsive */
+@media (max-width: 1024px) {
+    .tools-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    /* Reset 3-column centering */
+    .tool-card:last-child:nth-child(3n+1) {
+        grid-column: auto;
+    }
+
+    /* Center single card in 2-column layout when alone in a row (odd-numbered last card) */
+    .tool-card:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        max-width: calc((100% - 1.5rem) / 2);
+        margin: 0 auto;
+    }
+}
+
 @media (max-width: 768px) {
     .dashboard-header h1 {
         font-size: 2rem;
@@ -143,5 +166,13 @@
 
     .tool-card {
         padding: 1.5rem;
+    }
+
+    /* Reset centering for single column layout */
+    .tool-card:last-child:nth-child(3n+1),
+    .tool-card:last-child:nth-child(odd) {
+        grid-column: auto;
+        margin: 0;
+        max-width: none;
     }
 }
