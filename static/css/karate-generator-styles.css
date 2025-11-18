@@ -84,33 +84,32 @@
 
 /* Feature-Level Options Grid */
 .options-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
 .option-card {
-    background: var(--input-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 16px;
-    transition: all 0.2s;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
 }
 
-.option-card:hover {
-    border-color: var(--primary-color);
-    box-shadow: 0 2px 8px var(--primary-color-alpha);
+.option-card:last-child {
+    border-bottom: none;
 }
 
 .option-header {
-    margin-bottom: 8px;
+    margin-bottom: 6px;
 }
 
 .option-checkbox {
     display: flex;
     align-items: flex-start;
     cursor: pointer;
-    gap: 10px;
+    gap: 12px;
 }
 
 .option-checkbox input[type="checkbox"] {
@@ -122,7 +121,7 @@
 }
 
 .option-title {
-    font-weight: 600;
+    font-weight: 500;
     font-size: 14px;
     color: var(--text-primary);
 }
@@ -131,14 +130,18 @@
     display: block;
     color: var(--text-secondary);
     font-size: 12px;
-    margin-top: 6px;
+    margin-top: 4px;
+    margin-left: 30px;
     line-height: 1.4;
 }
 
 .option-content {
     margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-color);
+    margin-left: 30px;
+    padding: 12px;
+    background: var(--input-bg);
+    border-left: 2px solid var(--border-color);
+    border-radius: 4px;
 }
 
 .option-content label {
@@ -162,7 +165,6 @@
 .option-content input[type="text"]:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px var(--primary-color-alpha);
 }
 
 .option-help {
