@@ -298,8 +298,30 @@ def login():
     try:
         log("Entering login route")
         if "user_id" in session:
-            log(f"User {session['user_id']} already logged in, redirecting to menu")
-            return redirect(url_for("menu"))
+            log(f"User {session['user_id']} already logged in, checking for default app")
+
+            # Check if user has a default app set
+            try:
+                conn = pymysql.connect(**db_config)
+                cursor = conn.cursor(pymysql.cursors.DictCursor)
+                cursor.execute("SELECT default_app FROM users WHERE id = %s", (session['user_id'],))
+                result = cursor.fetchone()
+
+                if result and result.get('default_app'):
+                    default_app = result['default_app']
+                    log(f"Redirecting user {session['user_id']} to default app: {default_app}")
+                    return redirect(default_app)
+                else:
+                    log(f"No default app set, redirecting to menu")
+                    return redirect(url_for("menu"))
+            except Exception as e:
+                log(f"Error checking default app: {str(e)}")
+                return redirect(url_for("menu"))
+            finally:
+                if cursor:
+                    cursor.close()
+                if conn:
+                    conn.close()
 
         if request.method == "POST":
             log("Processing POST request")
