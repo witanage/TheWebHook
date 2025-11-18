@@ -452,67 +452,75 @@
 .table-responsive {
     overflow-x: auto;
     margin-top: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
 }
 
 .sequence-table {
     width: 100%;
-    border-collapse: separate;
-    border-spacing: 0 12px;
+    border-collapse: collapse;
     font-size: 0.9rem;
 }
 
 .sequence-table thead {
-    background: transparent;
+    background: var(--bg-secondary);
+    border-bottom: 2px solid var(--border-color);
 }
 
 .sequence-table th {
-    padding: 12px 16px;
+    padding: 14px 16px;
     text-align: left;
     font-weight: 600;
     color: var(--text-secondary);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: none;
-    background: transparent;
+    border-bottom: 2px solid var(--border-color);
+    background: var(--bg-secondary);
 }
 
 .sequence-table th:first-child {
-    padding-left: 24px;
+    padding-left: 20px;
 }
 
 .sequence-table th:last-child {
-    padding-right: 24px;
+    padding-right: 20px;
 }
 
 .sequence-table td {
-    padding: 20px 16px;
+    padding: 16px;
     vertical-align: middle;
     color: var(--text-color);
-    background: var(--bg-secondary);
-    border: none;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
 }
 
 .sequence-table td:first-child {
-    padding-left: 24px;
-    border-top-left-radius: 12px;
-    border-bottom-left-radius: 12px;
+    padding-left: 20px;
+    border-left: none;
 }
 
 .sequence-table td:last-child {
-    padding-right: 24px;
-    border-top-right-radius: 12px;
-    border-bottom-right-radius: 12px;
+    padding-right: 20px;
+    border-right: none;
 }
 
 .sequence-table tbody tr {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: background-color 0.2s ease;
 }
 
 .sequence-table tbody tr:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    background-color: var(--bg-secondary);
+}
+
+.sequence-table tbody tr:hover td {
+    background-color: var(--bg-secondary);
+}
+
+.sequence-table tbody tr:last-child td {
+    border-bottom: none;
 }
 
 /* Column widths */
@@ -552,18 +560,7 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-    animation: pulse-status 2s ease-in-out infinite;
-}
-
-@keyframes pulse-status {
-    0%, 100% {
-        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-    }
-    50% {
-        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1);
-    }
+    background: var(--success-color, #22c55e);
 }
 
 .status-inactive {
@@ -571,7 +568,8 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #9ca3af;
+    background: var(--text-secondary);
+    opacity: 0.5;
 }
 
 /* Endpoint info */
@@ -596,12 +594,12 @@
 
 /* Sequence display */
 .sequence-display {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     font-size: 0.85rem;
     line-height: 1.8;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
 }
 
@@ -609,43 +607,30 @@
     color: var(--text-secondary);
     padding: 4px 10px;
     background: var(--bg-tertiary);
-    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
     font-weight: 500;
     font-size: 0.8rem;
 }
 
 .step-current {
-    color: #ffffff;
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
-    padding: 6px 12px;
-    border-radius: 8px;
+    color: var(--text-color);
+    background: var(--accent-color, var(--primary-color));
+    padding: 5px 12px;
+    border-radius: 4px;
     font-weight: 600;
     font-size: 0.8rem;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
-    position: relative;
-}
-
-.step-current::before {
-    content: '';
-    position: absolute;
-    inset: -2px;
-    border-radius: 8px;
-    padding: 2px;
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
-    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    opacity: 0.5;
+    border: 2px solid var(--accent-color, var(--primary-color));
 }
 
 .step-arrow {
     color: var(--text-secondary);
-    opacity: 0.4;
+    opacity: 0.5;
     font-size: 0.7rem;
 }
 
 .delay-text {
-    color: #f59e0b;
+    color: var(--text-secondary);
     font-size: 0.7rem;
     font-weight: 500;
     margin-left: 4px;
@@ -655,23 +640,14 @@
 .current-info {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-}
-
-.step-info {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    font-size: 0.9rem;
-    color: var(--text-color);
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
     gap: 8px;
 }
 
-.step-info::before {
-    content: '→';
-    color: var(--primary-color);
-    font-weight: 700;
+.step-info {
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    font-weight: 600;
 }
 
 /* Loading and empty states */
@@ -685,19 +661,18 @@
 /* Progress bar for current step */
 .progress-bar {
     width: 100%;
-    height: 6px;
+    height: 4px;
     background: var(--bg-tertiary);
-    border-radius: 3px;
+    border-radius: 2px;
     overflow: hidden;
     margin-top: 6px;
 }
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #3b82f6, #6366f1);
-    border-radius: 3px;
-    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.4);
+    background: var(--accent-color, var(--primary-color));
+    border-radius: 2px;
+    transition: width 0.5s ease;
 }
 
 /* Step change animation */
@@ -723,41 +698,37 @@
 }
 
 .action-btn {
-    background: var(--bg-primary);
-    border: 1.5px solid var(--border-color);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     color: var(--text-color);
-    padding: 8px 14px;
-    border-radius: 8px;
+    padding: 7px 12px;
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 600;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
     white-space: nowrap;
 }
 
 .action-btn:hover {
     background: var(--bg-tertiary);
     border-color: var(--primary-color);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
 }
 
 .copy-btn {
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    background: var(--accent-color, var(--primary-color));
     color: white;
-    border-color: transparent;
+    border-color: var(--accent-color, var(--primary-color));
 }
 
 .copy-btn:hover {
-    background: linear-gradient(135deg, #2563eb, #4f46e5);
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    opacity: 0.9;
 }
 
 .delete-btn:hover {
-    background: #ef4444;
+    background: var(--danger-color, #dc3545);
     color: white;
-    border-color: transparent;
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    border-color: var(--danger-color, #dc3545);
 }
 
 /* Responsive design */
@@ -775,10 +746,6 @@
 }
 
 @media (max-width: 768px) {
-    .sequence-table {
-        border-spacing: 0 8px;
-    }
-
     .sequence-table .col-sequence {
         display: none;
     }
@@ -787,20 +754,19 @@
         width: auto;
     }
 
+    .sequence-table th,
     .sequence-table td {
-        padding: 16px 12px;
+        padding: 12px 10px;
     }
 
+    .sequence-table th:first-child,
     .sequence-table td:first-child {
-        padding-left: 16px;
-        border-top-left-radius: 8px;
-        border-bottom-left-radius: 8px;
+        padding-left: 12px;
     }
 
+    .sequence-table th:last-child,
     .sequence-table td:last-child {
-        padding-right: 16px;
-        border-top-right-radius: 8px;
-        border-bottom-right-radius: 8px;
+        padding-right: 12px;
     }
 
     .action-btns {
