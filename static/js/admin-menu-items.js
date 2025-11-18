@@ -103,10 +103,5 @@ function deleteMenuItem(itemId) {
     );
 }
 
-// Close modal when clicking outside
-document.addEventListener('click', (event) => {
-    const modal = document.getElementById('menuItemModal');
-    if (event.target === modal) {
-        closeMenuItemModal();
-    }
-});
+// Outside click to close modals is disabled
+// Modals can only be closed using the action buttons

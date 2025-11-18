@@ -105,15 +105,5 @@ function showConfirmModal(title, message, onConfirm, onCancel) {
     modal.classList.add('active');
 }
 
-// Close modals when clicking outside
-document.addEventListener('click', (event) => {
-    const alertModal = document.getElementById('genericAlertModal');
-    const confirmModal = document.getElementById('genericConfirmModal');
-
-    if (event.target === alertModal) {
-        alertModal.classList.remove('active');
-    }
-    if (event.target === confirmModal) {
-        confirmModal.classList.remove('active');
-    }
-});
+// Outside click to close modals is disabled
+// Modals can only be closed using the action buttons
