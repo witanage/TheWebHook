@@ -225,21 +225,8 @@ async function deleteUser(userId, username) {
     }
 }
 
-// Close modals on outside click
-document.addEventListener('DOMContentLoaded', function() {
-    const modals = ['createUserModal', 'resetPasswordModal', 'editUserModal', 'successModal', 'errorModal', 'menuAssignmentModal'];
-
-    modals.forEach(modalId => {
-        const modal = document.getElementById(modalId);
-        if (modal) {
-            modal.addEventListener('click', function(e) {
-                if (e.target === this) {
-                    this.classList.remove('active');
-                }
-            });
-        }
-    });
-});
+// Outside click to close modals is disabled
+// Modals can only be closed using the action buttons
 
 // Close modals on ESC key
 document.addEventListener('keydown', function(e) {
