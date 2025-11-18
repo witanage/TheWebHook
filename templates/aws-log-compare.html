@@ -25,12 +25,12 @@
     <div class="upload-section">
         <div class="upload-box" id="upload1">
             <h3>Original Log Data</h3>
-            <input type="file" id="file1" accept=".csv,.tsv">
+            <input type="file" id="file1" accept=".csv,.tsv,.txt,.log,.json">
             <label for="file1" class="upload-label">Choose File</label>
-            <button class="paste-btn" onclick="showPasteArea(1)">Or Paste CSV</button>
+            <button class="paste-btn" onclick="showPasteArea(1)">Or Paste Logs</button>
             <div class="file-name" id="fileName1"></div>
             <div class="paste-area" id="pasteArea1" style="display: none;">
-                <textarea placeholder="Paste your CSV data here..." id="pasteText1"></textarea>
+                <textarea placeholder="Paste your log data here (CSV, JSON, or plain text)..." id="pasteText1"></textarea>
                 <div class="paste-actions">
                     <button class="btn-small btn-apply" onclick="applyPastedData(1)">Apply</button>
                     <button class="btn-small btn-cancel" onclick="cancelPaste(1)">Cancel</button>
@@ -39,12 +39,12 @@
         </div>
         <div class="upload-box" id="upload2">
             <h3>New Log Data</h3>
-            <input type="file" id="file2" accept=".csv,.tsv">
+            <input type="file" id="file2" accept=".csv,.tsv,.txt,.log,.json">
             <label for="file2" class="upload-label">Choose File</label>
-            <button class="paste-btn" onclick="showPasteArea(2)">Or Paste CSV</button>
+            <button class="paste-btn" onclick="showPasteArea(2)">Or Paste Logs</button>
             <div class="file-name" id="fileName2"></div>
             <div class="paste-area" id="pasteArea2" style="display: none;">
-                <textarea placeholder="Paste your CSV data here..." id="pasteText2"></textarea>
+                <textarea placeholder="Paste your log data here (CSV, JSON, or plain text)..." id="pasteText2"></textarea>
                 <div class="paste-actions">
                     <button class="btn-small btn-apply" onclick="applyPastedData(2)">Apply</button>
                     <button class="btn-small btn-cancel" onclick="cancelPaste(2)">Cancel</button>
@@ -136,20 +136,32 @@
 
 {% block about_content %}
 <section class="about-section">
-    <h4>📊 AWS Log CSV Comparison Tool</h4>
-    <p>Intelligent log analysis and comparison tool with AI-like capabilities for AWS CloudWatch exports and CSV data analysis.</p>
+    <h4>📊 AWS Log Comparison Tool</h4>
+    <p>Intelligent log analysis and comparison tool with AI-like capabilities for AWS CloudWatch exports. Supports multiple log formats including CSV, JSON, and plain text.</p>
 </section>
 
 <section class="about-section">
     <h5>✨ Core Features</h5>
     <ul class="feature-list">
-        <li><strong>File Upload or Paste</strong> - Support for CSV/TSV file upload or direct paste</li>
+        <li><strong>Multiple Format Support</strong> - CSV/TSV, JSON logs, plain text logs, and ASCII format</li>
+        <li><strong>File Upload or Paste</strong> - Upload files or paste log data directly</li>
         <li><strong>Smart Key Detection</strong> - Advanced scoring algorithm for automatic key column identification</li>
         <li><strong>Change Tracking</strong> - Identify added, removed, modified, and fuzzy-matched entries</li>
         <li><strong>Visual Diff</strong> - Color-coded row highlighting with detailed change information</li>
         <li><strong>Statistics Dashboard</strong> - Comprehensive summary with change counts</li>
         <li><strong>Export Results</strong> - Download comparison results as CSV</li>
         <li><strong>Flexible Filtering</strong> - Show/hide different change types</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>📄 Supported Formats</h5>
+    <ul class="feature-list">
+        <li><strong>CSV/TSV</strong> - Comma or tab-separated values with headers</li>
+        <li><strong>JSON Logs</strong> - One JSON object per line (JSONL format)</li>
+        <li><strong>Plain Text</strong> - Simple text logs, one entry per line</li>
+        <li><strong>Timestamped Logs</strong> - Automatically extracts timestamps and messages from structured logs</li>
+        <li><strong>Mixed Formats</strong> - Compare logs in different formats (e.g., CSV vs JSON)</li>
     </ul>
 </section>
 
@@ -186,8 +198,8 @@
 <section class="about-section">
     <h5>🚀 How to Use</h5>
     <ol>
-        <li>Upload or paste your original log data (CSV/TSV format)</li>
-        <li>Upload or paste your new log data for comparison</li>
+        <li>Upload or paste your original log data (supports CSV, TSV, JSON, or plain text format)</li>
+        <li>Upload or paste your new log data for comparison (can be different format from original)</li>
         <li>Enable "Fuzzy Matching" if you want to find similar records with different keys</li>
         <li>Select a key column or use auto-detection (recommended)</li>
         <li>Click "Compare Logs" to start the intelligent analysis</li>
