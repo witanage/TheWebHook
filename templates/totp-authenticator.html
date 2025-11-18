@@ -125,3 +125,69 @@
 <script src="{{ url_for('static', filename='js/global-functions.js') }}"></script>
 <script src="{{ url_for('static', filename='js/totp-authenticator.js') }}"></script>
 {% endblock %}
+
+{% block about_title %}About TOTP Authenticator{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>🔐 TOTP Authenticator</h4>
+    <p>A secure, browser-based Time-based One-Time Password (TOTP) authenticator for managing your two-factor authentication codes without relying on mobile apps.</p>
+</section>
+
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Browser-Based Security</strong> - All data stored locally in your browser, never sent to servers</li>
+        <li><strong>NTP Time Synchronization</strong> - Ensures accurate time sync for reliable TOTP generation</li>
+        <li><strong>OCR Secret Key Extraction</strong> - Paste screenshots to automatically extract secret keys or scan QR codes</li>
+        <li><strong>Multiple Account Management</strong> - Add unlimited accounts with custom service names and identifiers</li>
+        <li><strong>Visual Countdown Timer</strong> - Clear progress indicator showing when codes will refresh</li>
+        <li><strong>Customizable Colors</strong> - Personalize each account with color coding for easy identification</li>
+        <li><strong>Flexible Configuration</strong> - Support for 6/7/8 digit codes and 30/60 second periods</li>
+        <li><strong>One-Click Copy</strong> - Instant copy to clipboard for quick authentication</li>
+        <li><strong>Export/Import</strong> - Backup and restore your accounts (coming soon)</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <ol>
+        <li>Click "Add Account" to create a new TOTP entry</li>
+        <li>Enter the service name and account identifier</li>
+        <li>Add your secret key by:
+            <ul style="margin-top: 8px;">
+                <li>Typing the secret key manually, OR</li>
+                <li>Taking a screenshot of the QR code or secret key area and pasting it (Ctrl+V) into the secret key field</li>
+            </ul>
+        </li>
+        <li>Customize the color, digits, and period if needed</li>
+        <li>Click "Save Account" to start generating codes</li>
+        <li>Click on any code to copy it to your clipboard</li>
+        <li>Watch the progress bar to see when codes will refresh</li>
+    </ol>
+</section>
+
+<section class="about-section">
+    <h5>🔒 Security & Privacy</h5>
+    <ul class="feature-list">
+        <li><strong>Local Storage Only</strong> - All secret keys remain in your browser's local storage</li>
+        <li><strong>No Server Transmission</strong> - TOTP codes are generated client-side using cryptographic algorithms</li>
+        <li><strong>Time Sync via NTP</strong> - Accurate time synchronization without exposing sensitive data</li>
+        <li><strong>OCR Processing</strong> - Screenshot analysis happens locally in your browser</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>💡 Tips</h5>
+    <ul class="feature-list">
+        <li>Use the OCR feature to quickly add accounts from QR codes or secret key screenshots</li>
+        <li>Assign different colors to different service types for easier organization</li>
+        <li>Keep your secret keys secure - they provide access to your accounts</li>
+        <li>Verify the first few codes against the service's verification before removing other authenticators</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
+{% endblock %}
