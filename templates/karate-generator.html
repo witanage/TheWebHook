@@ -152,11 +152,65 @@
                     <polyline points="17 21 17 13 7 13 7 21"></polyline>
                     <polyline points="7 3 7 8 15 8"></polyline>
                 </svg>
-                Save Work
+                Save
+            </button>
+            <button class="btn-success" onclick="saveAsNewWork()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left: 4px;">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+                Save as New Work
+            </button>
+            <button class="btn-secondary" onclick="showProjectsModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Load Project
             </button>
             <button class="btn-secondary" onclick="loadSampleData()">Load Sample</button>
             <button class="btn-secondary" onclick="clearAll()">Clear All</button>
             <div id="lastSaved" style="font-size: 12px; color: var(--text-secondary); margin-left: 12px; align-self: center;"></div>
+        </div>
+    </div>
+
+    <!-- Save Project Name Modal -->
+    <div class="modal-overlay" id="saveProjectModal">
+        <div class="modal modal-confirmation">
+            <h3>Save Project</h3>
+            <p class="modal-message">Enter a name for this project:</p>
+            <form id="saveProjectForm" onsubmit="submitSaveProject(event)">
+                <div class="form-group">
+                    <input type="text" id="projectNameInput" placeholder="My Karate Project" required minlength="1" maxlength="255">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeSaveProjectModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Projects Modal -->
+    <div class="modal-overlay" id="projectsModal">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h3>Saved Projects</h3>
+                <button class="modal-close" onclick="closeProjectsModal()">✕</button>
+            </div>
+            <div class="modal-content scrollable">
+                <div id="projectsList" class="projects-list">
+                    <div class="loading-message">Loading projects...</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeProjectsModal()">Close</button>
+            </div>
         </div>
     </div>
 

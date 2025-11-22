@@ -5,6 +5,8 @@ let scenarioCounter = 0;
 let scenarios = [];
 let envVariables = []; // Array of {name: 'userId', description: 'User ID for testing'}
 let envVarCounter = 0;
+let currentProjectId = null; // Track currently loaded project for updates
+let currentProjectName = null; // Track current project name
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -1534,8 +1536,64 @@ function downloadFeatureFile() {
     showModal('Success', `Feature file downloaded as ${filename}`);
 }
 
-// Save work to database
+// Save work - updates existing project if loaded, or shows modal for new project
 function saveWork() {
+    // Check if we have a current project loaded
+    if (currentProjectId && currentProjectName) {
+        // Update existing project directly
+        performSave(currentProjectName, currentProjectId);
+    } else {
+        // Show modal to get name for new project
+        const modal = document.getElementById('saveProjectModal');
+        const input = document.getElementById('projectNameInput');
+        input.value = 'My Karate Project';
+        modal.classList.add('active');
+        setTimeout(() => input.focus(), 100);
+    }
+}
+
+// Save as new work - always shows modal for new project name
+function saveAsNewWork() {
+    const modal = document.getElementById('saveProjectModal');
+    const input = document.getElementById('projectNameInput');
+
+    // Suggest a name based on current project
+    const suggestedName = currentProjectName ? `${currentProjectName} (Copy)` : 'My Karate Project';
+    input.value = suggestedName;
+
+    modal.classList.add('active');
+    setTimeout(() => {
+        input.focus();
+        input.select();
+    }, 100);
+}
+
+// Close save project modal
+function closeSaveProjectModal() {
+    const modal = document.getElementById('saveProjectModal');
+    modal.classList.remove('active');
+}
+
+// Submit save project form - always saves as NEW project
+function submitSaveProject(event) {
+    event.preventDefault();
+
+    const projectName = document.getElementById('projectNameInput').value.trim();
+
+    if (!projectName) {
+        showModal('Error', 'Please enter a project name');
+        return;
+    }
+
+    // Close the modal
+    closeSaveProjectModal();
+
+    // Save as NEW project (don't pass project ID)
+    performSave(projectName, null);
+}
+
+// Perform the actual save operation
+function performSave(projectName, projectId) {
     // Collect all current data
     const featureConfig = {
         featureName: document.getElementById('featureName').value.trim(),
@@ -1555,30 +1613,40 @@ function saveWork() {
     const envVars = collectEnvVariables();
 
     // Send to server
+    const requestBody = {
+        work_name: projectName,
+        feature_config: featureConfig,
+        scenarios_data: scenariosData,
+        env_variables: envVars
+    };
+
+    // Include project ID if updating existing project
+    if (projectId) {
+        requestBody.project_id = projectId;
+    }
+
     fetch('/api/karate-generator/save', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-            work_name: 'My Karate Work',
-            feature_config: featureConfig,
-            scenarios_data: scenariosData,
-            env_variables: envVars
-        })
+        body: JSON.stringify(requestBody)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showModal('Success', 'Your work has been saved successfully!');
+            currentProjectId = data.project_id;
+            currentProjectName = projectName;
+            const message = projectId ? 'Project updated successfully!' : 'New project saved successfully!';
+            showModal('Success', message);
             updateLastSavedDisplay(data.saved_at);
         } else {
-            showModal('Error', 'Failed to save work: ' + (data.error || 'Unknown error'));
+            showModal('Error', 'Failed to save project: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
-        console.error('Error saving work:', error);
-        showModal('Error', 'Failed to save work: ' + error.message);
+        console.error('Error saving project:', error);
+        showModal('Error', 'Failed to save project: ' + error.message);
     });
 }
 
@@ -1600,7 +1668,11 @@ function loadWork() {
         if (!result) return; // No saved work
 
         if (result.success && result.data) {
-            const { feature_config, scenarios_data, env_variables, saved_at } = result.data;
+            const { project_id, work_name, feature_config, scenarios_data, env_variables, saved_at } = result.data;
+
+            // Store current project info
+            currentProjectId = project_id || null;
+            currentProjectName = work_name || null;
 
             // Restore feature configuration
             if (feature_config) {
@@ -1681,4 +1753,195 @@ function updateLastSavedDisplay(timestamp) {
         const timeString = date.toLocaleTimeString();
         lastSavedDiv.textContent = `Last saved: ${timeString}`;
     }
+}
+
+// Projects Modal Functions
+function showProjectsModal() {
+    const modal = document.getElementById('projectsModal');
+    modal.classList.add('active');
+    loadProjectsList();
+}
+
+function closeProjectsModal() {
+    const modal = document.getElementById('projectsModal');
+    modal.classList.remove('active');
+}
+
+function loadProjectsList() {
+    const projectsList = document.getElementById('projectsList');
+    projectsList.innerHTML = '<div class="loading-message">Loading projects...</div>';
+
+    fetch('/api/karate-generator/projects')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            if (data.projects && data.projects.length > 0) {
+                projectsList.innerHTML = '';
+                data.projects.forEach(project => {
+                    const projectItem = document.createElement('div');
+                    projectItem.className = 'project-item';
+
+                    const updatedDate = new Date(project.updated_at);
+                    const dateString = updatedDate.toLocaleDateString() + ' ' + updatedDate.toLocaleTimeString();
+
+                    projectItem.innerHTML = `
+                        <div class="project-info">
+                            <h4 class="project-name">${escapeHtml(project.name)}</h4>
+                            <div class="project-meta">Last updated: ${dateString}</div>
+                        </div>
+                        <div class="project-actions">
+                            <button class="btn-load-project" onclick="loadProject(${project.id})">
+                                Load
+                            </button>
+                            <button class="btn-delete-project" onclick="deleteProject(${project.id}, '${escapeHtml(project.name).replace(/'/g, "\\'")}')">
+                                Delete
+                            </button>
+                        </div>
+                    `;
+                    projectsList.appendChild(projectItem);
+                });
+            } else {
+                projectsList.innerHTML = '<div class="empty-message">No saved projects found. Save your current work to create a project.</div>';
+            }
+        } else {
+            projectsList.innerHTML = `<div class="error-message">Failed to load projects: ${data.error || 'Unknown error'}</div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading projects:', error);
+        projectsList.innerHTML = `<div class="error-message">Failed to load projects: ${error.message}</div>`;
+    });
+}
+
+function loadProject(projectId) {
+    fetch(`/api/karate-generator/load?project_id=${projectId}`)
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to load project');
+        }
+        return response.json();
+    })
+    .then(result => {
+        if (result.success && result.data) {
+            const { project_id, work_name, feature_config, scenarios_data, env_variables, saved_at } = result.data;
+
+            // Store current project info
+            currentProjectId = project_id || null;
+            currentProjectName = work_name || null;
+
+            // Restore feature configuration
+            if (feature_config) {
+                document.getElementById('featureName').value = feature_config.featureName || 'API Test';
+                document.getElementById('useEnvUrl').checked = feature_config.useEnvUrl || false;
+                document.getElementById('envUrlDomain').value = feature_config.envUrlDomain || '';
+                document.getElementById('includeHeaders').checked = feature_config.includeHeaders !== undefined ? feature_config.includeHeaders : true;
+                document.getElementById('includeAuth').checked = feature_config.includeAuth || false;
+                document.getElementById('strictValidation').checked = feature_config.strictValidation !== undefined ? feature_config.strictValidation : true;
+                document.getElementById('includeComments').checked = feature_config.includeComments !== undefined ? feature_config.includeComments : true;
+                document.getElementById('useEnvVariables').checked = feature_config.useEnvVariables || false;
+
+                // Trigger visibility updates
+                document.getElementById('envUrlConfig').style.display = feature_config.useEnvUrl ? 'block' : 'none';
+                document.getElementById('envVariablesSection').style.display = feature_config.useEnvVariables ? 'block' : 'none';
+            }
+
+            // Restore environment variables
+            envVariables = [];
+            envVarCounter = 0;
+            const envVarsList = document.getElementById('envVariablesList');
+            envVarsList.innerHTML = '';
+
+            if (env_variables && env_variables.length > 0) {
+                env_variables.forEach(envVar => {
+                    const id = envVarCounter++;
+                    envVariables.push({ id, name: envVar.name, description: envVar.description });
+
+                    const varItem = document.createElement('div');
+                    varItem.className = 'env-var-item';
+                    varItem.dataset.envVarId = id;
+                    varItem.innerHTML = `
+                        <input type="text"
+                               class="env-var-name"
+                               placeholder="Variable name (e.g., userId)"
+                               value="${envVar.name || ''}"
+                               data-env-var-id="${id}">
+                        <input type="text"
+                               class="env-var-description"
+                               placeholder="Description (e.g., Test user ID)"
+                               value="${envVar.description || ''}"
+                               data-env-var-id="${id}">
+                        <button class="btn-remove-var" onclick="removeEnvVariable(${id})" title="Remove">✕</button>
+                    `;
+                    envVarsList.appendChild(varItem);
+                });
+            } else {
+                envVarsList.innerHTML = '<div class="empty-vars-hint">No environment variables defined. Click "Add Variable" to define variables that change per environment.</div>';
+            }
+
+            // Restore scenarios
+            scenarios = [];
+            scenarioCounter = 0;
+            document.getElementById('scenariosList').innerHTML = '';
+
+            if (scenarios_data && scenarios_data.length > 0) {
+                scenarios_data.forEach(scenarioData => {
+                    addScenario(scenarioData);
+                });
+            } else {
+                addScenario();
+            }
+
+            closeProjectsModal();
+            showModal('Success', `Project "${work_name}" loaded successfully!`);
+            updateLastSavedDisplay(saved_at);
+
+            // Scroll to top
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    })
+    .catch(error => {
+        console.error('Error loading project:', error);
+        showModal('Error', 'Failed to load project: ' + error.message);
+    });
+}
+
+function deleteProject(projectId, projectName) {
+    showConfirmModal(
+        'Delete Project',
+        `Are you sure you want to delete "${projectName}"? This action cannot be undone.`,
+        function() {
+            // User confirmed deletion
+            fetch(`/api/karate-generator/delete/${projectId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showModal('Success', 'Project deleted successfully!');
+
+                    // If deleted project was the current one, clear current project info
+                    if (currentProjectId === projectId) {
+                        currentProjectId = null;
+                        currentProjectName = null;
+                    }
+
+                    // Reload projects list
+                    loadProjectsList();
+                } else {
+                    showModal('Error', 'Failed to delete project: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting project:', error);
+                showModal('Error', 'Failed to delete project: ' + error.message);
+            });
+        }
+    );
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
