@@ -1539,14 +1539,51 @@ function downloadFeatureFile() {
 // Save work to database - show modal to get project name
 function saveWork() {
     const modal = document.getElementById('saveProjectModal');
+    const saveExistingOptions = document.getElementById('saveExistingOptions');
+    const saveNewForm = document.getElementById('saveNewForm');
     const input = document.getElementById('projectNameInput');
 
-    // Set default/current project name
-    input.value = currentProjectName || 'My Karate Project';
+    // Check if we have a current project loaded
+    if (currentProjectId && currentProjectName) {
+        // Show update/save as new options
+        document.getElementById('currentProjectNameDisplay').textContent = currentProjectName;
+        saveExistingOptions.style.display = 'block';
+        saveNewForm.style.display = 'none';
+    } else {
+        // Show name input form for new project
+        saveExistingOptions.style.display = 'none';
+        saveNewForm.style.display = 'block';
+        input.value = 'My Karate Project';
+        setTimeout(() => input.focus(), 100);
+    }
 
-    // Show modal and focus input
+    // Show modal
     modal.classList.add('active');
-    setTimeout(() => input.focus(), 100);
+}
+
+// Show save as new project form
+function showSaveAsNewForm() {
+    const saveExistingOptions = document.getElementById('saveExistingOptions');
+    const saveNewForm = document.getElementById('saveNewForm');
+    const input = document.getElementById('projectNameInput');
+
+    // Suggest a name based on current project
+    const suggestedName = currentProjectName ? `${currentProjectName} (Copy)` : 'My Karate Project';
+    input.value = suggestedName;
+
+    // Switch to name input form
+    saveExistingOptions.style.display = 'none';
+    saveNewForm.style.display = 'block';
+    setTimeout(() => {
+        input.focus();
+        input.select();
+    }, 100);
+}
+
+// Update existing project without prompting for name
+function updateExistingProject() {
+    closeSaveProjectModal();
+    performSave(currentProjectName, currentProjectId);
 }
 
 // Close save project modal
@@ -1555,7 +1592,7 @@ function closeSaveProjectModal() {
     modal.classList.remove('active');
 }
 
-// Submit save project form
+// Submit save project form (for new projects)
 function submitSaveProject(event) {
     event.preventDefault();
 
@@ -1569,6 +1606,12 @@ function submitSaveProject(event) {
     // Close the modal
     closeSaveProjectModal();
 
+    // Save as NEW project (don't pass project ID)
+    performSave(projectName, null);
+}
+
+// Perform the actual save operation
+function performSave(projectName, projectId) {
     // Collect all current data
     const featureConfig = {
         featureName: document.getElementById('featureName').value.trim(),
@@ -1596,8 +1639,8 @@ function submitSaveProject(event) {
     };
 
     // Include project ID if updating existing project
-    if (currentProjectId) {
-        requestBody.project_id = currentProjectId;
+    if (projectId) {
+        requestBody.project_id = projectId;
     }
 
     fetch('/api/karate-generator/save', {
@@ -1612,7 +1655,8 @@ function submitSaveProject(event) {
         if (data.success) {
             currentProjectId = data.project_id;
             currentProjectName = projectName;
-            showModal('Success', 'Your project has been saved successfully!');
+            const message = projectId ? 'Project updated successfully!' : 'New project saved successfully!';
+            showModal('Success', message);
             updateLastSavedDisplay(data.saved_at);
         } else {
             showModal('Error', 'Failed to save project: ' + (data.error || 'Unknown error'));
