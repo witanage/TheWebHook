@@ -154,9 +154,31 @@
                 </svg>
                 Save Work
             </button>
+            <button class="btn-secondary" onclick="showProjectsModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Load Project
+            </button>
             <button class="btn-secondary" onclick="loadSampleData()">Load Sample</button>
             <button class="btn-secondary" onclick="clearAll()">Clear All</button>
             <div id="lastSaved" style="font-size: 12px; color: var(--text-secondary); margin-left: 12px; align-self: center;"></div>
+        </div>
+    </div>
+
+    <!-- Projects Modal -->
+    <div id="projectsModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Saved Projects</h3>
+                <button class="modal-close" onclick="closeProjectsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="projectsList" class="projects-list">
+                    <div class="loading-message">Loading projects...</div>
+                </div>
+            </div>
         </div>
     </div>
 
