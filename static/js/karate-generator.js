@@ -1536,54 +1536,36 @@ function downloadFeatureFile() {
     showModal('Success', `Feature file downloaded as ${filename}`);
 }
 
-// Save work to database - show modal to get project name
+// Save work - updates existing project if loaded, or shows modal for new project
 function saveWork() {
-    const modal = document.getElementById('saveProjectModal');
-    const saveExistingOptions = document.getElementById('saveExistingOptions');
-    const saveNewForm = document.getElementById('saveNewForm');
-    const input = document.getElementById('projectNameInput');
-
     // Check if we have a current project loaded
     if (currentProjectId && currentProjectName) {
-        // Show update/save as new options
-        document.getElementById('currentProjectNameDisplay').textContent = currentProjectName;
-        saveExistingOptions.style.display = 'block';
-        saveNewForm.style.display = 'none';
+        // Update existing project directly
+        performSave(currentProjectName, currentProjectId);
     } else {
-        // Show name input form for new project
-        saveExistingOptions.style.display = 'none';
-        saveNewForm.style.display = 'block';
+        // Show modal to get name for new project
+        const modal = document.getElementById('saveProjectModal');
+        const input = document.getElementById('projectNameInput');
         input.value = 'My Karate Project';
+        modal.classList.add('active');
         setTimeout(() => input.focus(), 100);
     }
-
-    // Show modal
-    modal.classList.add('active');
 }
 
-// Show save as new project form
-function showSaveAsNewForm() {
-    const saveExistingOptions = document.getElementById('saveExistingOptions');
-    const saveNewForm = document.getElementById('saveNewForm');
+// Save as new work - always shows modal for new project name
+function saveAsNewWork() {
+    const modal = document.getElementById('saveProjectModal');
     const input = document.getElementById('projectNameInput');
 
     // Suggest a name based on current project
     const suggestedName = currentProjectName ? `${currentProjectName} (Copy)` : 'My Karate Project';
     input.value = suggestedName;
 
-    // Switch to name input form
-    saveExistingOptions.style.display = 'none';
-    saveNewForm.style.display = 'block';
+    modal.classList.add('active');
     setTimeout(() => {
         input.focus();
         input.select();
     }, 100);
-}
-
-// Update existing project without prompting for name
-function updateExistingProject() {
-    closeSaveProjectModal();
-    performSave(currentProjectName, currentProjectId);
 }
 
 // Close save project modal
@@ -1592,7 +1574,7 @@ function closeSaveProjectModal() {
     modal.classList.remove('active');
 }
 
-// Submit save project form (for new projects)
+// Submit save project form - always saves as NEW project
 function submitSaveProject(event) {
     event.preventDefault();
 
