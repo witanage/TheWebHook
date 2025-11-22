@@ -1536,15 +1536,38 @@ function downloadFeatureFile() {
     showModal('Success', `Feature file downloaded as ${filename}`);
 }
 
-// Save work to database
+// Save work to database - show modal to get project name
 function saveWork() {
-    // Prompt for project name
-    let projectName = currentProjectName || 'My Karate Project';
-    projectName = prompt('Enter a name for this project:', projectName);
+    const modal = document.getElementById('saveProjectModal');
+    const input = document.getElementById('projectNameInput');
 
-    if (!projectName || projectName.trim() === '') {
-        return; // User cancelled or entered empty name
+    // Set default/current project name
+    input.value = currentProjectName || 'My Karate Project';
+
+    // Show modal and focus input
+    modal.classList.add('active');
+    setTimeout(() => input.focus(), 100);
+}
+
+// Close save project modal
+function closeSaveProjectModal() {
+    const modal = document.getElementById('saveProjectModal');
+    modal.classList.remove('active');
+}
+
+// Submit save project form
+function submitSaveProject(event) {
+    event.preventDefault();
+
+    const projectName = document.getElementById('projectNameInput').value.trim();
+
+    if (!projectName) {
+        showModal('Error', 'Please enter a project name');
+        return;
     }
+
+    // Close the modal
+    closeSaveProjectModal();
 
     // Collect all current data
     const featureConfig = {
@@ -1566,7 +1589,7 @@ function saveWork() {
 
     // Send to server
     const requestBody = {
-        work_name: projectName.trim(),
+        work_name: projectName,
         feature_config: featureConfig,
         scenarios_data: scenariosData,
         env_variables: envVars
@@ -1588,7 +1611,7 @@ function saveWork() {
     .then(data => {
         if (data.success) {
             currentProjectId = data.project_id;
-            currentProjectName = projectName.trim();
+            currentProjectName = projectName;
             showModal('Success', 'Your project has been saved successfully!');
             updateLastSavedDisplay(data.saved_at);
         } else {
@@ -1857,34 +1880,37 @@ function loadProject(projectId) {
 }
 
 function deleteProject(projectId, projectName) {
-    if (!confirm(`Are you sure you want to delete "${projectName}"? This action cannot be undone.`)) {
-        return;
-    }
+    showConfirmModal(
+        'Delete Project',
+        `Are you sure you want to delete "${projectName}"? This action cannot be undone.`,
+        function() {
+            // User confirmed deletion
+            fetch(`/api/karate-generator/delete/${projectId}`, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showModal('Success', 'Project deleted successfully!');
 
-    fetch(`/api/karate-generator/delete/${projectId}`, {
-        method: 'DELETE'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            showModal('Success', 'Project deleted successfully!');
+                    // If deleted project was the current one, clear current project info
+                    if (currentProjectId === projectId) {
+                        currentProjectId = null;
+                        currentProjectName = null;
+                    }
 
-            // If deleted project was the current one, clear current project info
-            if (currentProjectId === projectId) {
-                currentProjectId = null;
-                currentProjectName = null;
-            }
-
-            // Reload projects list
-            loadProjectsList();
-        } else {
-            showModal('Error', 'Failed to delete project: ' + (data.error || 'Unknown error'));
+                    // Reload projects list
+                    loadProjectsList();
+                } else {
+                    showModal('Error', 'Failed to delete project: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                console.error('Error deleting project:', error);
+                showModal('Error', 'Failed to delete project: ' + error.message);
+            });
         }
-    })
-    .catch(error => {
-        console.error('Error deleting project:', error);
-        showModal('Error', 'Failed to delete project: ' + error.message);
-    });
+    );
 }
 
 // Helper function to escape HTML

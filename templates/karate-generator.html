@@ -167,6 +167,23 @@
         </div>
     </div>
 
+    <!-- Save Project Modal -->
+    <div class="modal-overlay" id="saveProjectModal">
+        <div class="modal modal-confirmation">
+            <h3>Save Project</h3>
+            <p class="modal-message">Enter a name for this project:</p>
+            <form id="saveProjectForm" onsubmit="submitSaveProject(event)">
+                <div class="form-group">
+                    <input type="text" id="projectNameInput" placeholder="My Karate Project" required minlength="1" maxlength="255">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeSaveProjectModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Projects Modal -->
     <div class="modal-overlay" id="projectsModal">
         <div class="modal modal-large">
