@@ -1709,22 +1709,14 @@ function updateLastSavedDisplay(timestamp) {
 // Projects Modal Functions
 function showProjectsModal() {
     const modal = document.getElementById('projectsModal');
-    modal.style.display = 'block';
+    modal.classList.add('active');
     loadProjectsList();
 }
 
 function closeProjectsModal() {
     const modal = document.getElementById('projectsModal');
-    modal.style.display = 'none';
+    modal.classList.remove('active');
 }
-
-// Close modal when clicking outside
-window.onclick = function(event) {
-    const modal = document.getElementById('projectsModal');
-    if (event.target === modal) {
-        closeProjectsModal();
-    }
-};
 
 function loadProjectsList() {
     const projectsList = document.getElementById('projectsList');
