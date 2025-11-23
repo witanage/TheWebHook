@@ -1641,7 +1641,15 @@ function performSave(projectName, projectId) {
             showModal('Success', message);
             updateLastSavedDisplay(data.saved_at);
         } else {
-            showModal('Error', 'Failed to save project: ' + (data.error || 'Unknown error'));
+            // Check if error is "Project not found" - means the project was deleted
+            if (data.error && data.error.includes('Project not found')) {
+                // Clear stale project ID so next save will create a new project
+                currentProjectId = null;
+                currentProjectName = null;
+                showModal('Error', 'The project no longer exists. It may have been deleted. Click "Save" again to create a new project with your current changes.');
+            } else {
+                showModal('Error', 'Failed to save project: ' + (data.error || 'Unknown error'));
+            }
         }
     })
     .catch(error => {
