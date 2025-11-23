@@ -1593,7 +1593,7 @@ function submitSaveProject(event) {
 }
 
 // Perform the actual save operation
-function performSave(projectName, projectId) {
+function performSave(projectName, projectId, isRetry = false) {
     // Collect all current data
     const featureConfig = {
         featureName: document.getElementById('featureName').value.trim(),
@@ -1641,7 +1641,20 @@ function performSave(projectName, projectId) {
             showModal('Success', message);
             updateLastSavedDisplay(data.saved_at);
         } else {
-            showModal('Error', 'Failed to save project: ' + (data.error || 'Unknown error'));
+            // Check if error is "Project not found" - means the project was deleted
+            if (data.error && data.error.includes('Project not found') && !isRetry) {
+                // Clear stale project ID and automatically retry as new project
+                console.log('Project not found, retrying save as new project...');
+                currentProjectId = null;
+                currentProjectName = null;
+                // Automatically retry the save as a new project
+                performSave(projectName, null, true);
+            } else if (isRetry) {
+                // If retry also failed, show error
+                showModal('Error', 'Failed to save project after retry: ' + (data.error || 'Unknown error'));
+            } else {
+                showModal('Error', 'Failed to save project: ' + (data.error || 'Unknown error'));
+            }
         }
     })
     .catch(error => {
