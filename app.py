@@ -2467,7 +2467,23 @@ def api_admin_stats():
 # ==================== END ADMIN USER MANAGEMENT ROUTES ====================
 
 
-# ==================== TOTP AUTHENTICATOR ROUTES ====================
+# ==================== IFRAME LOADER ROUTES ====================
+
+
+@app.route("/iframe-loader")
+@login_required
+def iframe_loader():
+    """iFrame Loader page"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    log(f"User {user_id} accessed iFrame Loader")
+    return render_template("iframe-loader.html", username=username)
+
+
+# ==================== END ADMIN USER MANAGEMENT ROUTES ====================
+
+
+# ==================== IFRAME LOADER ROUTES ====================
 
 @app.route("/totp-authenticator")
 @login_required
