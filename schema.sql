@@ -189,6 +189,24 @@ CREATE TABLE IF NOT EXISTS karate_saved_work (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================================================
+-- JSON COMPARISON TABLES
+-- =============================================================================
+
+-- JSON comparisons table (stores user's saved comparisons)
+CREATE TABLE IF NOT EXISTS json_comparisons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    comparison_name VARCHAR(255) NOT NULL,
+    json1 MEDIUMTEXT NOT NULL,
+    json2 MEDIUMTEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================================================
 -- DEFAULT DATA
 -- =============================================================================
 
@@ -210,7 +228,7 @@ ON DUPLICATE KEY UPDATE
 -- =============================================================================
 -- SCHEMA VERSION
 -- =============================================================================
--- Schema version: 1.2
--- Last updated: 2025-11-17
--- Description: Added Code Formatter application
+-- Schema version: 1.3
+-- Last updated: 2026-02-06
+-- Description: Added JSON comparisons save/load feature
 -- =============================================================================

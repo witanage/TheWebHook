@@ -1,5 +1,9 @@
 // JSON Comparison Tool JavaScript
 
+// Current comparison state
+let currentComparisonId = null;
+let currentComparisonName = null;
+
 function getPlainText(id) {
     const element = document.getElementById(id);
     return element.textContent || element.innerText || '';
@@ -258,6 +262,7 @@ function clearAll() {
     setPlainText('json1', '');
     setPlainText('json2', '');
     document.getElementById('results').style.display = 'none';
+    clearCurrentComparison();
 }
 
 function loadSample() {
@@ -289,6 +294,218 @@ function loadSample() {
 
     setPlainText('json1', JSON.stringify(sample1, null, 2));
     setPlainText('json2', JSON.stringify(sample2, null, 2));
+}
+
+// ==================== Save / Load Comparisons ====================
+
+function updateCurrentComparisonUI() {
+    const indicator = document.getElementById('currentComparison');
+    const nameEl = document.getElementById('currentComparisonName');
+
+    if (currentComparisonId && currentComparisonName) {
+        nameEl.textContent = currentComparisonName;
+        indicator.style.display = 'flex';
+    } else {
+        indicator.style.display = 'none';
+    }
+}
+
+function clearCurrentComparison() {
+    currentComparisonId = null;
+    currentComparisonName = null;
+    updateCurrentComparisonUI();
+}
+
+function openSaveModal() {
+    const json1 = getPlainText('json1').trim();
+    const json2 = getPlainText('json2').trim();
+
+    if (!json1 && !json2) {
+        showModal('Error', 'Nothing to save - both JSON fields are empty.');
+        return;
+    }
+
+    const nameInput = document.getElementById('comparisonName');
+    nameInput.value = currentComparisonName || '';
+    document.getElementById('saveModal').classList.add('active');
+    nameInput.focus();
+}
+
+function closeSaveModal() {
+    document.getElementById('saveModal').classList.remove('active');
+}
+
+function saveComparison(event) {
+    event.preventDefault();
+
+    const comparisonName = document.getElementById('comparisonName').value.trim();
+    if (!comparisonName) {
+        showModal('Error', 'Please enter a name for the comparison.');
+        return;
+    }
+
+    const json1 = getPlainText('json1').trim();
+    const json2 = getPlainText('json2').trim();
+
+    const payload = {
+        comparison_name: comparisonName,
+        json1: json1,
+        json2: json2
+    };
+
+    if (currentComparisonId) {
+        payload.comparison_id = currentComparisonId;
+    }
+
+    fetch('/api/json-compare/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentComparisonId = data.comparison_id;
+            currentComparisonName = comparisonName;
+            updateCurrentComparisonUI();
+            closeSaveModal();
+            showToast(data.message, 'success');
+        } else {
+            showModal('Error', data.error || 'Failed to save comparison.');
+        }
+    })
+    .catch(error => {
+        console.error('Save error:', error);
+        showModal('Error', 'Failed to save comparison. Please try again.');
+    });
+}
+
+function openLoadModal() {
+    document.getElementById('loadModal').classList.add('active');
+    loadComparisonsList();
+}
+
+function closeLoadModal() {
+    document.getElementById('loadModal').classList.remove('active');
+}
+
+function loadComparisonsList() {
+    const listEl = document.getElementById('savedComparisonsList');
+    listEl.innerHTML = '<div class="loading-message">Loading saved comparisons...</div>';
+
+    fetch('/api/json-compare/list')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.comparisons.length > 0) {
+            listEl.innerHTML = '';
+            data.comparisons.forEach(function(comp) {
+                const item = document.createElement('div');
+                item.className = 'saved-comparison-item';
+
+                const updatedDate = comp.updated_at
+                    ? new Date(comp.updated_at).toLocaleString()
+                    : 'Unknown';
+
+                item.innerHTML =
+                    '<div class="saved-comparison-info">' +
+                        '<div class="saved-comparison-name">' + escapeHtml(comp.name) + '</div>' +
+                        '<div class="saved-comparison-date">Updated: ' + updatedDate + '</div>' +
+                    '</div>' +
+                    '<div class="saved-comparison-actions">' +
+                        '<button class="btn-load-item" data-id="' + comp.id + '">Load</button>' +
+                        '<button class="btn-delete-item" data-id="' + comp.id + '" data-name="' + escapeHtml(comp.name) + '">Delete</button>' +
+                    '</div>';
+
+                listEl.appendChild(item);
+            });
+
+            // Bind load buttons
+            listEl.querySelectorAll('.btn-load-item').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    loadComparison(this.getAttribute('data-id'));
+                });
+            });
+
+            // Bind delete buttons
+            listEl.querySelectorAll('.btn-delete-item').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = this.getAttribute('data-id');
+                    var name = this.getAttribute('data-name');
+                    deleteComparison(id, name);
+                });
+            });
+        } else {
+            listEl.innerHTML =
+                '<div class="no-comparisons-message">' +
+                    '<p>No saved comparisons yet.</p>' +
+                    '<p>Use the Save button to store your comparisons.</p>' +
+                '</div>';
+        }
+    })
+    .catch(function(error) {
+        console.error('List error:', error);
+        listEl.innerHTML =
+            '<div class="no-comparisons-message">' +
+                '<p>Failed to load comparisons.</p>' +
+            '</div>';
+    });
+}
+
+function loadComparison(comparisonId) {
+    fetch('/api/json-compare/load?comparison_id=' + comparisonId)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const comp = data.data;
+            setPlainText('json1', comp.json1 || '');
+            setPlainText('json2', comp.json2 || '');
+
+            currentComparisonId = comp.comparison_id;
+            currentComparisonName = comp.comparison_name;
+            updateCurrentComparisonUI();
+
+            // Hide old results
+            document.getElementById('results').style.display = 'none';
+
+            closeLoadModal();
+            showToast('Loaded: ' + comp.comparison_name, 'success');
+        } else {
+            showModal('Error', data.error || 'Failed to load comparison.');
+        }
+    })
+    .catch(function(error) {
+        console.error('Load error:', error);
+        showModal('Error', 'Failed to load comparison. Please try again.');
+    });
+}
+
+function deleteComparison(comparisonId, comparisonName) {
+    showConfirmModal(
+        'Delete Comparison',
+        'Are you sure you want to delete "' + comparisonName + '"?',
+        function() {
+            fetch('/api/json-compare/delete/' + comparisonId, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // If we just deleted the currently loaded comparison, clear it
+                    if (currentComparisonId == comparisonId) {
+                        clearCurrentComparison();
+                    }
+                    loadComparisonsList();
+                    showToast('Comparison deleted', 'success');
+                } else {
+                    showModal('Error', data.error || 'Failed to delete comparison.');
+                }
+            })
+            .catch(function(error) {
+                console.error('Delete error:', error);
+                showModal('Error', 'Failed to delete comparison. Please try again.');
+            });
+        }
+    );
 }
 
 // Initialize on page load
