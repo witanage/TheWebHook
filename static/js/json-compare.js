@@ -522,17 +522,18 @@ window.addEventListener('DOMContentLoaded', function() {
         json2.setAttribute('data-placeholder', 'Paste your second JSON here...');
     }
 
-    // Auto-format on paste
+    // Auto-format on paste - uses textContent for performance with large JSON
     function handlePaste(e) {
         e.preventDefault();
+        const el = e.target.closest('.json-editor');
+        if (!el) return;
+
         const text = e.clipboardData.getData('text/plain');
         try {
             const obj = JSON.parse(text);
-            const formatted = JSON.stringify(obj, null, 2);
-            document.execCommand('insertText', false, formatted);
+            el.textContent = JSON.stringify(obj, null, 2);
         } catch (err) {
-            // If not valid JSON, just paste as is
-            document.execCommand('insertText', false, text);
+            el.textContent = text;
         }
     }
 
