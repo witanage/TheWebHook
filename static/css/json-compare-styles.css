@@ -95,7 +95,11 @@ button {
     color: var(--text-primary);
 }
 
-.json-editor {
+.editor-wrapper {
+    position: relative;
+}
+
+textarea.json-editor {
     width: 100%;
     height: 500px;
     padding: 15px;
@@ -103,30 +107,59 @@ button {
     border-radius: var(--radius);
     font-family: 'Courier New', monospace;
     font-size: 14px;
-    overflow-x: auto;
-    overflow-y: auto;
-    white-space: pre-wrap;
+    overflow: auto;
+    white-space: pre;
     background: var(--bg-tertiary);
     color: var(--text-primary);
     transition: border-color 0.3s;
     line-height: 1.5;
-    word-break: break-word;
-    overflow-wrap: break-word;
+    resize: vertical;
+    tab-size: 2;
+    box-sizing: border-box;
 }
 
-.json-editor:empty:before {
-    content: 'Paste your JSON here...';
+textarea.json-editor::placeholder {
     color: var(--text-secondary);
 }
 
-.json-editor:focus {
+textarea.json-editor:focus {
     outline: none;
     border-color: var(--accent-color);
     box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
 }
 
-.json-editor:focus:empty:before {
-    content: '';
+.json-highlight {
+    display: none;
+    width: 100%;
+    height: 500px;
+    padding: 15px;
+    border: 2px solid var(--accent-color);
+    border-radius: var(--radius);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    overflow: auto;
+    white-space: pre-wrap;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.json-highlight-hint {
+    display: none;
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0.8;
 }
 
 .highlight-added {
@@ -298,7 +331,8 @@ button {
         grid-template-columns: 1fr;
     }
 
-    .json-editor {
+    textarea.json-editor,
+    .json-highlight {
         height: 400px;
     }
 
@@ -308,7 +342,8 @@ button {
 }
 
 /* Light theme adjustments */
-:root[data-theme="light"] .json-editor {
+:root[data-theme="light"] textarea.json-editor,
+:root[data-theme="light"] .json-highlight {
     background: #ffffff;
 }
 

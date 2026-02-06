@@ -78,11 +78,17 @@
     <div class="comparison-area">
         <div class="json-panel">
             <div class="panel-header">JSON 1</div>
-            <div class="json-editor" id="json1" contenteditable="true"></div>
+            <div class="editor-wrapper">
+                <textarea class="json-editor" id="json1" placeholder="Paste your JSON here..." spellcheck="false"></textarea>
+                <div class="json-highlight" id="json1Highlight"></div>
+            </div>
         </div>
         <div class="json-panel">
             <div class="panel-header">JSON 2</div>
-            <div class="json-editor" id="json2" contenteditable="true"></div>
+            <div class="editor-wrapper">
+                <textarea class="json-editor" id="json2" placeholder="Paste your JSON here..." spellcheck="false"></textarea>
+                <div class="json-highlight" id="json2Highlight"></div>
+            </div>
         </div>
     </div>
 

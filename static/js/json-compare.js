@@ -5,13 +5,30 @@ let currentComparisonId = null;
 let currentComparisonName = null;
 
 function getPlainText(id) {
-    const element = document.getElementById(id);
-    return element.textContent || element.innerText || '';
+    return document.getElementById(id).value;
 }
 
 function setPlainText(id, text) {
-    const element = document.getElementById(id);
-    element.textContent = text;
+    const el = document.getElementById(id);
+    el.value = text;
+    // If highlight overlay is visible, switch back to editor
+    showEditor(id);
+}
+
+// Show the textarea editor, hide the highlight overlay
+function showEditor(id) {
+    const editor = document.getElementById(id);
+    const highlight = document.getElementById(id + 'Highlight');
+    editor.style.display = '';
+    highlight.style.display = 'none';
+}
+
+// Show the highlight overlay, hide the textarea
+function showHighlight(id) {
+    const editor = document.getElementById(id);
+    const highlight = document.getElementById(id + 'Highlight');
+    editor.style.display = 'none';
+    highlight.style.display = '';
 }
 
 function compareJSON() {
@@ -41,12 +58,20 @@ function compareJSON() {
         document.getElementById('removedCount').textContent = stats.removed;
         document.getElementById('changedCount').textContent = stats.changed;
 
-        // Highlight differences in both editors
+        // Render highlighted JSON into overlay divs
         const highlightedJSON1 = highlightJSONWithTracking(obj1, diffMap, 'json1');
         const highlightedJSON2 = highlightJSONWithTracking(obj2, diffMap, 'json2');
 
-        document.getElementById('json1').innerHTML = highlightedJSON1;
-        document.getElementById('json2').innerHTML = highlightedJSON2;
+        document.getElementById('json1Highlight').innerHTML = highlightedJSON1;
+        document.getElementById('json2Highlight').innerHTML = highlightedJSON2;
+
+        // Show the highlight overlays instead of textareas
+        showHighlight('json1');
+        showHighlight('json2');
+
+        // Keep the textarea values in sync (formatted)
+        document.getElementById('json1').value = JSON.stringify(obj1, null, 2);
+        document.getElementById('json2').value = JSON.stringify(obj2, null, 2);
 
         // Display detailed differences
         const diffContainer = document.getElementById('diffContainer');
@@ -513,34 +538,35 @@ window.addEventListener('DOMContentLoaded', function() {
     const json1 = document.getElementById('json1');
     const json2 = document.getElementById('json2');
 
-    if (!json1.textContent) {
-        json1.textContent = '';
-        json1.setAttribute('data-placeholder', 'Paste your first JSON here...');
-    }
-    if (!json2.textContent) {
-        json2.textContent = '';
-        json2.setAttribute('data-placeholder', 'Paste your second JSON here...');
-    }
-
-    // Auto-format on paste - uses textContent for performance with large JSON
+    // Auto-format on paste
     function handlePaste(e) {
-        e.preventDefault();
-        const el = e.target.closest('.json-editor');
-        if (!el) return;
-
-        const text = e.clipboardData.getData('text/plain');
-        try {
-            const obj = JSON.parse(text);
-            el.textContent = JSON.stringify(obj, null, 2);
-        } catch (err) {
-            el.textContent = text;
-        }
+        var textarea = e.target;
+        // Let the browser insert the text natively first, then format
+        setTimeout(function() {
+            var text = textarea.value.trim();
+            try {
+                var obj = JSON.parse(text);
+                textarea.value = JSON.stringify(obj, null, 2);
+            } catch (err) {
+                // Not valid JSON, leave as-is
+            }
+        }, 0);
     }
 
     json1.addEventListener('paste', handlePaste);
     json2.addEventListener('paste', handlePaste);
 
-    // Synchronized scrolling
+    // Click on highlight overlay to switch back to editor
+    document.getElementById('json1Highlight').addEventListener('click', function() {
+        showEditor('json1');
+        json1.focus();
+    });
+    document.getElementById('json2Highlight').addEventListener('click', function() {
+        showEditor('json2');
+        json2.focus();
+    });
+
+    // Synchronized scrolling for textareas
     let isSyncing = false;
 
     json1.addEventListener('scroll', function() {
@@ -548,7 +574,7 @@ window.addEventListener('DOMContentLoaded', function() {
             isSyncing = true;
             json2.scrollTop = json1.scrollTop;
             json2.scrollLeft = json1.scrollLeft;
-            setTimeout(() => { isSyncing = false; }, 10);
+            setTimeout(function() { isSyncing = false; }, 10);
         }
     });
 
@@ -557,7 +583,29 @@ window.addEventListener('DOMContentLoaded', function() {
             isSyncing = true;
             json1.scrollTop = json2.scrollTop;
             json1.scrollLeft = json2.scrollLeft;
-            setTimeout(() => { isSyncing = false; }, 10);
+            setTimeout(function() { isSyncing = false; }, 10);
+        }
+    });
+
+    // Sync scroll for highlight overlays too
+    var highlight1 = document.getElementById('json1Highlight');
+    var highlight2 = document.getElementById('json2Highlight');
+
+    highlight1.addEventListener('scroll', function() {
+        if (!isSyncing) {
+            isSyncing = true;
+            highlight2.scrollTop = highlight1.scrollTop;
+            highlight2.scrollLeft = highlight1.scrollLeft;
+            setTimeout(function() { isSyncing = false; }, 10);
+        }
+    });
+
+    highlight2.addEventListener('scroll', function() {
+        if (!isSyncing) {
+            isSyncing = true;
+            highlight1.scrollTop = highlight2.scrollTop;
+            highlight1.scrollLeft = highlight2.scrollLeft;
+            setTimeout(function() { isSyncing = false; }, 10);
         }
     });
 });
