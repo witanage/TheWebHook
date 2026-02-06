@@ -95,7 +95,11 @@ button {
     color: var(--text-primary);
 }
 
-.json-editor {
+.editor-wrapper {
+    position: relative;
+}
+
+textarea.json-editor {
     width: 100%;
     height: 500px;
     padding: 15px;
@@ -103,30 +107,59 @@ button {
     border-radius: var(--radius);
     font-family: 'Courier New', monospace;
     font-size: 14px;
-    overflow-x: auto;
-    overflow-y: auto;
-    white-space: pre-wrap;
+    overflow: auto;
+    white-space: pre;
     background: var(--bg-tertiary);
     color: var(--text-primary);
     transition: border-color 0.3s;
     line-height: 1.5;
-    word-break: break-word;
-    overflow-wrap: break-word;
+    resize: vertical;
+    tab-size: 2;
+    box-sizing: border-box;
 }
 
-.json-editor:empty:before {
-    content: 'Paste your JSON here...';
+textarea.json-editor::placeholder {
     color: var(--text-secondary);
 }
 
-.json-editor:focus {
+textarea.json-editor:focus {
     outline: none;
     border-color: var(--accent-color);
     box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
 }
 
-.json-editor:focus:empty:before {
-    content: '';
+.json-highlight {
+    display: none;
+    width: 100%;
+    height: 500px;
+    padding: 15px;
+    border: 2px solid var(--accent-color);
+    border-radius: var(--radius);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    overflow: auto;
+    white-space: pre-wrap;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    line-height: 1.5;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.json-highlight-hint {
+    display: none;
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    pointer-events: none;
+    opacity: 0.8;
 }
 
 .highlight-added {
@@ -298,7 +331,8 @@ button {
         grid-template-columns: 1fr;
     }
 
-    .json-editor {
+    textarea.json-editor,
+    .json-highlight {
         height: 400px;
     }
 
@@ -308,7 +342,8 @@ button {
 }
 
 /* Light theme adjustments */
-:root[data-theme="light"] .json-editor {
+:root[data-theme="light"] textarea.json-editor,
+:root[data-theme="light"] .json-highlight {
     background: #ffffff;
 }
 
@@ -334,4 +369,215 @@ button {
 
 :root[data-theme="light"] .diff-changed {
     background: #fff3cd;
+}
+
+/* Controls divider */
+.controls-divider {
+    width: 1px;
+    height: 28px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+
+/* Save & Load buttons */
+.btn-save,
+.btn-load {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 20px;
+    border-radius: 6px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid var(--border-color);
+}
+
+.btn-save {
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+}
+
+.btn-save:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
+}
+
+.btn-load {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.btn-load:hover {
+    background: var(--bg-quaternary);
+    transform: translateY(-2px);
+}
+
+.btn-save svg,
+.btn-load svg {
+    flex-shrink: 0;
+}
+
+/* Current comparison indicator */
+.current-comparison {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--accent-color);
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    font-size: 0.9em;
+}
+
+.current-comparison-label {
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.current-comparison-name {
+    color: var(--accent-color);
+    font-weight: 600;
+}
+
+.current-comparison-clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.current-comparison-clear:hover {
+    color: var(--danger-color);
+    background: rgba(220, 53, 69, 0.1);
+    border-color: var(--danger-color);
+}
+
+/* Saved comparisons list in modal */
+.saved-comparisons-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.saved-comparison-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    transition: all 0.2s;
+}
+
+.saved-comparison-item:hover {
+    border-color: var(--accent-color);
+    background: var(--bg-quaternary);
+}
+
+.saved-comparison-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.saved-comparison-name {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.saved-comparison-date {
+    font-size: 0.8em;
+    color: var(--text-secondary);
+}
+
+.saved-comparison-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.saved-comparison-actions button {
+    padding: 6px 14px;
+    font-size: 0.85em;
+    border-radius: 6px;
+}
+
+.btn-load-item {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+}
+
+.btn-load-item:hover {
+    filter: brightness(1.1);
+}
+
+.btn-delete-item {
+    background: transparent;
+    color: var(--danger-color);
+    border: 1px solid var(--danger-color);
+}
+
+.btn-delete-item:hover {
+    background: var(--danger-color);
+    color: white;
+}
+
+.no-comparisons-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+.no-comparisons-message p {
+    margin-bottom: 0.5rem;
+}
+
+.loading-message {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+}
+
+@media (max-width: 968px) {
+    .controls-divider {
+        width: 100%;
+        height: 1px;
+    }
+
+    .btn-save,
+    .btn-load {
+        flex: 1;
+    }
+
+    .saved-comparison-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .saved-comparison-actions {
+        width: 100%;
+    }
+
+    .saved-comparison-actions button {
+        flex: 1;
+    }
 }

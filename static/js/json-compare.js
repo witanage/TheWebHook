@@ -1,13 +1,34 @@
 // JSON Comparison Tool JavaScript
 
+// Current comparison state
+let currentComparisonId = null;
+let currentComparisonName = null;
+
 function getPlainText(id) {
-    const element = document.getElementById(id);
-    return element.textContent || element.innerText || '';
+    return document.getElementById(id).value;
 }
 
 function setPlainText(id, text) {
-    const element = document.getElementById(id);
-    element.textContent = text;
+    const el = document.getElementById(id);
+    el.value = text;
+    // If highlight overlay is visible, switch back to editor
+    showEditor(id);
+}
+
+// Show the textarea editor, hide the highlight overlay
+function showEditor(id) {
+    const editor = document.getElementById(id);
+    const highlight = document.getElementById(id + 'Highlight');
+    editor.style.display = '';
+    highlight.style.display = 'none';
+}
+
+// Show the highlight overlay, hide the textarea
+function showHighlight(id) {
+    const editor = document.getElementById(id);
+    const highlight = document.getElementById(id + 'Highlight');
+    editor.style.display = 'none';
+    highlight.style.display = 'block';
 }
 
 function compareJSON() {
@@ -37,12 +58,20 @@ function compareJSON() {
         document.getElementById('removedCount').textContent = stats.removed;
         document.getElementById('changedCount').textContent = stats.changed;
 
-        // Highlight differences in both editors
+        // Render highlighted JSON into overlay divs
         const highlightedJSON1 = highlightJSONWithTracking(obj1, diffMap, 'json1');
         const highlightedJSON2 = highlightJSONWithTracking(obj2, diffMap, 'json2');
 
-        document.getElementById('json1').innerHTML = highlightedJSON1;
-        document.getElementById('json2').innerHTML = highlightedJSON2;
+        document.getElementById('json1Highlight').innerHTML = highlightedJSON1;
+        document.getElementById('json2Highlight').innerHTML = highlightedJSON2;
+
+        // Show the highlight overlays instead of textareas
+        showHighlight('json1');
+        showHighlight('json2');
+
+        // Keep the textarea values in sync (formatted)
+        document.getElementById('json1').value = JSON.stringify(obj1, null, 2);
+        document.getElementById('json2').value = JSON.stringify(obj2, null, 2);
 
         // Display detailed differences
         const diffContainer = document.getElementById('diffContainer');
@@ -258,6 +287,7 @@ function clearAll() {
     setPlainText('json1', '');
     setPlainText('json2', '');
     document.getElementById('results').style.display = 'none';
+    clearCurrentComparison();
 }
 
 function loadSample() {
@@ -291,38 +321,252 @@ function loadSample() {
     setPlainText('json2', JSON.stringify(sample2, null, 2));
 }
 
+// ==================== Save / Load Comparisons ====================
+
+function updateCurrentComparisonUI() {
+    const indicator = document.getElementById('currentComparison');
+    const nameEl = document.getElementById('currentComparisonName');
+
+    if (currentComparisonId && currentComparisonName) {
+        nameEl.textContent = currentComparisonName;
+        indicator.style.display = 'flex';
+    } else {
+        indicator.style.display = 'none';
+    }
+}
+
+function clearCurrentComparison() {
+    currentComparisonId = null;
+    currentComparisonName = null;
+    updateCurrentComparisonUI();
+}
+
+function openSaveModal() {
+    const json1 = getPlainText('json1').trim();
+    const json2 = getPlainText('json2').trim();
+
+    if (!json1 && !json2) {
+        showModal('Error', 'Nothing to save - both JSON fields are empty.');
+        return;
+    }
+
+    const nameInput = document.getElementById('comparisonName');
+    nameInput.value = currentComparisonName || '';
+    document.getElementById('saveModal').classList.add('active');
+    nameInput.focus();
+}
+
+function closeSaveModal() {
+    document.getElementById('saveModal').classList.remove('active');
+}
+
+function saveComparison(event) {
+    event.preventDefault();
+
+    const comparisonName = document.getElementById('comparisonName').value.trim();
+    if (!comparisonName) {
+        showModal('Error', 'Please enter a name for the comparison.');
+        return;
+    }
+
+    const json1 = getPlainText('json1').trim();
+    const json2 = getPlainText('json2').trim();
+
+    const payload = {
+        comparison_name: comparisonName,
+        json1: json1,
+        json2: json2
+    };
+
+    if (currentComparisonId) {
+        payload.comparison_id = currentComparisonId;
+    }
+
+    fetch('/api/json-compare/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            currentComparisonId = data.comparison_id;
+            currentComparisonName = comparisonName;
+            updateCurrentComparisonUI();
+            closeSaveModal();
+            showToast(data.message, 'success');
+        } else {
+            showModal('Error', data.error || 'Failed to save comparison.');
+        }
+    })
+    .catch(error => {
+        console.error('Save error:', error);
+        showModal('Error', 'Failed to save comparison. Please try again.');
+    });
+}
+
+function openLoadModal() {
+    document.getElementById('loadModal').classList.add('active');
+    loadComparisonsList();
+}
+
+function closeLoadModal() {
+    document.getElementById('loadModal').classList.remove('active');
+}
+
+function loadComparisonsList() {
+    const listEl = document.getElementById('savedComparisonsList');
+    listEl.innerHTML = '<div class="loading-message">Loading saved comparisons...</div>';
+
+    fetch('/api/json-compare/list')
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.comparisons.length > 0) {
+            listEl.innerHTML = '';
+            data.comparisons.forEach(function(comp) {
+                const item = document.createElement('div');
+                item.className = 'saved-comparison-item';
+
+                const updatedDate = comp.updated_at
+                    ? new Date(comp.updated_at).toLocaleString()
+                    : 'Unknown';
+
+                item.innerHTML =
+                    '<div class="saved-comparison-info">' +
+                        '<div class="saved-comparison-name">' + escapeHtml(comp.name) + '</div>' +
+                        '<div class="saved-comparison-date">Updated: ' + updatedDate + '</div>' +
+                    '</div>' +
+                    '<div class="saved-comparison-actions">' +
+                        '<button class="btn-load-item" data-id="' + comp.id + '">Load</button>' +
+                        '<button class="btn-delete-item" data-id="' + comp.id + '" data-name="' + escapeHtml(comp.name) + '">Delete</button>' +
+                    '</div>';
+
+                listEl.appendChild(item);
+            });
+
+            // Bind load buttons
+            listEl.querySelectorAll('.btn-load-item').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    loadComparison(this.getAttribute('data-id'));
+                });
+            });
+
+            // Bind delete buttons
+            listEl.querySelectorAll('.btn-delete-item').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var id = this.getAttribute('data-id');
+                    var name = this.getAttribute('data-name');
+                    deleteComparison(id, name);
+                });
+            });
+        } else {
+            listEl.innerHTML =
+                '<div class="no-comparisons-message">' +
+                    '<p>No saved comparisons yet.</p>' +
+                    '<p>Use the Save button to store your comparisons.</p>' +
+                '</div>';
+        }
+    })
+    .catch(function(error) {
+        console.error('List error:', error);
+        listEl.innerHTML =
+            '<div class="no-comparisons-message">' +
+                '<p>Failed to load comparisons.</p>' +
+            '</div>';
+    });
+}
+
+function loadComparison(comparisonId) {
+    fetch('/api/json-compare/load?comparison_id=' + comparisonId)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const comp = data.data;
+            setPlainText('json1', comp.json1 || '');
+            setPlainText('json2', comp.json2 || '');
+
+            currentComparisonId = comp.comparison_id;
+            currentComparisonName = comp.comparison_name;
+            updateCurrentComparisonUI();
+
+            // Hide old results
+            document.getElementById('results').style.display = 'none';
+
+            closeLoadModal();
+            showToast('Loaded: ' + comp.comparison_name, 'success');
+        } else {
+            showModal('Error', data.error || 'Failed to load comparison.');
+        }
+    })
+    .catch(function(error) {
+        console.error('Load error:', error);
+        showModal('Error', 'Failed to load comparison. Please try again.');
+    });
+}
+
+function deleteComparison(comparisonId, comparisonName) {
+    showConfirmModal(
+        'Delete Comparison',
+        'Are you sure you want to delete "' + comparisonName + '"?',
+        function() {
+            fetch('/api/json-compare/delete/' + comparisonId, {
+                method: 'DELETE'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // If we just deleted the currently loaded comparison, clear it
+                    if (currentComparisonId == comparisonId) {
+                        clearCurrentComparison();
+                    }
+                    loadComparisonsList();
+                    showToast('Comparison deleted', 'success');
+                } else {
+                    showModal('Error', data.error || 'Failed to delete comparison.');
+                }
+            })
+            .catch(function(error) {
+                console.error('Delete error:', error);
+                showModal('Error', 'Failed to delete comparison. Please try again.');
+            });
+        }
+    );
+}
+
 // Initialize on page load
 window.addEventListener('DOMContentLoaded', function() {
     const json1 = document.getElementById('json1');
     const json2 = document.getElementById('json2');
 
-    if (!json1.textContent) {
-        json1.textContent = '';
-        json1.setAttribute('data-placeholder', 'Paste your first JSON here...');
-    }
-    if (!json2.textContent) {
-        json2.textContent = '';
-        json2.setAttribute('data-placeholder', 'Paste your second JSON here...');
-    }
-
     // Auto-format on paste
     function handlePaste(e) {
-        e.preventDefault();
-        const text = e.clipboardData.getData('text/plain');
-        try {
-            const obj = JSON.parse(text);
-            const formatted = JSON.stringify(obj, null, 2);
-            document.execCommand('insertText', false, formatted);
-        } catch (err) {
-            // If not valid JSON, just paste as is
-            document.execCommand('insertText', false, text);
-        }
+        var textarea = e.target;
+        // Let the browser insert the text natively first, then format
+        setTimeout(function() {
+            var text = textarea.value.trim();
+            try {
+                var obj = JSON.parse(text);
+                textarea.value = JSON.stringify(obj, null, 2);
+            } catch (err) {
+                // Not valid JSON, leave as-is
+            }
+        }, 0);
     }
 
     json1.addEventListener('paste', handlePaste);
     json2.addEventListener('paste', handlePaste);
 
-    // Synchronized scrolling
+    // Click on highlight overlay to switch back to editor
+    document.getElementById('json1Highlight').addEventListener('click', function() {
+        showEditor('json1');
+        json1.focus();
+    });
+    document.getElementById('json2Highlight').addEventListener('click', function() {
+        showEditor('json2');
+        json2.focus();
+    });
+
+    // Synchronized scrolling for textareas
     let isSyncing = false;
 
     json1.addEventListener('scroll', function() {
@@ -330,7 +574,7 @@ window.addEventListener('DOMContentLoaded', function() {
             isSyncing = true;
             json2.scrollTop = json1.scrollTop;
             json2.scrollLeft = json1.scrollLeft;
-            setTimeout(() => { isSyncing = false; }, 10);
+            setTimeout(function() { isSyncing = false; }, 10);
         }
     });
 
@@ -339,7 +583,29 @@ window.addEventListener('DOMContentLoaded', function() {
             isSyncing = true;
             json1.scrollTop = json2.scrollTop;
             json1.scrollLeft = json2.scrollLeft;
-            setTimeout(() => { isSyncing = false; }, 10);
+            setTimeout(function() { isSyncing = false; }, 10);
+        }
+    });
+
+    // Sync scroll for highlight overlays too
+    var highlight1 = document.getElementById('json1Highlight');
+    var highlight2 = document.getElementById('json2Highlight');
+
+    highlight1.addEventListener('scroll', function() {
+        if (!isSyncing) {
+            isSyncing = true;
+            highlight2.scrollTop = highlight1.scrollTop;
+            highlight2.scrollLeft = highlight1.scrollLeft;
+            setTimeout(function() { isSyncing = false; }, 10);
+        }
+    });
+
+    highlight2.addEventListener('scroll', function() {
+        if (!isSyncing) {
+            isSyncing = true;
+            highlight1.scrollTop = highlight2.scrollTop;
+            highlight1.scrollLeft = highlight2.scrollLeft;
+            setTimeout(function() { isSyncing = false; }, 10);
         }
     });
 });
