@@ -28,7 +28,7 @@ function showHighlight(id) {
     const editor = document.getElementById(id);
     const highlight = document.getElementById(id + 'Highlight');
     editor.style.display = 'none';
-    highlight.style.display = '';
+    highlight.style.display = 'block';
 }
 
 function compareJSON() {
