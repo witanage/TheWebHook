@@ -21,6 +21,10 @@ class WebhookViewer {
         this.globalSearchResults = [];
         this.dateRangePicker = null;
 
+        this.threadSearchTimeout = null;
+        this.threadSearchResults = [];
+        this.threadDateRangePicker = null;
+
         this.init();
     }
 
@@ -30,6 +34,7 @@ class WebhookViewer {
         this.setupSSE();
         this.loadNotifications();
         this.initializeDateRangePicker();
+        this.initializeThreadDateRangePicker();
     }
 
     async testWebhook() {
@@ -1106,6 +1111,409 @@ class WebhookViewer {
                 }, 100);
             }
         });
+    }
+
+    // Thread Search Methods
+    initializeThreadDateRangePicker() {
+        const self = this;
+
+        const picker = flatpickr("#threadDateRangePicker", {
+            mode: "range",
+            enableTime: false,
+            dateFormat: "M d, Y",
+            showMonths: 2,
+            animate: false,
+            placeholder: "Select date range...",
+            maxDate: "today",
+            onChange: (selectedDates, dateStr, instance) => {
+                if (selectedDates.length === 2) {
+                    setTimeout(() => {
+                        self.performThreadSearch();
+                    }, 100);
+                }
+            },
+            onClose: (selectedDates, dateStr, instance) => {
+                if (selectedDates.length === 2) {
+                    setTimeout(() => {
+                        self.performThreadSearch();
+                    }, 100);
+                }
+            },
+            onReady: function(dateObj, dateStr, instance) {
+                const customShortcuts = document.createElement("div");
+                customShortcuts.className = "flatpickr-shortcuts";
+
+                const shortcuts = [
+                    { label: 'Today', preset: 'today' },
+                    { label: 'Yesterday', preset: 'yesterday' },
+                    { label: 'Last 7 Days', preset: 'last7days' },
+                    { label: 'Last 30 Days', preset: 'last30days' },
+                    { label: 'This Month', preset: 'thisMonth' }
+                ];
+
+                shortcuts.forEach(shortcut => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.textContent = shortcut.label;
+                    button.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        self.setThreadDateRangePreset(shortcut.preset);
+                    });
+                    customShortcuts.appendChild(button);
+                });
+
+                instance.calendarContainer.appendChild(customShortcuts);
+            }
+        });
+
+        this.threadDateRangePicker = picker;
+    }
+
+    setThreadDateRangePreset(preset) {
+        const now = new Date();
+        let startDate, endDate;
+
+        switch (preset) {
+            case 'today':
+                startDate = new Date(now);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'yesterday':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 1);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setDate(endDate.getDate() - 1);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'last7days':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 6);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'last30days':
+                startDate = new Date(now);
+                startDate.setDate(startDate.getDate() - 29);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            case 'thisMonth':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                startDate.setHours(0, 0, 0, 0);
+                endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+                endDate.setHours(23, 59, 59, 999);
+                break;
+            default:
+                console.error('Unknown preset:', preset);
+                return;
+        }
+
+        if (this.threadDateRangePicker) {
+            this.threadDateRangePicker.setDate([startDate, endDate], false);
+            this.threadDateRangePicker.close();
+        }
+
+        const searchInput = document.getElementById('threadSearchInput');
+        const searchTerm = searchInput ? searchInput.value.trim() : '';
+
+        const startDateStr = startDate.toISOString().slice(0, 19);
+        const endDateStr = endDate.toISOString().slice(0, 19);
+
+        document.getElementById('threadSearchResults').innerHTML = `
+            <div class="global-search-loading">
+                <div class="spinner"></div>
+                <p>Searching...</p>
+            </div>
+        `;
+
+        setTimeout(() => {
+            this.executeThreadSearch(searchTerm, startDateStr, endDateStr);
+        }, 100);
+    }
+
+    clearThreadDateRange() {
+        if (this.threadDateRangePicker) {
+            this.threadDateRangePicker.clear();
+        }
+
+        const searchInput = document.getElementById('threadSearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+
+        document.getElementById('threadSearchResults').innerHTML = `
+            <div class="search-no-results">
+                <p>Enter a search term or select a date range to search in the current webhook thread</p>
+            </div>
+        `;
+    }
+
+    openThreadSearch() {
+        const webhookSelect = document.getElementById('webhookSelect');
+        const currentWebhookId = webhookSelect.value;
+
+        if (!currentWebhookId) {
+            this.showNotification('Please select a webhook first', 'error');
+            return;
+        }
+
+        const modal = document.getElementById('threadSearchModal');
+        const input = document.getElementById('threadSearchInput');
+
+        modal.classList.add('show');
+        input.focus();
+        input.value = '';
+
+        if (this.threadDateRangePicker) {
+            this.threadDateRangePicker.clear();
+        }
+
+        document.getElementById('threadSearchResults').innerHTML = `
+            <div class="search-no-results">
+                <p>Enter a search term or select a date range to search in the current webhook thread</p>
+            </div>
+        `;
+
+        input.removeEventListener('keyup', this.boundPerformThreadSearch);
+        input.removeEventListener('input', this.boundPerformThreadSearch);
+
+        this.boundPerformThreadSearch = (event) => this.performThreadSearch(event);
+
+        input.addEventListener('keyup', this.boundPerformThreadSearch);
+        input.addEventListener('input', this.boundPerformThreadSearch);
+    }
+
+    closeThreadSearch() {
+        const modal = document.getElementById('threadSearchModal');
+        modal.classList.remove('show');
+    }
+
+    performThreadSearch(event) {
+        if (event && event.key === 'Escape') {
+            this.closeThreadSearch();
+            return;
+        }
+
+        const searchInput = document.getElementById('threadSearchInput');
+        const searchTerm = searchInput ? searchInput.value.trim() : '';
+
+        let startDate = '';
+        let endDate = '';
+
+        if (this.threadDateRangePicker && this.threadDateRangePicker.selectedDates.length === 2) {
+            const start = new Date(this.threadDateRangePicker.selectedDates[0]);
+            start.setHours(0, 0, 0, 0);
+            startDate = start.toISOString().slice(0, 19);
+
+            const end = new Date(this.threadDateRangePicker.selectedDates[1]);
+            end.setHours(23, 59, 59, 999);
+            endDate = end.toISOString().slice(0, 19);
+        }
+
+        if (this.threadSearchTimeout) {
+            clearTimeout(this.threadSearchTimeout);
+        }
+
+        if (searchTerm.length < 2 && !startDate && !endDate) {
+            document.getElementById('threadSearchResults').innerHTML = `
+                <div class="search-no-results">
+                    <p>Enter at least 2 characters to search or select a date range</p>
+                </div>
+            `;
+            return;
+        }
+
+        document.getElementById('threadSearchResults').innerHTML = `
+            <div class="global-search-loading">
+                <div class="spinner"></div>
+                <p>Searching...</p>
+            </div>
+        `;
+
+        this.threadSearchTimeout = setTimeout(() => {
+            this.executeThreadSearch(searchTerm, startDate, endDate);
+        }, 300);
+    }
+
+    async executeThreadSearch(searchTerm, startDate, endDate) {
+        const webhookSelect = document.getElementById('webhookSelect');
+        const webhookId = webhookSelect.value;
+
+        if (!webhookId) {
+            document.getElementById('threadSearchResults').innerHTML = `
+                <div class="search-no-results">
+                    <p>Please select a webhook first</p>
+                </div>
+            `;
+            return;
+        }
+
+        try {
+            const response = await fetch('/search_thread', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    webhook_id: webhookId,
+                    search_term: searchTerm,
+                    start_date: startDate,
+                    end_date: endDate
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+            const data = await response.json();
+            this.threadSearchResults = data.results;
+
+            this.renderThreadSearchResults(searchTerm, startDate, endDate);
+
+        } catch (error) {
+            console.error('Error performing thread search:', error);
+            document.getElementById('threadSearchResults').innerHTML = `
+                <div class="search-no-results">
+                    <p>Error performing search. Please try again.</p>
+                </div>
+            `;
+        }
+    }
+
+    renderThreadSearchResults(searchTerm, startDate, endDate) {
+        const resultsContainer = document.getElementById('threadSearchResults');
+
+        if (this.threadSearchResults.length === 0) {
+            let message = 'No results found';
+            if (searchTerm) message += ` for "${this.escapeHtml(searchTerm)}"`;
+            if (startDate || endDate) message += ' in the selected date range';
+
+            resultsContainer.innerHTML = `
+                <div class="search-no-results">
+                    <p>${message}</p>
+                </div>
+            `;
+            return;
+        }
+
+        const resultsHtml = this.threadSearchResults.map(result => {
+            const timestamp = new Date(result.timestamp);
+            const timeString = timestamp.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            });
+
+            let previewText = '';
+            let matchLocation = '';
+
+            if (searchTerm && result.match_context && result.match_context.length > 0) {
+                matchLocation = `Found in: ${result.match_context.join(', ')}`;
+
+                if (result.match_context.includes('body')) {
+                    try {
+                        const body = JSON.parse(result.body);
+                        previewText = JSON.stringify(body).substring(0, 150) + '...';
+                    } catch {
+                        previewText = result.body.substring(0, 150) + '...';
+                    }
+                } else if (result.match_context.includes('headers')) {
+                    previewText = `Headers: ${result.headers.substring(0, 150)}...`;
+                } else if (result.match_context.includes('query_params')) {
+                    previewText = `Query: ${result.query_params.substring(0, 150)}...`;
+                }
+
+                const regex = new RegExp(`(${this.escapeRegExp(searchTerm)})`, 'gi');
+                previewText = this.escapeHtml(previewText).replace(regex, '<span class="search-match-highlight">$1</span>');
+            } else {
+                try {
+                    const body = JSON.parse(result.body);
+                    const bodyStr = JSON.stringify(body);
+                    if (bodyStr && bodyStr !== '{}' && bodyStr !== 'null') {
+                        previewText = bodyStr.substring(0, 150) + '...';
+                    }
+                } catch {
+                    if (result.body && result.body !== '{}' && result.body !== 'null') {
+                        previewText = result.body.substring(0, 150) + '...';
+                    }
+                }
+
+                if (!previewText) {
+                    try {
+                        const headers = JSON.parse(result.headers);
+                        if (headers && Object.keys(headers).length > 0) {
+                            previewText = `Headers: ${JSON.stringify(headers).substring(0, 150)}...`;
+                        }
+                    } catch {}
+                }
+
+                if (!previewText) {
+                    try {
+                        const queryParams = JSON.parse(result.query_params);
+                        if (queryParams && Object.keys(queryParams).length > 0) {
+                            previewText = `Query: ${JSON.stringify(queryParams).substring(0, 150)}...`;
+                        }
+                    } catch {}
+                }
+
+                if (previewText) {
+                    previewText = this.escapeHtml(previewText);
+                }
+            }
+
+            return `
+                <div class="search-result-item" onclick="webhookViewer.selectFromThreadSearch(${result.id})">
+                    <div class="search-result-header">
+                        <div>
+                            <span class="search-result-meta">${result.method}</span>
+                        </div>
+                        <div class="search-result-meta">${timeString}</div>
+                    </div>
+                    ${matchLocation ? `<div class="search-result-meta">${matchLocation}</div>` : ''}
+                    ${previewText ? `<div class="search-result-preview">${previewText}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+
+        let headerText = `Found ${this.threadSearchResults.length} results`;
+        if (searchTerm) headerText += ` for "${this.escapeHtml(searchTerm)}"`;
+        if (startDate || endDate) headerText += ' in the selected date range';
+
+        resultsContainer.innerHTML = `
+            <div style="margin-bottom: 1rem; color: var(--text-secondary);">
+                ${headerText}
+            </div>
+            ${resultsHtml}
+        `;
+    }
+
+    selectFromThreadSearch(requestId) {
+        this.closeThreadSearch();
+
+        const request = this.currentRequests.find(r => r.id === requestId);
+        if (request) {
+            this.selectRequest(requestId);
+
+            setTimeout(() => {
+                const requestElement = document.querySelector(`[data-request-id="${requestId}"]`);
+                if (requestElement) {
+                    requestElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                }
+            }, 100);
+        }
     }
 
     async loadNotifications() {
