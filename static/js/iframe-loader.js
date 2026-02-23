@@ -14,12 +14,14 @@
     const closeIframeBtn = document.getElementById('closeIframeBtn');
     const toolbarUrl = document.getElementById('toolbarUrl');
     const iframeLoading = document.getElementById('iframeLoading');
+    const iframeArea = document.getElementById('iframeArea');
     const iframeWrapper = document.getElementById('iframeWrapper');
     const contentFrame = document.getElementById('contentFrame');
     const emptyState = document.getElementById('emptyState');
     const errorState = document.getElementById('errorState');
     const errorMessage = document.getElementById('errorMessage');
     const retryBtn = document.getElementById('retryBtn');
+    const xframeToggle = document.getElementById('xframeToggle');
 
     let currentUrl = '';
 
@@ -43,10 +45,18 @@
         }
     }
 
+    // Build the src to use for the iframe, based on toggle state
+    function buildFrameSrc(url) {
+        if (xframeToggle.checked) {
+            return '/iframe-proxy?url=' + encodeURIComponent(url);
+        }
+        return url;
+    }
+
     // Show a specific state panel and hide others
     function showState(state) {
         emptyState.style.display = 'none';
-        iframeWrapper.style.display = 'none';
+        iframeArea.style.display = 'none';
         errorState.style.display = 'none';
         iframeLoading.style.display = 'none';
 
@@ -60,7 +70,7 @@
                 iframeToolbar.style.display = 'flex';
                 break;
             case 'loaded':
-                iframeWrapper.style.display = 'block';
+                iframeArea.style.display = 'flex';
                 iframeToolbar.style.display = 'flex';
                 break;
             case 'error':
@@ -112,7 +122,7 @@
             errorMessage.textContent = 'Failed to load the page. The site may block embedding or the URL may be unreachable.';
         };
 
-        contentFrame.src = url;
+        contentFrame.src = buildFrameSrc(url);
     }
 
     // Close the iframe and return to empty state
@@ -184,6 +194,13 @@
     closeIframeBtn.addEventListener('click', closeIframe);
 
     retryBtn.addEventListener('click', function() {
+        if (currentUrl) {
+            loadUrl(currentUrl);
+        }
+    });
+
+    // Re-load when toggle changes while a URL is already loaded
+    xframeToggle.addEventListener('change', function() {
         if (currentUrl) {
             loadUrl(currentUrl);
         }
