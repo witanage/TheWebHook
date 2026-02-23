@@ -250,22 +250,23 @@
     color: var(--text-secondary);
 }
 
-/* iframe Area - scrollable container centered on page */
+/* iframe Area - fills remaining vertical space, centers the box */
 .iframe-area {
     flex: 1;
+    min-height: 0;
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: center;
     padding: 1.5rem;
-    overflow-y: auto;
+    overflow: hidden;
     background: var(--bg-primary);
 }
 
-/* iframe Wrapper - centered box */
+/* iframe Wrapper - centered box that fills available height */
 .iframe-wrapper {
     width: 100%;
     max-width: 1100px;
-    height: 75vh;
+    height: 100%;
     position: relative;
     border-radius: var(--radius);
     overflow: hidden;
@@ -436,9 +437,5 @@
 
     .iframe-area {
         padding: 0.75rem;
-    }
-
-    .iframe-wrapper {
-        height: 60vh;
     }
 }
