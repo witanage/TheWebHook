@@ -34,12 +34,7 @@
     margin-bottom: 2rem;
 }
 
-/* Cards maintain a square aspect ratio */
 .tool-card {
-    aspect-ratio: 1 / 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
@@ -76,7 +71,6 @@
     font-size: 3rem;
     margin-bottom: 1rem;
     display: block;
-    flex-shrink: 0;
 }
 
 .tool-title {
@@ -84,16 +78,11 @@
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
-    flex-shrink: 0;
 }
 
 .tool-description {
     color: var(--text-secondary);
     line-height: 1.6;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
 }
 
 /* ── Default App Radio Button ─────────────────────────── */
@@ -265,10 +254,6 @@
 @media (max-width: 480px) {
     .tools-grid {
         grid-template-columns: 1fr;
-    }
-
-    .tool-card {
-        aspect-ratio: auto;
     }
 
     .grid-size-control {
