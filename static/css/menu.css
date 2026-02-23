@@ -25,52 +25,7 @@
     font-size: 1.1rem;
 }
 
-/* Items-per-row control */
-.items-per-page-control {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin-top: 1rem;
-    padding: 0.5rem 1rem;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-}
-
-.items-label {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    white-space: nowrap;
-}
-
-.items-options {
-    display: flex;
-    gap: 0.35rem;
-}
-
-.items-btn {
-    padding: 0.3rem 0.65rem;
-    font-size: 0.85rem;
-    font-weight: 500;
-    background: transparent;
-    border: 1px solid var(--border-color);
-    border-radius: calc(var(--radius) / 2);
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: var(--transition);
-    line-height: 1;
-}
-
-.items-btn:hover {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-.items-btn.active {
-    background: var(--accent-color);
-    border-color: var(--accent-color);
-    color: #fff;
-}
+/* ── Grid ─────────────────────────────────────────────── */
 
 .tools-grid {
     display: grid;
@@ -79,7 +34,12 @@
     margin-bottom: 2rem;
 }
 
+/* Cards maintain a square aspect ratio */
 .tool-card {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius);
@@ -116,6 +76,7 @@
     font-size: 3rem;
     margin-bottom: 1rem;
     display: block;
+    flex-shrink: 0;
 }
 
 .tool-title {
@@ -123,14 +84,20 @@
     font-weight: 600;
     margin-bottom: 0.5rem;
     color: var(--text-primary);
+    flex-shrink: 0;
 }
 
 .tool-description {
     color: var(--text-secondary);
     line-height: 1.6;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
 }
 
-/* Default App Radio Button */
+/* ── Default App Radio Button ─────────────────────────── */
+
 .default-app-selector {
     position: absolute;
     top: 1rem;
@@ -178,7 +145,103 @@
     display: none;
 }
 
-/* Responsive — cap columns on smaller screens */
+/* ── Floating grid-size control ───────────────────────── */
+
+.grid-size-control {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+}
+
+/* Toggle button */
+.grid-size-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.7rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 2rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: var(--transition);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.grid-size-toggle:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+/* Popup panel — hidden by default, expands upward */
+.grid-size-panel {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 2rem;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(6px) scale(0.95);
+    transform-origin: bottom right;
+    transition: opacity 0.18s ease, visibility 0.18s ease, transform 0.18s ease;
+    pointer-events: none;
+}
+
+.grid-size-panel.open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.items-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.items-options {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.items-btn {
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+    line-height: 1.4;
+}
+
+.items-btn:hover {
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+}
+
+.items-btn.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: #fff;
+}
+
+/* ── Responsive ───────────────────────────────────────── */
+
 @media (max-width: 1024px) {
     .tools-grid {
         grid-template-columns: repeat(min(var(--grid-cols, 3), 3), 1fr);
@@ -204,8 +267,12 @@
         grid-template-columns: 1fr;
     }
 
-    .items-per-page-control {
-        flex-wrap: wrap;
-        justify-content: center;
+    .tool-card {
+        aspect-ratio: auto;
+    }
+
+    .grid-size-control {
+        bottom: 1rem;
+        right: 1rem;
     }
 }
