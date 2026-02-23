@@ -15,18 +15,18 @@
     <div class="dashboard-header">
         <p>Select a tool to get started</p>
         <div class="items-per-page-control">
-            <span class="items-label">Show:</span>
+            <span class="items-label">Per row:</span>
             <div class="items-options">
-                <button class="items-btn" data-count="3">3</button>
-                <button class="items-btn" data-count="6">6</button>
-                <button class="items-btn" data-count="9">9</button>
-                <button class="items-btn" data-count="12">12</button>
-                <button class="items-btn" data-count="all">All</button>
+                <button class="items-btn" data-cols="2">2</button>
+                <button class="items-btn" data-cols="3">3</button>
+                <button class="items-btn" data-cols="4">4</button>
+                <button class="items-btn" data-cols="5">5</button>
+                <button class="items-btn" data-cols="6">6</button>
             </div>
         </div>
     </div>
 
-    <div class="tools-grid">
+    <div class="tools-grid" id="toolsGrid">
         {% for item in menu_items %}
         <div class="tool-card" data-route="{{ item.route }}" onclick="navigateToCard(event, '{{ item.route }}')">
             <div class="default-app-selector">
@@ -43,12 +43,6 @@
         </div>
         {% endfor %}
     </div>
-
-    <div class="pagination-controls" id="paginationControls">
-        <button class="page-btn" id="prevBtn" onclick="changePage(-1)">&#8592; Prev</button>
-        <span class="page-info" id="pageInfo"></span>
-        <button class="page-btn" id="nextBtn" onclick="changePage(1)">Next &#8594;</button>
-    </div>
 </div>
 {% endblock %}
 
@@ -57,82 +51,30 @@
     // Track the currently selected radio button value
     let currentlySelected = null;
 
-    // Pagination state
-    let currentPage = 1;
-    let itemsPerPage = parseInt(localStorage.getItem('menuItemsPerPage') || '6', 10) || 'all';
+    // Grid columns state (saved in localStorage)
+    let gridCols = parseInt(localStorage.getItem('menuGridCols') || '3', 10);
 
-    // Normalize stored value
-    if (localStorage.getItem('menuItemsPerPage') === 'all') {
-        itemsPerPage = 'all';
-    }
-
-    function getAllCards() {
-        return Array.from(document.querySelectorAll('.tool-card'));
-    }
-
-    function getTotalPages(cards) {
-        if (itemsPerPage === 'all') return 1;
-        return Math.ceil(cards.length / itemsPerPage);
-    }
-
-    function renderPage() {
-        const cards = getAllCards();
-        const total = cards.length;
-        const totalPages = getTotalPages(cards);
-
-        // Clamp current page
-        if (currentPage < 1) currentPage = 1;
-        if (currentPage > totalPages) currentPage = totalPages;
-
-        cards.forEach((card, index) => {
-            if (itemsPerPage === 'all') {
-                card.style.display = '';
-            } else {
-                const start = (currentPage - 1) * itemsPerPage;
-                const end = start + itemsPerPage;
-                card.style.display = (index >= start && index < end) ? '' : 'none';
-            }
-        });
-
-        // Update pagination UI
-        const paginationControls = document.getElementById('paginationControls');
-        const pageInfo = document.getElementById('pageInfo');
-        const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-
-        if (totalPages <= 1) {
-            paginationControls.style.display = 'none';
-        } else {
-            paginationControls.style.display = 'flex';
-            pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
-            prevBtn.disabled = currentPage === 1;
-            nextBtn.disabled = currentPage === totalPages;
-        }
-
-        // Update active button
+    function applyGridCols(n) {
+        gridCols = n;
+        localStorage.setItem('menuGridCols', n);
+        document.getElementById('toolsGrid').style.setProperty('--grid-cols', n);
         document.querySelectorAll('.items-btn').forEach(btn => {
-            const count = btn.dataset.count;
-            const isActive = count === 'all'
-                ? itemsPerPage === 'all'
-                : parseInt(count, 10) === itemsPerPage;
-            btn.classList.toggle('active', isActive);
+            btn.classList.toggle('active', parseInt(btn.dataset.cols, 10) === n);
         });
-    }
-
-    function changePage(delta) {
-        currentPage += delta;
-        renderPage();
-    }
-
-    function setItemsPerPage(count) {
-        itemsPerPage = count === 'all' ? 'all' : parseInt(count, 10);
-        localStorage.setItem('menuItemsPerPage', count);
-        currentPage = 1;
-        renderPage();
     }
 
     // Load and set the default app radio button on page load
     document.addEventListener('DOMContentLoaded', function() {
+        // Apply saved column preference
+        applyGridCols(gridCols);
+
+        // Wire up per-row buttons
+        document.querySelectorAll('.items-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                applyGridCols(parseInt(this.dataset.cols, 10));
+            });
+        });
+
         // Get default app from server-side template variable
         const defaultApp = {{ default_app|tojson }};
 
@@ -144,16 +86,6 @@
                 currentlySelected = defaultApp;
             }
         }
-
-        // Wire up items-per-page buttons
-        document.querySelectorAll('.items-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                setItemsPerPage(this.dataset.count);
-            });
-        });
-
-        // Initial render
-        renderPage();
     });
 
     // Function to handle radio button clicks (allows toggle on/off)

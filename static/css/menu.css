@@ -11,7 +11,21 @@
     margin-bottom: 3rem;
 }
 
-/* Items-per-page control */
+.dashboard-header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, var(--accent-color), #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.dashboard-header p {
+    color: var(--text-secondary);
+    font-size: 1.1rem;
+}
+
+/* Items-per-row control */
 .items-per-page-control {
     display: inline-flex;
     align-items: center;
@@ -58,69 +72,11 @@
     color: #fff;
 }
 
-/* Pagination controls */
-.pagination-controls {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 1rem;
-    margin-top: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.page-btn {
-    padding: 0.5rem 1.25rem;
-    font-size: 0.9rem;
-    font-weight: 500;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius);
-    color: var(--text-primary);
-    cursor: pointer;
-    transition: var(--transition);
-}
-
-.page-btn:hover:not(:disabled) {
-    border-color: var(--accent-color);
-    color: var(--accent-color);
-}
-
-.page-btn:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-}
-
-.page-info {
-    font-size: 0.9rem;
-    color: var(--text-secondary);
-    min-width: 90px;
-    text-align: center;
-}
-
-.dashboard-header h1 {
-    font-size: 2.5rem;
-    margin-bottom: 0.5rem;
-    background: linear-gradient(135deg, var(--accent-color), #00d4ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.dashboard-header p {
-    color: var(--text-secondary);
-    font-size: 1.1rem;
-}
-
 .tools-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(var(--grid-cols, 3), 1fr);
     gap: 1.5rem;
     margin-bottom: 2rem;
-}
-
-/* Center single card when alone in a row */
-.tool-card:last-child:nth-child(3n+1) {
-    grid-column: 2 / 3;
 }
 
 .tool-card {
@@ -222,22 +178,10 @@
     display: none;
 }
 
-/* Responsive */
+/* Responsive — cap columns on smaller screens */
 @media (max-width: 1024px) {
     .tools-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    /* Reset 3-column centering */
-    .tool-card:last-child:nth-child(3n+1) {
-        grid-column: auto;
-    }
-
-    /* Center single card in 2-column layout when alone in a row (odd-numbered last card) */
-    .tool-card:last-child:nth-child(odd) {
-        grid-column: 1 / -1;
-        max-width: calc((100% - 1.5rem) / 2);
-        margin: 0 auto;
+        grid-template-columns: repeat(min(var(--grid-cols, 3), 3), 1fr);
     }
 }
 
@@ -247,18 +191,21 @@
     }
 
     .tools-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(min(var(--grid-cols, 2), 2), 1fr);
     }
 
     .tool-card {
         padding: 1.5rem;
     }
+}
 
-    /* Reset centering for single column layout */
-    .tool-card:last-child:nth-child(3n+1),
-    .tool-card:last-child:nth-child(odd) {
-        grid-column: auto;
-        margin: 0;
-        max-width: none;
+@media (max-width: 480px) {
+    .tools-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .items-per-page-control {
+        flex-wrap: wrap;
+        justify-content: center;
     }
 }
