@@ -72,6 +72,72 @@
     background: var(--bg-tertiary);
 }
 
+/* X-Frame-Options Toggle */
+.xframe-toggle-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+.xframe-toggle-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    user-select: none;
+}
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--border-color);
+    transition: 0.2s ease;
+    border-radius: 20px;
+}
+
+.toggle-slider::before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    transition: 0.2s ease;
+    border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background: var(--accent-color);
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(16px);
+}
+
+.toggle-switch input:focus + .toggle-slider {
+    box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.2);
+}
+
 .btn-load {
     display: flex;
     align-items: center;
@@ -184,11 +250,28 @@
     color: var(--text-secondary);
 }
 
-/* iframe Wrapper */
-.iframe-wrapper {
+/* iframe Area - scrollable container centered on page */
+.iframe-area {
     flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--bg-primary);
+}
+
+/* iframe Wrapper - centered box */
+.iframe-wrapper {
+    width: 100%;
+    max-width: 1100px;
+    height: 75vh;
     position: relative;
+    border-radius: var(--radius);
     overflow: hidden;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+    border: 1px solid var(--border-color);
+    background: white;
 }
 
 .iframe-wrapper iframe {
@@ -330,6 +413,11 @@
         justify-content: center;
     }
 
+    .xframe-toggle-wrapper {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
     .toolbar-center {
         display: none;
     }
@@ -344,5 +432,13 @@
 
     .quick-link-btn {
         width: 100%;
+    }
+
+    .iframe-area {
+        padding: 0.75rem;
+    }
+
+    .iframe-wrapper {
+        height: 60vh;
     }
 }

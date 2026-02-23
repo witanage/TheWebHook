@@ -38,6 +38,13 @@
                 </svg>
             </button>
         </div>
+        <div class="xframe-toggle-wrapper" title="Bypass X-Frame-Options via server-side proxy">
+            <label class="toggle-switch">
+                <input type="checkbox" id="xframeToggle">
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="xframe-toggle-label">Ignore X-Frame-Options</span>
+        </div>
         <button id="loadBtn" class="btn-load" title="Load URL">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2">
@@ -94,8 +101,10 @@
     </div>
 
     <!-- iframe Container -->
-    <div class="iframe-wrapper" id="iframeWrapper" style="display: none;">
-        <iframe id="contentFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" allowfullscreen></iframe>
+    <div class="iframe-area" id="iframeArea" style="display: none;">
+        <div class="iframe-wrapper" id="iframeWrapper">
+            <iframe id="contentFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" allowfullscreen></iframe>
+        </div>
     </div>
 
     <!-- Empty State -->
@@ -156,6 +165,7 @@
         <li><strong>URL Loading</strong> - Enter any URL to preview it in an embedded frame</li>
         <li><strong>Quick Links</strong> - One-click access to popular developer resources</li>
         <li><strong>Toolbar Controls</strong> - Refresh, open in new tab, copy URL, and close actions</li>
+        <li><strong>Ignore X-Frame-Options</strong> - Toggle to bypass X-Frame-Options and CSP frame restrictions via a server-side proxy</li>
         <li><strong>Error Handling</strong> - Clear feedback when a page cannot be embedded</li>
         <li><strong>Keyboard Shortcut</strong> - Press Enter to load, Escape to close</li>
     </ul>
