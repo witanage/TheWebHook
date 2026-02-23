@@ -16,7 +16,7 @@
         <p>Select a tool to get started</p>
     </div>
 
-    <div class="tools-grid">
+    <div class="tools-grid" id="toolsGrid">
         {% for item in menu_items %}
         <div class="tool-card" data-route="{{ item.route }}" onclick="navigateToCard(event, '{{ item.route }}')">
             <div class="default-app-selector">
@@ -34,6 +34,29 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- Floating grid-size control (bottom-right corner) -->
+<div class="grid-size-control" id="gridSizeControl">
+    <div class="grid-size-panel" id="gridSizePanel">
+        <span class="items-label">Per row</span>
+        <div class="items-options">
+            <button class="items-btn" data-cols="2">2</button>
+            <button class="items-btn" data-cols="3">3</button>
+            <button class="items-btn" data-cols="4">4</button>
+            <button class="items-btn" data-cols="5">5</button>
+            <button class="items-btn" data-cols="6">6</button>
+        </div>
+    </div>
+    <button class="grid-size-toggle" id="gridSizeToggle" title="Adjust card size" onclick="toggleGridPanel(event)">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor" aria-hidden="true">
+            <rect x="0" y="0" width="5.5" height="5.5" rx="1"/>
+            <rect x="7.5" y="0" width="5.5" height="5.5" rx="1"/>
+            <rect x="0" y="7.5" width="5.5" height="5.5" rx="1"/>
+            <rect x="7.5" y="7.5" width="5.5" height="5.5" rx="1"/>
+        </svg>
+        <span id="gridSizeCurrent">3</span>
+    </button>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -41,12 +64,46 @@
     // Track the currently selected radio button value
     let currentlySelected = null;
 
-    // Load and set the default app radio button on page load
+    // Grid columns state (saved in localStorage)
+    let gridCols = parseInt(localStorage.getItem('menuGridCols') || '4', 10);
+
+    function applyGridCols(n) {
+        gridCols = n;
+        localStorage.setItem('menuGridCols', n);
+        document.getElementById('toolsGrid').style.setProperty('--grid-cols', n);
+        document.getElementById('gridSizeCurrent').textContent = n;
+        document.querySelectorAll('.items-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.cols, 10) === n);
+        });
+    }
+
+    function toggleGridPanel(event) {
+        event.stopPropagation();
+        document.getElementById('gridSizePanel').classList.toggle('open');
+    }
+
+    // Close panel when clicking outside
+    document.addEventListener('click', function(e) {
+        const control = document.getElementById('gridSizeControl');
+        if (!control.contains(e.target)) {
+            document.getElementById('gridSizePanel').classList.remove('open');
+        }
+    });
+
     document.addEventListener('DOMContentLoaded', function() {
+        // Apply saved column preference
+        applyGridCols(gridCols);
+
+        // Wire up per-row buttons
+        document.querySelectorAll('.items-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                applyGridCols(parseInt(this.dataset.cols, 10));
+                document.getElementById('gridSizePanel').classList.remove('open');
+            });
+        });
+
         // Get default app from server-side template variable
         const defaultApp = {{ default_app|tojson }};
-
-        // Set radio button if default app is selected
         if (defaultApp) {
             const radioButton = document.querySelector(`input[name="defaultApp"][value="${defaultApp}"]`);
             if (radioButton) {
@@ -56,42 +113,28 @@
         }
     });
 
-    // Function to handle radio button clicks (allows toggle on/off)
     function handleRadioClick(event, route) {
         event.stopPropagation();
-
         const radioButton = event.target;
-
-        // If clicking the already selected radio button, deselect it
         if (currentlySelected === route && radioButton.checked) {
             radioButton.checked = false;
             currentlySelected = null;
-            setDefaultApp('');  // Clear the default app
+            setDefaultApp('');
         } else {
-            // Select the new radio button
             currentlySelected = route;
             setDefaultApp(route);
         }
     }
 
-    // Function to set default application (saves to database)
     function setDefaultApp(route) {
         fetch('/api/set-default-app', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ default_app: route })
         })
         .then(response => response.json())
         .then(data => {
-            if (data.message) {
-                if (route) {
-                    console.log('Default app set to:', route);
-                } else {
-                    console.log('Default app cleared');
-                }
-            } else if (data.error) {
+            if (data.error) {
                 console.error('Error setting default app:', data.error);
                 showModal('Error', 'Failed to set default app: ' + data.error);
             }
@@ -102,12 +145,8 @@
         });
     }
 
-    // Function to navigate to card (handles card click without interfering with radio button)
     function navigateToCard(event, route) {
-        // Don't navigate if clicking on radio button or its label
-        if (event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') {
-            return;
-        }
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'LABEL') return;
         window.location.href = route;
     }
 </script>
