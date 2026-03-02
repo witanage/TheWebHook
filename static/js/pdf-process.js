@@ -102,6 +102,14 @@ const toolConfig = {
         minFiles: 1,
         btnText: 'Protect PDF'
     },
+    'resize-file': {
+        title: 'Resize File',
+        description: 'Increase or decrease your PDF to an exact target file size',
+        accept: '.pdf',
+        multiple: false,
+        minFiles: 1,
+        btnText: 'Resize PDF'
+    },
     'unlock': {
         title: 'Unlock PDF',
         description: 'Remove password from a protected PDF',
@@ -441,6 +449,32 @@ function showToolOptions() {
             `;
             break;
 
+        case 'resize-file':
+            optionsHtml = `
+                <h3>Target File Size</h3>
+                <div class="current-size-display">
+                    <div>
+                        <div class="size-label">Current file size</div>
+                        <div class="size-value" id="currentFileSize">${formatFileSize(uploadedFiles[0].size)}</div>
+                    </div>
+                </div>
+                <div class="target-size-row">
+                    <div class="option-group">
+                        <label for="targetSize">Target Size</label>
+                        <input type="number" id="targetSize" class="option-input" placeholder="e.g. 500" min="1" step="1" oninput="updateResizeDirection()">
+                    </div>
+                    <div class="option-group">
+                        <label for="targetUnit">Unit</label>
+                        <select id="targetUnit" class="option-select" onchange="updateResizeDirection()">
+                            <option value="KB">KB</option>
+                            <option value="MB" selected>MB</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="resize-direction-info" id="resizeDirectionInfo"></div>
+            `;
+            break;
+
         case 'page-numbers':
             optionsHtml = `
                 <h3>Page Number Options</h3>
@@ -697,6 +731,14 @@ async function processFiles() {
         }
     }
 
+    if (currentTool === 'resize-file') {
+        const targetSize = parseFloat(document.getElementById('targetSize').value);
+        if (!targetSize || targetSize <= 0) {
+            showToast('Please enter a valid target file size', 'warning');
+            return;
+        }
+    }
+
     if (currentTool === 'protect') {
         const pw = document.getElementById('protectPassword').value;
         const pw2 = document.getElementById('protectPasswordConfirm').value;
@@ -754,6 +796,9 @@ async function processFiles() {
                 break;
             case 'unlock':
                 await processUnlock();
+                break;
+            case 'resize-file':
+                await processResizeFile();
                 break;
         }
 
@@ -1335,6 +1380,221 @@ async function processUnlock() {
             `PDF unlocked successfully (${formatFileSize(pdfBytes.byteLength)})`;
     } catch (error) {
         throw new Error('Failed to unlock PDF. The password may be incorrect.');
+    }
+}
+
+// ==================== Resize File ====================
+
+function updateResizeDirection() {
+    const info = document.getElementById('resizeDirectionInfo');
+    const targetVal = parseFloat(document.getElementById('targetSize').value);
+    const unit = document.getElementById('targetUnit').value;
+
+    if (!targetVal || targetVal <= 0 || !uploadedFiles[0]) {
+        info.className = 'resize-direction-info';
+        return;
+    }
+
+    const targetBytes = unit === 'MB' ? targetVal * 1024 * 1024 : targetVal * 1024;
+    const currentBytes = uploadedFiles[0].size;
+
+    if (targetBytes < 1024) {
+        info.className = 'resize-direction-info error';
+        info.textContent = 'Target size is too small. Minimum is 1 KB.';
+    } else if (targetBytes < currentBytes) {
+        const reduction = ((currentBytes - targetBytes) / currentBytes * 100).toFixed(1);
+        info.className = 'resize-direction-info decrease';
+        info.textContent = `File will be decreased by ${reduction}% (${formatFileSize(currentBytes)} → ${formatFileSize(targetBytes)})`;
+    } else if (targetBytes > currentBytes) {
+        const increase = ((targetBytes - currentBytes) / currentBytes * 100).toFixed(1);
+        info.className = 'resize-direction-info increase';
+        info.textContent = `File will be increased by ${increase}% (${formatFileSize(currentBytes)} → ${formatFileSize(targetBytes)})`;
+    } else {
+        info.className = 'resize-direction-info';
+        info.textContent = 'Target size matches current file size.';
+        info.style.display = 'block';
+    }
+}
+
+async function processResizeFile() {
+    const targetVal = parseFloat(document.getElementById('targetSize').value);
+    const unit = document.getElementById('targetUnit').value;
+    const targetBytes = unit === 'MB' ? targetVal * 1024 * 1024 : targetVal * 1024;
+
+    updateProgress(10, 'Loading PDF...');
+    const arrayBuffer = await uploadedFiles[0].arrayBuffer();
+    const originalSize = arrayBuffer.byteLength;
+
+    if (targetBytes < 1024) {
+        throw new Error('Target size is too small. Minimum is 1 KB.');
+    }
+
+    const pdf = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+
+    if (targetBytes < originalSize) {
+        // ========== DECREASE: Re-render pages as compressed JPEGs ==========
+        updateProgress(20, 'Reducing file size...');
+
+        const totalPages = pdf.getPageCount();
+
+        // Calculate quality based on how much reduction is needed
+        const ratio = targetBytes / originalSize;
+        // Map ratio to JPEG quality: more reduction needed = lower quality
+        // ratio 0.9 -> quality ~0.85, ratio 0.1 -> quality ~0.15
+        let jpegQuality = Math.max(0.1, Math.min(0.92, ratio * 0.95));
+        // Scale factor for rendering resolution
+        let renderScale = ratio < 0.3 ? 0.75 : ratio < 0.5 ? 1.0 : 1.5;
+
+        let bestResult = null;
+        let attempts = 0;
+        const maxAttempts = 8;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+            updateProgress(20 + (60 * attempts / maxAttempts), `Optimizing (attempt ${attempts})... quality=${Math.round(jpegQuality * 100)}%`);
+
+            const newPdf = await PDFDocument.create();
+
+            // Use pdf.js to render each page as an image, then embed
+            const pdfJsDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+            for (let i = 1; i <= totalPages; i++) {
+                const page = await pdfJsDoc.getPage(i);
+                const viewport = page.getViewport({ scale: renderScale });
+
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const ctx = canvas.getContext('2d');
+                await page.render({ canvasContext: ctx, viewport }).promise;
+
+                const blob = await new Promise(resolve =>
+                    canvas.toBlob(resolve, 'image/jpeg', jpegQuality)
+                );
+                const imgBytes = new Uint8Array(await blob.arrayBuffer());
+                const image = await newPdf.embedJpg(imgBytes);
+
+                // Get original page size to preserve dimensions
+                const origPage = pdf.getPages()[i - 1];
+                const { width, height } = origPage.getSize();
+                const newPage = newPdf.addPage([width, height]);
+                newPage.drawImage(image, { x: 0, y: 0, width, height });
+            }
+
+            const pdfBytes = await newPdf.save({ useObjectStreams: true });
+
+            if (pdfBytes.byteLength <= targetBytes) {
+                bestResult = pdfBytes;
+                // Try a slightly higher quality if we have room
+                if (pdfBytes.byteLength < targetBytes * 0.85 && jpegQuality < 0.92) {
+                    jpegQuality = Math.min(0.92, jpegQuality + 0.08);
+                    bestResult = pdfBytes; // Keep current as fallback
+                    continue;
+                }
+                break;
+            } else {
+                bestResult = pdfBytes; // Keep as best so far
+                // Reduce quality and scale
+                jpegQuality = Math.max(0.1, jpegQuality * 0.7);
+                if (jpegQuality <= 0.15) {
+                    renderScale = Math.max(0.4, renderScale * 0.8);
+                }
+            }
+        }
+
+        if (!bestResult) {
+            throw new Error('Could not reduce the file to the target size. Try a larger target.');
+        }
+
+        updateProgress(95, 'Saving...');
+        processedResult = {
+            data: bestResult,
+            filename: 'resized.pdf',
+            type: 'application/pdf'
+        };
+
+        const finalSize = bestResult.byteLength;
+        const withinTarget = finalSize <= targetBytes;
+        document.getElementById('resultInfo').textContent =
+            `Resized from ${formatFileSize(originalSize)} to ${formatFileSize(finalSize)}` +
+            (withinTarget ? ' (target achieved)' : ` (closest achievable - target was ${formatFileSize(targetBytes)})`);
+
+    } else {
+        // ========== INCREASE: Pad with invisible metadata ==========
+        updateProgress(20, 'Increasing file size...');
+
+        // First save normally to get a baseline
+        let pdfBytes = await pdf.save();
+        let currentSize = pdfBytes.byteLength;
+
+        if (currentSize >= targetBytes) {
+            // Already at or above target after re-save
+            processedResult = {
+                data: pdfBytes,
+                filename: 'resized.pdf',
+                type: 'application/pdf'
+            };
+            document.getElementById('resultInfo').textContent =
+                `PDF is already ${formatFileSize(currentSize)} (at or above target ${formatFileSize(targetBytes)})`;
+            return;
+        }
+
+        updateProgress(50, 'Adding padding data...');
+
+        // Calculate how many bytes we need to add
+        const bytesNeeded = targetBytes - currentSize;
+
+        // Add padding by embedding invisible images as a reliable method
+        // We'll add hidden content via PDF custom metadata stream
+        const pages = pdf.getPages();
+        const paddingChunkSize = 65536; // 64KB chunks
+        let bytesAdded = 0;
+
+        while (bytesAdded < bytesNeeded) {
+            const chunkSize = Math.min(paddingChunkSize, bytesNeeded - bytesAdded);
+            // Create a minimal 1x1 white JPEG-like padding image
+            // Embed invisible content on the first page with 0 opacity
+            const paddingData = new Uint8Array(chunkSize);
+            // Fill with non-zero data for proper file size
+            for (let j = 0; j < chunkSize; j++) {
+                paddingData[j] = 32; // Space character
+            }
+
+            // Use PDF metadata to store padding
+            const paddingStr = String.fromCharCode.apply(null, paddingData);
+            pdf.setKeywords([...pdf.getKeywords() || [], paddingStr]);
+
+            bytesAdded += chunkSize;
+            updateProgress(50 + (40 * bytesAdded / bytesNeeded), `Adding data... ${formatFileSize(bytesAdded)} / ${formatFileSize(bytesNeeded)}`);
+        }
+
+        updateProgress(95, 'Saving...');
+        pdfBytes = await pdf.save();
+
+        // If still under target, do a binary padding approach on the raw bytes
+        if (pdfBytes.byteLength < targetBytes) {
+            const remaining = targetBytes - pdfBytes.byteLength;
+            // Append PDF comment padding (valid PDF - comments start with %)
+            const padding = new Uint8Array(remaining);
+            padding[0] = 10; // newline
+            padding[1] = 37; // %
+            for (let i = 2; i < remaining; i++) {
+                padding[i] = 32; // space padding within comment
+            }
+            const combined = new Uint8Array(pdfBytes.byteLength + remaining);
+            combined.set(new Uint8Array(pdfBytes), 0);
+            combined.set(padding, pdfBytes.byteLength);
+            pdfBytes = combined;
+        }
+
+        processedResult = {
+            data: pdfBytes,
+            filename: 'resized.pdf',
+            type: 'application/pdf'
+        };
+
+        document.getElementById('resultInfo').textContent =
+            `Resized from ${formatFileSize(originalSize)} to ${formatFileSize(pdfBytes.byteLength)} (target: ${formatFileSize(targetBytes)})`;
     }
 }
 
