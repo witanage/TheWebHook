@@ -1520,15 +1520,14 @@ async function processResizeFile() {
             (withinTarget ? ' (target achieved)' : ` (closest achievable - target was ${formatFileSize(targetBytes)})`);
 
     } else {
-        // ========== INCREASE: Pad with invisible metadata ==========
+        // ========== INCREASE: Pad with valid PDF comments ==========
         updateProgress(20, 'Increasing file size...');
 
-        // First save normally to get a baseline
+        // Save the PDF normally first
         let pdfBytes = await pdf.save();
         let currentSize = pdfBytes.byteLength;
 
         if (currentSize >= targetBytes) {
-            // Already at or above target after re-save
             processedResult = {
                 data: pdfBytes,
                 filename: 'resized.pdf',
@@ -1541,51 +1540,43 @@ async function processResizeFile() {
 
         updateProgress(50, 'Adding padding data...');
 
-        // Calculate how many bytes we need to add
-        const bytesNeeded = targetBytes - currentSize;
+        // Calculate padding needed
+        const remaining = targetBytes - currentSize;
 
-        // Add padding by embedding invisible images as a reliable method
-        // We'll add hidden content via PDF custom metadata stream
-        const pages = pdf.getPages();
-        const paddingChunkSize = 65536; // 64KB chunks
-        let bytesAdded = 0;
+        // Build padding as valid PDF comment lines (% starts a comment in PDF)
+        // We write in manageable chunks to avoid memory issues
+        const lineLength = 80; // characters per comment line
+        const lineBytes = lineLength + 1; // +1 for newline
+        const totalLines = Math.ceil(remaining / lineBytes);
+        const padding = new Uint8Array(remaining);
+        let offset = 0;
 
-        while (bytesAdded < bytesNeeded) {
-            const chunkSize = Math.min(paddingChunkSize, bytesNeeded - bytesAdded);
-            // Create a minimal 1x1 white JPEG-like padding image
-            // Embed invisible content on the first page with 0 opacity
-            const paddingData = new Uint8Array(chunkSize);
-            // Fill with non-zero data for proper file size
-            for (let j = 0; j < chunkSize; j++) {
-                paddingData[j] = 32; // Space character
+        for (let line = 0; line < totalLines && offset < remaining; line++) {
+            // Start each line with % (PDF comment marker)
+            padding[offset++] = 37; // %
+            // Fill the rest of the line with spaces
+            const end = Math.min(offset + lineLength - 1, remaining - 1);
+            while (offset < end) {
+                padding[offset++] = 80; // 'P' - harmless filler
+            }
+            // End with newline if room
+            if (offset < remaining) {
+                padding[offset++] = 10; // \n
             }
 
-            // Use PDF metadata to store padding
-            const paddingStr = String.fromCharCode.apply(null, paddingData);
-            pdf.setKeywords([...pdf.getKeywords() || [], paddingStr]);
-
-            bytesAdded += chunkSize;
-            updateProgress(50 + (40 * bytesAdded / bytesNeeded), `Adding data... ${formatFileSize(bytesAdded)} / ${formatFileSize(bytesNeeded)}`);
+            // Update progress every 10000 lines
+            if (line % 10000 === 0) {
+                updateProgress(50 + (40 * offset / remaining), `Adding data... ${formatFileSize(offset)} / ${formatFileSize(remaining)}`);
+            }
         }
 
         updateProgress(95, 'Saving...');
-        pdfBytes = await pdf.save();
 
-        // If still under target, do a binary padding approach on the raw bytes
-        if (pdfBytes.byteLength < targetBytes) {
-            const remaining = targetBytes - pdfBytes.byteLength;
-            // Append PDF comment padding (valid PDF - comments start with %)
-            const padding = new Uint8Array(remaining);
-            padding[0] = 10; // newline
-            padding[1] = 37; // %
-            for (let i = 2; i < remaining; i++) {
-                padding[i] = 32; // space padding within comment
-            }
-            const combined = new Uint8Array(pdfBytes.byteLength + remaining);
-            combined.set(new Uint8Array(pdfBytes), 0);
-            combined.set(padding, pdfBytes.byteLength);
-            pdfBytes = combined;
-        }
+        // Combine original PDF bytes + comment padding
+        const combined = new Uint8Array(currentSize + remaining);
+        combined.set(new Uint8Array(pdfBytes), 0);
+        combined.set(padding, currentSize);
+        pdfBytes = combined;
 
         processedResult = {
             data: pdfBytes,
