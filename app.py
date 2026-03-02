@@ -3087,6 +3087,17 @@ def generate_totp_code(account_id):
 
 # ==================== CODE FORMATTER ROUTES ====================
 
+@app.route("/pdf-process")
+@login_required
+def pdf_process():
+    """PDF Process page - all-in-one PDF tools"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    is_admin = session.get("is_admin", 0)
+    log(f"User {user_id} accessed PDF Process")
+    return render_template("pdf-process.html", username=username, is_admin=is_admin)
+
+
 @app.route("/code-formatter")
 @login_required
 def code_formatter():
