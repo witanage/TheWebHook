@@ -5,6 +5,11 @@ function toggleProfileMenu() {
     dropdown.classList.toggle('show');
 }
 
+function toggleAppsMenu() {
+    const dropdown = document.getElementById('appsDropdown');
+    dropdown.classList.toggle('show');
+}
+
 function openPasswordModal() {
     document.getElementById('passwordModal').classList.add('active');
     document.getElementById('profileDropdown').classList.remove('show');
@@ -107,9 +112,15 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', (event) => {
         const profileMenu = document.querySelector('.profile-menu');
         const profileDropdown = document.getElementById('profileDropdown');
+        const appsMenu = document.querySelector('.apps-menu');
+        const appsDropdown = document.getElementById('appsDropdown');
 
         if (profileMenu && !profileMenu.contains(event.target)) {
             profileDropdown.classList.remove('show');
+        }
+
+        if (appsMenu && !appsMenu.contains(event.target)) {
+            appsDropdown.classList.remove('show');
         }
     });
 });

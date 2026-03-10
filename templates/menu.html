@@ -11,7 +11,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
+<div class="dashboard-container" data-default-app="{{ default_app if default_app else '' }}">
     <div class="dashboard-header">
         <p>Select a tool to get started</p>
     </div>
@@ -102,8 +102,9 @@
             });
         });
 
-        // Get default app from server-side template variable
-        const defaultApp = {{ default_app|tojson }};
+        // Get default app from data attribute
+        const container = document.querySelector('.dashboard-container');
+        const defaultApp = container ? container.dataset.defaultApp : '';
         if (defaultApp) {
             const radioButton = document.querySelector(`input[name="defaultApp"][value="${defaultApp}"]`);
             if (radioButton) {
