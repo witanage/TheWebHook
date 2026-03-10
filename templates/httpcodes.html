@@ -10,6 +10,29 @@
     </svg>
     Menu
 </button>
+
+<!-- Apps Dropdown -->
+<div class="apps-menu">
+    <button class="apps-button" onclick="toggleAppsMenu()" title="Open App">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        Apps
+        <span style="font-size: 12px;">▼</span>
+    </button>
+    <div class="apps-dropdown" id="appsDropdown">
+        {% for item in menu_items %}
+        <a href="{{ item.route }}" target="_blank" class="apps-dropdown-item">
+            <span class="apps-item-icon">{{ item.icon }}</span>
+            <span class="apps-item-text">{{ item.title }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_head %}
