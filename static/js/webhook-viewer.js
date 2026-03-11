@@ -1953,13 +1953,14 @@ class WebhookViewer {
                 this.markAsRead(latestRequest.id);
             } else {
                 // Show friendly empty state instead of generic message
+                const baseUrl = document.querySelector('meta[name="base-url"]')?.content || window.location.origin;
                 document.getElementById("requestDetails").innerHTML = `
                 <div class="empty-state">
                     <div class="empty-state-icon">📡</div>
                     <h3>No webhooks received yet</h3>
                     <p>Send a request to your webhook endpoint:</p>
                     <code style="display: block; margin: 1rem 0; padding: 0.75rem; background: var(--bg-tertiary); border-radius: var(--radius); font-size: 0.85rem;">
-                        https://webhook.agechecked.com/webhook/${this.userId}/${webhookId}
+                        ${baseUrl}/webhook/${this.userId}/${webhookId}
                     </code>
                     <p style="margin-top: 1rem;">Or use the "Test Webhook" button above to send a test request.</p>
                 </div>
