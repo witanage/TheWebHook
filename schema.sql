@@ -219,7 +219,8 @@ INSERT INTO menu_items (title, description, icon, route, display_order, is_activ
     ('Karate Feature Generator', 'Generate Karate API test feature files from request/response payloads', '🥋', '/karate-generator', 5, 1),
     ('TOTP Authenticator', 'Two-factor authentication code generator like Authy', '🔐', '/totp-authenticator', 6, 1),
     ('Code Formatter', 'Beautify code like Postman API or convert to single-line format', '💻', '/code-formatter', 7, 1),
-    ('PDF Process', 'All-in-one PDF tools: merge, split, compress, convert, rotate, watermark & more', '📄', '/pdf-process', 8, 1)
+    ('PDF Process', 'All-in-one PDF tools: merge, split, compress, convert, rotate, watermark & more', '📄', '/pdf-process', 8, 1),
+    ('Image Process', 'All-in-one image tools: resize, convert, compress, rotate, crop, filters & more', '🖼️', '/image-process', 9, 1)
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),
     description = VALUES(description),
@@ -229,7 +230,7 @@ ON DUPLICATE KEY UPDATE
 -- =============================================================================
 -- SCHEMA VERSION
 -- =============================================================================
--- Schema version: 1.4
--- Last updated: 2026-03-02
--- Description: Added PDF Process app to default menu items
+-- Schema version: 1.5
+-- Last updated: 2026-03-11
+-- Description: Added Image Process app to default menu items
 -- =============================================================================
