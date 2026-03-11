@@ -82,7 +82,6 @@ def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
 
 sys.excepthook = handle_uncaught_exception
 
-
 # ==================== NTP TIME SYNCHRONIZATION ====================
 
 # NTP configuration
@@ -464,7 +463,11 @@ def webhook_viewer():
         if conn is not None and conn.open:
             conn.close()
 
-    return render_template("webhook-viewer.html", webhook_ids=webhook_ids, user_id=user_id, username=username)
+    # Get base URL for webhook endpoints
+    base_url = request.url_root.rstrip('/')
+
+    return render_template("webhook-viewer.html", webhook_ids=webhook_ids, user_id=user_id, username=username,
+                           base_url=base_url)
 
 
 @app.route("/logout")
@@ -812,7 +815,7 @@ def set_default_app():
 
         # Update user's default app
         cursor.execute("UPDATE users SET default_app = %s WHERE id = %s",
-                      (default_app, user_id))
+                       (default_app, user_id))
         conn.commit()
 
         log(f"Default app updated successfully for user {user_id}")
@@ -1372,7 +1375,8 @@ def save_karate_work():
                     UPDATE karate_saved_work
                     SET work_name = %s, feature_config = %s, scenarios_data = %s, env_variables = %s
                     WHERE id = %s AND user_id = %s
-                """, (work_name, json.dumps(feature_config), json.dumps(scenarios_data), json.dumps(env_variables), project_id, user_id))
+                """, (work_name, json.dumps(feature_config), json.dumps(scenarios_data), json.dumps(env_variables),
+                      project_id, user_id))
 
                 if cursor.rowcount == 0:
                     return jsonify({"success": False, "error": "Project not found"}), 404
@@ -1384,7 +1388,8 @@ def save_karate_work():
                 cursor.execute("""
                     INSERT INTO karate_saved_work (user_id, work_name, feature_config, scenarios_data, env_variables)
                     VALUES (%s, %s, %s, %s, %s)
-                """, (user_id, work_name, json.dumps(feature_config), json.dumps(scenarios_data), json.dumps(env_variables)))
+                """, (user_id, work_name, json.dumps(feature_config), json.dumps(scenarios_data),
+                      json.dumps(env_variables)))
                 project_id = cursor.lastrowid
                 log(f"User {user_id} saved new Karate project {project_id}")
                 message = "Project saved successfully"
@@ -1441,9 +1446,14 @@ def load_karate_work():
                     "data": {
                         "project_id": result.get("id"),
                         "work_name": result["work_name"],
-                        "feature_config": json.loads(result["feature_config"]) if isinstance(result["feature_config"], str) else result["feature_config"],
-                        "scenarios_data": json.loads(result["scenarios_data"]) if isinstance(result["scenarios_data"], str) else result["scenarios_data"],
-                        "env_variables": json.loads(result["env_variables"]) if result["env_variables"] and isinstance(result["env_variables"], str) else (result["env_variables"] or []),
+                        "feature_config": json.loads(result["feature_config"]) if isinstance(result["feature_config"],
+                                                                                             str) else result[
+                            "feature_config"],
+                        "scenarios_data": json.loads(result["scenarios_data"]) if isinstance(result["scenarios_data"],
+                                                                                             str) else result[
+                            "scenarios_data"],
+                        "env_variables": json.loads(result["env_variables"]) if result["env_variables"] and isinstance(
+                            result["env_variables"], str) else (result["env_variables"] or []),
                         "saved_at": result["updated_at"].isoformat() if result["updated_at"] else None
                     }
                 })
@@ -1651,27 +1661,27 @@ def create_sequence_endpoint():
     sequence_config = data.get("sequence_config")
     for i, step in enumerate(sequence_config):
         if not isinstance(step, dict):
-            return jsonify({"success": False, "error": f"Step {i+1} must be an object"}), 400
+            return jsonify({"success": False, "error": f"Step {i + 1} must be an object"}), 400
 
         # Validate HTTP code
         if "http_code" not in step:
-            return jsonify({"success": False, "error": f"Step {i+1} missing http_code"}), 400
+            return jsonify({"success": False, "error": f"Step {i + 1} missing http_code"}), 400
         try:
             code_int = int(step["http_code"])
             if code_int < 100 or code_int > 599:
-                return jsonify({"success": False, "error": f"Step {i+1}: HTTP code must be between 100 and 599"}), 400
+                return jsonify({"success": False, "error": f"Step {i + 1}: HTTP code must be between 100 and 599"}), 400
         except (ValueError, TypeError):
-            return jsonify({"success": False, "error": f"Step {i+1}: Invalid HTTP code"}), 400
+            return jsonify({"success": False, "error": f"Step {i + 1}: Invalid HTTP code"}), 400
 
         # Validate delay_ms
         if "delay_ms" not in step:
-            return jsonify({"success": False, "error": f"Step {i+1} missing delay_ms"}), 400
+            return jsonify({"success": False, "error": f"Step {i + 1} missing delay_ms"}), 400
         try:
             delay_int = int(step["delay_ms"])
             if delay_int < 0 or delay_int > 60000:
-                return jsonify({"success": False, "error": f"Step {i+1}: Delay must be between 0 and 60000 ms"}), 400
+                return jsonify({"success": False, "error": f"Step {i + 1}: Delay must be between 0 and 60000 ms"}), 400
         except (ValueError, TypeError):
-            return jsonify({"success": False, "error": f"Step {i+1}: Invalid delay value"}), 400
+            return jsonify({"success": False, "error": f"Step {i + 1}: Invalid delay value"}), 400
 
         # Validate payload if provided
         if "payload" in step and step["payload"]:
@@ -1679,7 +1689,7 @@ def create_sequence_endpoint():
                 try:
                     json.loads(step["payload"])
                 except json.JSONDecodeError:
-                    return jsonify({"success": False, "error": f"Step {i+1}: Invalid JSON payload"}), 400
+                    return jsonify({"success": False, "error": f"Step {i + 1}: Invalid JSON payload"}), 400
 
     conn = get_db_connection()
     try:
@@ -1719,27 +1729,29 @@ def update_sequence_endpoint(endpoint_id):
         sequence_config = data.get("sequence_config")
         for i, step in enumerate(sequence_config):
             if not isinstance(step, dict):
-                return jsonify({"success": False, "error": f"Step {i+1} must be an object"}), 400
+                return jsonify({"success": False, "error": f"Step {i + 1} must be an object"}), 400
 
             # Validate HTTP code
             if "http_code" not in step:
-                return jsonify({"success": False, "error": f"Step {i+1} missing http_code"}), 400
+                return jsonify({"success": False, "error": f"Step {i + 1} missing http_code"}), 400
             try:
                 code_int = int(step["http_code"])
                 if code_int < 100 or code_int > 599:
-                    return jsonify({"success": False, "error": f"Step {i+1}: HTTP code must be between 100 and 599"}), 400
+                    return jsonify(
+                        {"success": False, "error": f"Step {i + 1}: HTTP code must be between 100 and 599"}), 400
             except (ValueError, TypeError):
-                return jsonify({"success": False, "error": f"Step {i+1}: Invalid HTTP code"}), 400
+                return jsonify({"success": False, "error": f"Step {i + 1}: Invalid HTTP code"}), 400
 
             # Validate delay_ms
             if "delay_ms" not in step:
-                return jsonify({"success": False, "error": f"Step {i+1} missing delay_ms"}), 400
+                return jsonify({"success": False, "error": f"Step {i + 1} missing delay_ms"}), 400
             try:
                 delay_int = int(step["delay_ms"])
                 if delay_int < 0 or delay_int > 60000:
-                    return jsonify({"success": False, "error": f"Step {i+1}: Delay must be between 0 and 60000 ms"}), 400
+                    return jsonify(
+                        {"success": False, "error": f"Step {i + 1}: Delay must be between 0 and 60000 ms"}), 400
             except (ValueError, TypeError):
-                return jsonify({"success": False, "error": f"Step {i+1}: Invalid delay value"}), 400
+                return jsonify({"success": False, "error": f"Step {i + 1}: Invalid delay value"}), 400
 
             # Validate payload if provided
             if "payload" in step and step["payload"]:
@@ -1747,7 +1759,7 @@ def update_sequence_endpoint(endpoint_id):
                     try:
                         json.loads(step["payload"])
                     except json.JSONDecodeError:
-                        return jsonify({"success": False, "error": f"Step {i+1}: Invalid JSON payload"}), 400
+                        return jsonify({"success": False, "error": f"Step {i + 1}: Invalid JSON payload"}), 400
 
     conn = get_db_connection()
     try:
@@ -1862,7 +1874,8 @@ def reset_sequence_endpoint(endpoint_id):
         conn.close()
 
 
-@app.route("/sequence-endpoint/<int:user_id>/<endpoint_name>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+@app.route("/sequence-endpoint/<int:user_id>/<endpoint_name>",
+           methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
 def sequence_endpoint_handler(user_id, endpoint_name):
     """Handle sequence endpoint requests - cycles through configured steps with delays and custom responses"""
     import time
@@ -1897,7 +1910,9 @@ def sequence_endpoint_handler(user_id, endpoint_name):
                 }), 404
 
             # Parse sequence configuration
-            sequence_config = json.loads(endpoint["sequence_config"]) if isinstance(endpoint["sequence_config"], str) else endpoint["sequence_config"]
+            sequence_config = json.loads(endpoint["sequence_config"]) if isinstance(endpoint["sequence_config"],
+                                                                                    str) else endpoint[
+                "sequence_config"]
             current_index = endpoint["current_index"]
 
             # Get current step
@@ -2770,7 +2785,8 @@ def iframe_proxy():
         ip_str = socket.gethostbyname(hostname)
         ip = ipaddress.ip_address(ip_str)
         if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast:
-            return Response("<p>Access to private or local addresses is not permitted.</p>", status=403, content_type="text/html")
+            return Response("<p>Access to private or local addresses is not permitted.</p>", status=403,
+                            content_type="text/html")
     except socket.gaierror:
         return Response("<p>Could not resolve hostname.</p>", status=502, content_type="text/html")
 
@@ -3199,7 +3215,8 @@ def format_code_standard(code, language):
             pass  # Fall back to regular formatting if JSON parsing fails
 
     # First, split code by common delimiters to ensure proper line breaks
-    if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less", "php"]:
+    if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css",
+                    "scss", "less", "php"]:
         # Add line breaks after opening braces and before closing braces
         code = re.sub(r'\{', '{\n', code)
         code = re.sub(r'\}', '\n}\n', code)
@@ -3219,12 +3236,14 @@ def format_code_standard(code, language):
             continue
 
         # Decrease indent for closing braces/brackets
-        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less", "php", "json"]:
+        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript",
+                        "css", "scss", "less", "php", "json"]:
             if stripped.startswith('}') or stripped.startswith(']'):
                 indent_level = max(0, indent_level - 1)
         elif language == "python":
             # Python indentation based on dedent keywords
-            if stripped.startswith('elif ') or stripped.startswith('else:') or stripped.startswith('except') or stripped.startswith('finally:'):
+            if stripped.startswith('elif ') or stripped.startswith('else:') or stripped.startswith(
+                    'except') or stripped.startswith('finally:'):
                 indent_level = max(0, indent_level - 1)
         elif language in ["html", "xml"]:
             if stripped.startswith('</'):
@@ -3234,7 +3253,8 @@ def format_code_standard(code, language):
         formatted_lines.append(indent_char * indent_level + stripped)
 
         # Increase indent for opening braces/brackets
-        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css", "scss", "less", "php", "json"]:
+        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript",
+                        "css", "scss", "less", "php", "json"]:
             if stripped.endswith('{') or stripped.endswith('['):
                 indent_level += 1
             # Handle closing and opening on same line like "}, {"
@@ -3250,7 +3270,9 @@ def format_code_standard(code, language):
                 indent_level += 1
         elif language == "sql":
             # SQL formatting - major keywords on new lines
-            if any(stripped.upper().startswith(keyword) for keyword in ['FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'GROUP BY', 'ORDER BY', 'HAVING']):
+            if any(stripped.upper().startswith(keyword) for keyword in
+                   ['FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'GROUP BY', 'ORDER BY',
+                    'HAVING']):
                 indent_level = 1
 
     formatted_code = '\n'.join(formatted_lines)
