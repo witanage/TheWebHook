@@ -8,7 +8,7 @@ const { PDFDocument, rgb, StandardFonts, degrees } = PDFLib;
 let currentTool = null;
 let uploadedFiles = [];
 let processedResult = null;
-let processedResults = []; // For multiple output files (e.g., split, pdf-to-jpg)
+let processedResults = []; // For multiple output files (e.g., split, pdf-to-image)
 let selectedPages = new Set();
 let rotationAngle = 90;
 let compressionLevel = 'recommended';
@@ -70,13 +70,13 @@ const toolConfig = {
         minFiles: 1,
         btnText: 'Convert to PDF'
     },
-    'pdf-to-jpg': {
-        title: 'PDF to JPG',
-        description: 'Convert PDF pages to JPG images',
+    'pdf-to-image': {
+        title: 'PDF to Image',
+        description: 'Convert PDF pages to image files',
         accept: '.pdf',
         multiple: false,
         minFiles: 1,
-        btnText: 'Convert to JPG'
+        btnText: 'Convert to Image'
     },
     'page-numbers': {
         title: 'Add Page Numbers',
@@ -599,14 +599,23 @@ function showToolOptions() {
             `;
             break;
 
-        case 'pdf-to-jpg':
+        case 'pdf-to-image':
             optionsHtml = `
                 <h3>Conversion Options</h3>
                 <div class="option-row">
                     <div class="option-group">
-                        <label for="jpgQuality">Image Quality</label>
-                        <select id="jpgQuality" class="option-select">
-                            <option value="low">Low (faster)</option>
+                        <label for="imageFormat">Image Format</label>
+                        <select id="imageFormat" class="option-select" onchange="onImageFormatChange()">
+                            <option value="jpeg" selected>JPEG</option>
+                            <option value="png">PNG</option>
+                            <option value="webp">WebP</option>
+                            <option value="bmp">BMP</option>
+                        </select>
+                    </div>
+                    <div class="option-group" id="imageQualityGroup">
+                        <label for="imageQuality">Image Quality</label>
+                        <select id="imageQuality" class="option-select">
+                            <option value="low">Low (faster, smaller)</option>
                             <option value="medium" selected>Medium</option>
                             <option value="high">High (larger files)</option>
                         </select>
@@ -650,6 +659,19 @@ function setCompression(level, btn) {
     compressionLevel = level;
     document.querySelectorAll('.compression-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+}
+
+function onImageFormatChange() {
+    const format = document.getElementById('imageFormat').value;
+    const qualityGroup = document.getElementById('imageQualityGroup');
+
+    // Quality settings only apply to JPEG, WebP (lossy formats)
+    // PNG and BMP are lossless, so hide quality for them
+    if (format === 'png' || format === 'bmp') {
+        qualityGroup.style.display = 'none';
+    } else {
+        qualityGroup.style.display = 'block';
+    }
 }
 
 // ==================== Page Thumbnails ====================
@@ -782,8 +804,8 @@ async function processFiles() {
             case 'jpg-to-pdf':
                 await processJpgToPdf();
                 break;
-            case 'pdf-to-jpg':
-                await processPdfToJpg();
+            case 'pdf-to-image':
+                await processPdfToImage();
                 break;
             case 'page-numbers':
                 await processPageNumbers();
@@ -1138,23 +1160,45 @@ async function processJpgToPdf() {
         `Converted ${uploadedFiles.length} images to PDF (${formatFileSize(pdfBytes.byteLength)})`;
 }
 
-// ==================== PDF to JPG ====================
+// ==================== PDF to Image ====================
 
-async function processPdfToJpg() {
+async function processPdfToImage() {
     updateProgress(10, 'Loading PDF...');
     const arrayBuffer = await uploadedFiles[0].arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
     const totalPages = pdf.numPages;
 
-    const quality = document.getElementById('jpgQuality').value;
+    const format = document.getElementById('imageFormat').value;
+    const quality = document.getElementById('imageQuality')?.value || 'medium';
+
     const scaleMap = { low: 1, medium: 1.5, high: 2 };
     const scale = scaleMap[quality];
-    const jpegQuality = quality === 'high' ? 0.95 : quality === 'medium' ? 0.85 : 0.7;
+
+    // Quality settings for lossy formats
+    const imageQuality = quality === 'high' ? 0.95 : quality === 'medium' ? 0.85 : 0.7;
+
+    // MIME type mapping
+    const mimeTypes = {
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'webp': 'image/webp',
+        'bmp': 'image/bmp'
+    };
+
+    const fileExtensions = {
+        'jpeg': 'jpg',
+        'png': 'png',
+        'webp': 'webp',
+        'bmp': 'bmp'
+    };
+
+    const mimeType = mimeTypes[format];
+    const extension = fileExtensions[format];
 
     processedResults = [];
 
     for (let i = 1; i <= totalPages; i++) {
-        updateProgress(10 + (80 * i / totalPages), `Converting page ${i} of ${totalPages}...`);
+        updateProgress(10 + (80 * i / totalPages), `Converting page ${i} of ${totalPages} to ${format.toUpperCase()}...`);
 
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale });
@@ -1166,19 +1210,28 @@ async function processPdfToJpg() {
         const ctx = canvas.getContext('2d');
         await page.render({ canvasContext: ctx, viewport }).promise;
 
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', jpegQuality));
+        // Convert canvas to blob with appropriate format and quality
+        let blob;
+        if (format === 'jpeg' || format === 'webp') {
+            // Lossy formats support quality parameter
+            blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, imageQuality));
+        } else {
+            // Lossless formats (PNG, BMP) don't use quality parameter
+            blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType));
+        }
+
         const blobArrayBuffer = await blob.arrayBuffer();
 
         processedResults.push({
             data: new Uint8Array(blobArrayBuffer),
-            filename: `page_${i}.jpg`,
-            type: 'image/jpeg'
+            filename: `page_${i}.${extension}`,
+            type: mimeType
         });
     }
 
     updateProgress(95, 'Done!');
     document.getElementById('resultInfo').textContent =
-        `Converted ${totalPages} pages to JPG images`;
+        `Converted ${totalPages} pages to ${format.toUpperCase()} images`;
 }
 
 // ==================== Page Numbers ====================
