@@ -1,16 +1,44 @@
-// Copy functionality
-document.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        const url = window.location.origin + btn.dataset.url;
-        navigator.clipboard.writeText(url).then(() => {
+// Fallback copy function for browsers that don't support clipboard API
+function fallbackCopyTextToClipboard(text, btn) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+
+    // Avoid scrolling to bottom
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            console.log('✅ Fallback: Successfully copied to clipboard:', text);
             const originalText = btn.textContent;
             btn.textContent = '✅';
             setTimeout(() => {
                 btn.textContent = originalText;
             }, 1200);
-        });
-    });
-});
+        } else {
+            console.error('❌ Fallback copy failed');
+            btn.textContent = '❌';
+            setTimeout(() => {
+                btn.textContent = '📋';
+            }, 1200);
+        }
+    } catch (err) {
+        console.error('❌ Fallback copy error:', err);
+        btn.textContent = '❌';
+        setTimeout(() => {
+            btn.textContent = '📋';
+        }, 1200);
+    }
+
+    document.body.removeChild(textArea);
+}
 
 // Live test functionality
 async function testHttpCode() {
@@ -44,6 +72,48 @@ async function testHttpCode() {
 
 // Theme-aware Prism switching
 document.addEventListener('DOMContentLoaded', () => {
+    // Copy functionality - using event delegation to handle dynamically created buttons
+    document.addEventListener('click', (e) => {
+        // Check if clicked element is a copy button or inside one
+        const copyBtn = e.target.closest('.copy-btn');
+        if (copyBtn) {
+            console.log('=== COPY BUTTON CLICKED ===');
+            console.log('Button element:', copyBtn);
+            console.log('data-url:', copyBtn.dataset.url);
+            console.log('Has data-url:', copyBtn.hasAttribute('data-url'));
+
+            if (copyBtn.dataset.url) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const url = window.location.origin + copyBtn.dataset.url;
+                console.log('Attempting to copy:', url);
+
+                // Try modern clipboard API first
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(url).then(() => {
+                        console.log('✅ Successfully copied to clipboard:', url);
+                        const originalText = copyBtn.textContent;
+                        copyBtn.textContent = '✅';
+                        setTimeout(() => {
+                            copyBtn.textContent = originalText;
+                        }, 1200);
+                    }).catch(err => {
+                        console.error('❌ Clipboard API failed:', err);
+                        // Fallback to legacy method
+                        fallbackCopyTextToClipboard(url, copyBtn);
+                    });
+                } else {
+                    // Browser doesn't support clipboard API, use fallback
+                    console.log('Using fallback copy method');
+                    fallbackCopyTextToClipboard(url, copyBtn);
+                }
+            } else {
+                console.warn('⚠️ Copy button has no data-url attribute');
+            }
+        }
+    });
+
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
@@ -85,6 +155,12 @@ let sequenceStepCounter = 0;
 let previousEndpointStates = new Map();
 
 async function initSequenceEndpoints() {
+    // Verify userId is available
+    if (!window.userId) {
+        console.error('userId is not defined');
+        return;
+    }
+
     await loadSequenceEndpoints();
 
     // Add first step by default
@@ -305,7 +381,6 @@ function displaySequenceEndpoints(endpoints) {
         const statusIcon = endpoint.is_active ? '●' : '○';
         const statusClass = endpoint.is_active ? 'status-active' : 'status-inactive';
 
-        const url = `${window.location.origin}/sequence-endpoint/${userId}/${endpoint.endpoint_name}`;
         const description = endpoint.description ? `<div class="endpoint-desc">${endpoint.description}</div>` : '';
 
         return `
@@ -332,7 +407,7 @@ function displaySequenceEndpoints(endpoints) {
                 </td>
                 <td class="col-actions">
                     <div class="action-btns">
-                        <button class="action-btn copy-btn" onclick="copySequenceEndpointUrl('${url}')" title="Copy URL">📋</button>
+                        <button class="action-btn copy-btn" data-url="/sequence-endpoint/${window.userId}/${endpoint.endpoint_name}" title="Copy URL">📋</button>
                         <button class="action-btn" onclick="resetSequenceEndpoint(${endpoint.id})" title="Reset">🔄</button>
                         <button class="action-btn" onclick="toggleSequenceEndpoint(${endpoint.id}, ${endpoint.is_active ? 0 : 1})" title="${endpoint.is_active ? 'Deactivate' : 'Activate'}">
                             ${endpoint.is_active ? '⏸' : '▶'}
@@ -414,14 +489,3 @@ async function deleteSequenceEndpoint(endpointId) {
     });
 }
 
-// Copy sequence endpoint URL to clipboard
-function copySequenceEndpointUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        const btn = event.target;
-        const originalText = btn.textContent;
-        btn.textContent = '✅ Copied!';
-        setTimeout(() => {
-            btn.textContent = originalText;
-        }, 1200);
-    });
-}

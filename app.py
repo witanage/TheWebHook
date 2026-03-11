@@ -1536,10 +1536,13 @@ def delete_karate_project(project_id):
 
 
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-def http_status_test(code):
+@app.route("/httpcode/<int:code>/<path:extra_path>",
+           methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def http_status_test(code, extra_path=None):
     """
     Simple HTTP status code tester endpoint
     Returns the specified HTTP status code
+    Accepts optional extra path segments after the code
     """
     # Validate status code range
     if code < 100 or code > 599:
@@ -1577,6 +1580,10 @@ def http_status_test(code):
         "path": request.path,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+
+    # Include extra path in response if present
+    if extra_path:
+        response_body["extra_path"] = extra_path
 
     # Include request data in response if present
     if request_data:
@@ -1876,8 +1883,11 @@ def reset_sequence_endpoint(endpoint_id):
 
 @app.route("/sequence-endpoint/<int:user_id>/<endpoint_name>",
            methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-def sequence_endpoint_handler(user_id, endpoint_name):
-    """Handle sequence endpoint requests - cycles through configured steps with delays and custom responses"""
+@app.route("/sequence-endpoint/<int:user_id>/<endpoint_name>/<path:extra_path>",
+           methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+def sequence_endpoint_handler(user_id, endpoint_name, extra_path=None):
+    """Handle sequence endpoint requests - cycles through configured steps with delays and custom responses
+    Accepts optional extra path segments after the endpoint name"""
     import time
 
     conn = get_db_connection()
@@ -1964,6 +1974,10 @@ def sequence_endpoint_handler(user_id, endpoint_name):
                     "path": request.path,
                     "timestamp": datetime.now().isoformat()
                 }
+
+                # Include extra path in response if present
+                if extra_path:
+                    response_data["extra_path"] = extra_path
 
             # Include request data if present (only for default response, not custom payload)
             if not (payload and http_code == 200) and request.method in ["POST", "PUT", "PATCH"]:
