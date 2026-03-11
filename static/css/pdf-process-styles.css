@@ -97,7 +97,7 @@
 .extract-icon { background: linear-gradient(135deg, #FF9800, #F57C00); }
 .compress-icon { background: linear-gradient(135deg, #00BCD4, #0097A7); }
 .jpg-to-pdf-icon { background: linear-gradient(135deg, #E91E63, #C2185B); }
-.pdf-to-jpg-icon { background: linear-gradient(135deg, #FF5722, #E64A19); }
+.pdf-to-image-icon { background: linear-gradient(135deg, #FF5722, #E64A19); }
 .pagenumbers-icon { background: linear-gradient(135deg, #607D8B, #455A64); }
 .watermark-icon { background: linear-gradient(135deg, #3F51B5, #303F9F); }
 .protect-icon { background: linear-gradient(135deg, #795548, #5D4037); }
