@@ -3128,6 +3128,17 @@ def pdf_process():
     return render_template("pdf-process.html", username=username, is_admin=is_admin)
 
 
+@app.route("/image-process")
+@login_required
+def image_process():
+    """Image Process page - all-in-one image tools"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    is_admin = session.get("is_admin", 0)
+    log(f"User {user_id} accessed Image Process")
+    return render_template("image-process.html", username=username, is_admin=is_admin)
+
+
 @app.route("/code-formatter")
 @login_required
 def code_formatter():
