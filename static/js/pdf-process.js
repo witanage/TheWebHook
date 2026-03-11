@@ -63,9 +63,9 @@ const toolConfig = {
         btnText: 'Compress PDF'
     },
     'jpg-to-pdf': {
-        title: 'JPG to PDF',
-        description: 'Convert images to a PDF document',
-        accept: '.jpg,.jpeg,.png',
+        title: 'Image to PDF',
+        description: 'Convert images (JPG, PNG, GIF, SVG) to a PDF document',
+        accept: '.jpg,.jpeg,.png,.gif,.svg',
         multiple: true,
         minFiles: 1,
         btnText: 'Convert to PDF'
@@ -145,7 +145,13 @@ function setupDragAndDrop() {
     });
 
     dropzone.addEventListener('drop', handleDrop, false);
-    dropzone.addEventListener('click', () => document.getElementById('fileInput').click());
+    dropzone.addEventListener('click', (e) => {
+        // Don't trigger if clicking on the upload button or label
+        if (e.target.closest('.upload-btn') || e.target.id === 'fileInput') {
+            return;
+        }
+        document.getElementById('fileInput').click();
+    });
 }
 
 function preventDefaults(e) {
@@ -233,7 +239,7 @@ function selectTool(tool) {
     document.getElementById('addMoreInput').multiple = config.multiple;
 
     // Update hint
-    const hint = currentTool === 'jpg-to-pdf' ? 'JPG, JPEG, PNG images accepted' : 'PDF files accepted';
+    const hint = currentTool === 'jpg-to-pdf' ? 'JPG, PNG, GIF, SVG images accepted' : 'PDF files accepted';
     document.getElementById('uploadHint').textContent = hint;
 
     // Reset sections
@@ -608,6 +614,8 @@ function showToolOptions() {
                         <select id="imageFormat" class="option-select" onchange="onImageFormatChange()">
                             <option value="jpeg" selected>JPEG</option>
                             <option value="png">PNG</option>
+                            <option value="gif">GIF</option>
+                            <option value="svg">SVG</option>
                             <option value="webp">WebP</option>
                             <option value="bmp">BMP</option>
                         </select>
@@ -666,8 +674,8 @@ function onImageFormatChange() {
     const qualityGroup = document.getElementById('imageQualityGroup');
 
     // Quality settings only apply to JPEG, WebP (lossy formats)
-    // PNG and BMP are lossless, so hide quality for them
-    if (format === 'png' || format === 'bmp') {
+    // PNG, BMP, GIF, and SVG don't use quality settings
+    if (format === 'png' || format === 'bmp' || format === 'gif' || format === 'svg') {
         qualityGroup.style.display = 'none';
     } else {
         qualityGroup.style.display = 'block';
@@ -777,6 +785,7 @@ async function processFiles() {
     // Show progress
     const processBtn = document.getElementById('processBtn');
     processBtn.disabled = true;
+    document.getElementById('processSection').style.display = 'none';
     document.getElementById('progressSection').style.display = 'block';
     document.getElementById('resultSection').style.display = 'none';
     updateProgress(10, 'Processing...');
@@ -828,7 +837,7 @@ async function processFiles() {
 
         setTimeout(() => {
             document.getElementById('progressSection').style.display = 'none';
-            document.getElementById('resultSection').style.display = 'block';
+            showResultModal();
         }, 500);
 
     } catch (error) {
@@ -843,6 +852,20 @@ async function processFiles() {
 function updateProgress(percent, text) {
     document.getElementById('progressBar').style.width = percent + '%';
     document.getElementById('progressText').textContent = text;
+}
+
+function showResultModal() {
+    // Copy result info to modal
+    const resultInfo = document.getElementById('resultInfo').textContent;
+    document.getElementById('modalResultInfo').textContent = resultInfo;
+
+    // Show modal
+    document.getElementById('pdfResultModal').classList.add('active');
+}
+
+function closeResultModal() {
+    document.getElementById('pdfResultModal').classList.remove('active');
+    startOver();
 }
 
 // ==================== Merge ====================
@@ -1102,6 +1125,14 @@ async function processJpgToPdf() {
         let image;
         if (file.type === 'image/png') {
             image = await pdfDoc.embedPng(arrayBuffer);
+        } else if (file.type === 'image/svg+xml' || file.name.toLowerCase().endsWith('.svg')) {
+            // Convert SVG to PNG first using canvas
+            const svgImage = await svgToImage(arrayBuffer);
+            image = await pdfDoc.embedPng(svgImage);
+        } else if (file.type === 'image/gif') {
+            // Convert GIF to PNG first using canvas
+            const gifImage = await imageToCanvas(arrayBuffer, 'image/gif');
+            image = await pdfDoc.embedPng(gifImage);
         } else {
             image = await pdfDoc.embedJpg(arrayBuffer);
         }
@@ -1181,6 +1212,8 @@ async function processPdfToImage() {
     const mimeTypes = {
         'jpeg': 'image/jpeg',
         'png': 'image/png',
+        'gif': 'image/gif',
+        'svg': 'image/svg+xml',
         'webp': 'image/webp',
         'bmp': 'image/bmp'
     };
@@ -1188,6 +1221,8 @@ async function processPdfToImage() {
     const fileExtensions = {
         'jpeg': 'jpg',
         'png': 'png',
+        'gif': 'gif',
+        'svg': 'svg',
         'webp': 'webp',
         'bmp': 'bmp'
     };
@@ -1203,21 +1238,65 @@ async function processPdfToImage() {
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale });
 
-        const canvas = document.createElement('canvas');
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
+        let blob, svgText;
 
-        const ctx = canvas.getContext('2d');
-        await page.render({ canvasContext: ctx, viewport }).promise;
+        if (format === 'svg') {
+            // Render as SVG
+            const svgGfx = await page.getOperatorList();
+            const svgDiv = document.createElement('div');
+            const svgViewport = page.getViewport({ scale: 1.0 });
 
-        // Convert canvas to blob with appropriate format and quality
-        let blob;
-        if (format === 'jpeg' || format === 'webp') {
-            // Lossy formats support quality parameter
-            blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, imageQuality));
+            // Create SVG element
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', svgViewport.width);
+            svg.setAttribute('height', svgViewport.height);
+            svg.setAttribute('viewBox', `0 0 ${svgViewport.width} ${svgViewport.height}`);
+            svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+
+            svgDiv.appendChild(svg);
+
+            // Render page to SVG
+            await page.render({
+                canvasContext: svg,
+                viewport: svgViewport,
+                intent: 'display'
+            }).promise.catch(() => {
+                // Fallback: render to canvas then convert to SVG
+                const canvas = document.createElement('canvas');
+                canvas.width = svgViewport.width;
+                canvas.height = svgViewport.height;
+                const ctx = canvas.getContext('2d');
+                return page.render({ canvasContext: ctx, viewport: svgViewport }).promise.then(() => {
+                    const img = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+                    img.setAttribute('width', svgViewport.width);
+                    img.setAttribute('height', svgViewport.height);
+                    img.setAttribute('href', canvas.toDataURL('image/png'));
+                    svg.appendChild(img);
+                });
+            });
+
+            svgText = svgDiv.innerHTML;
+            blob = new Blob([svgText], { type: 'image/svg+xml' });
         } else {
-            // Lossless formats (PNG, BMP) don't use quality parameter
-            blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType));
+            // Render to canvas for raster formats
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            const ctx = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport }).promise;
+
+            // Convert canvas to blob with appropriate format and quality
+            if (format === 'gif') {
+                // For GIF, convert via PNG first (most reliable)
+                blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            } else if (format === 'jpeg' || format === 'webp') {
+                // Lossy formats support quality parameter
+                blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, imageQuality));
+            } else {
+                // Lossless formats (PNG, BMP) don't use quality parameter
+                blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType));
+            }
         }
 
         const blobArrayBuffer = await blob.arrayBuffer();
@@ -1682,6 +1761,65 @@ function downloadMultipleFiles(results) {
 
 // ==================== Utilities ====================
 
+// Helper function to convert SVG to PNG
+async function svgToImage(svgArrayBuffer) {
+    const svgText = new TextDecoder().decode(svgArrayBuffer);
+    const blob = new Blob([svgText], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width || 800;  // Default width if not specified
+            canvas.height = img.height || 600; // Default height if not specified
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            canvas.toBlob(async (blob) => {
+                const arrayBuffer = await blob.arrayBuffer();
+                URL.revokeObjectURL(url);
+                resolve(arrayBuffer);
+            }, 'image/png');
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to load SVG image'));
+        };
+        img.src = url;
+    });
+}
+
+// Helper function to convert GIF/other images to PNG
+async function imageToCanvas(imageArrayBuffer, mimeType) {
+    const blob = new Blob([imageArrayBuffer], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+
+            canvas.toBlob(async (blob) => {
+                const arrayBuffer = await blob.arrayBuffer();
+                URL.revokeObjectURL(url);
+                resolve(arrayBuffer);
+            }, 'image/png');
+        };
+        img.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error('Failed to load image'));
+        };
+        img.src = url;
+    });
+}
+
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -1689,3 +1827,17 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
+
+// ==================== Modal Handler ====================
+
+// Close modal when clicking outside of it
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('pdfResultModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeResultModal();
+            }
+        });
+    }
+});

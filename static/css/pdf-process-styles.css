@@ -16,16 +16,21 @@
 /* ==================== Tool Grid ==================== */
 
 .tool-categories {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+}
+
+.tool-category {
     display: flex;
     flex-direction: column;
-    gap: 30px;
 }
 
 .category-title {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     padding-left: 4px;
     border-left: 3px solid var(--accent-color, #007acc);
     padding-left: 12px;
@@ -33,22 +38,24 @@
 
 .tool-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    flex: 1;
 }
 
 .tool-card {
     background: var(--bg-secondary, #2d2d2d);
     border: 1px solid var(--border-color, #555);
     border-radius: var(--radius, 8px);
-    padding: 24px 20px;
+    padding: 16px 12px;
     text-align: center;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
+    min-height: 140px;
 }
 
 .tool-card:hover {
@@ -62,32 +69,33 @@
 }
 
 .tool-card h4 {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-primary);
     margin: 0;
 }
 
 .tool-card p {
-    font-size: 12px;
+    font-size: 11px;
     color: var(--text-secondary);
     margin: 0;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 /* Tool Icons */
 .tool-icon {
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .tool-icon svg {
-    color: white;
+    width: 28px;
+    height: 28px;
 }
 
 .merge-icon { background: linear-gradient(135deg, #4CAF50, #45a049); }
@@ -104,6 +112,25 @@
 .unlock-icon { background: linear-gradient(135deg, #8BC34A, #689F38); }
 .resize-icon { background: linear-gradient(135deg, #FF6F00, #E65100); }
 
+/* Responsive grid for cards */
+@media (max-width: 1200px) {
+    .tool-cards {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+@media (max-width: 900px) {
+    .tool-cards {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+    .tool-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* ==================== Tool Workspace ==================== */
 
 .tool-workspace {
@@ -117,7 +144,7 @@
 
 .workspace-header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 24px;
 }
 
 .btn-back {
@@ -141,28 +168,73 @@
 }
 
 .workspace-title {
-    font-size: 28px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text-primary);
     margin: 8px 0;
 }
 
 .workspace-description {
-    font-size: 15px;
+    font-size: 14px;
     color: var(--text-secondary);
     margin: 0;
+}
+
+/* Workspace Content Grid */
+.workspace-content {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+@media (min-width: 900px) {
+    .workspace-content {
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+    }
+
+    /* Left Column */
+    .workspace-content > .upload-area {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .workspace-content > .tool-options {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: start;
+    }
+
+    /* Right Column */
+    .workspace-content > .file-list-container {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    .workspace-content > .process-section {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: start;
+    }
+
+    .workspace-content > .progress-section {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: start;
+    }
 }
 
 /* ==================== Upload Area ==================== */
 
 .upload-area {
-    margin-bottom: 24px;
+    margin-bottom: 0;
 }
 
 .upload-dropzone {
     border: 2px dashed var(--border-color, #555);
     border-radius: 12px;
-    padding: 60px 40px;
+    padding: 40px 30px;
     text-align: center;
     background: var(--bg-secondary, #2d2d2d);
     transition: all 0.3s ease;
@@ -176,15 +248,15 @@
 }
 
 .upload-dropzone h3 {
-    font-size: 20px;
+    font-size: 18px;
     color: var(--text-primary);
-    margin: 16px 0 8px;
+    margin: 12px 0 6px;
 }
 
 .upload-dropzone p {
     color: var(--text-secondary);
     margin: 4px 0;
-    font-size: 14px;
+    font-size: 13px;
 }
 
 .upload-icon {
@@ -227,8 +299,9 @@
     background: var(--bg-secondary, #2d2d2d);
     border: 1px solid var(--border-color, #555);
     border-radius: var(--radius, 8px);
-    padding: 20px;
-    margin-bottom: 24px;
+    padding: 16px;
+    margin-bottom: 0;
+    height: fit-content;
 }
 
 .file-list-header {
@@ -360,8 +433,9 @@
     background: var(--bg-secondary, #2d2d2d);
     border: 1px solid var(--border-color, #555);
     border-radius: var(--radius, 8px);
-    padding: 24px;
-    margin-bottom: 24px;
+    padding: 20px;
+    margin-bottom: 0;
+    height: fit-content;
 }
 
 .tool-options h3 {
@@ -515,7 +589,7 @@
 
 .process-section {
     text-align: center;
-    margin: 32px 0;
+    margin: 0;
 }
 
 .btn-process {
@@ -550,7 +624,7 @@
 
 .progress-section {
     text-align: center;
-    margin: 32px 0;
+    margin: 24px 0 0 0;
 }
 
 .progress-bar-container {
@@ -579,8 +653,9 @@
 /* ==================== Result Section ==================== */
 
 .result-section {
+    display: none !important; /* Hidden - using modal instead */
     text-align: center;
-    margin: 32px 0;
+    margin: 24px 0 0 0;
 }
 
 .result-card {
@@ -822,9 +897,21 @@
         padding: 12px;
     }
 
+    .tool-categories {
+        grid-template-columns: 1fr;
+    }
+
+    .workspace-content {
+        grid-template-columns: 1fr !important;
+    }
+
+    .workspace-content > * {
+        grid-column: 1 !important;
+    }
+
     .tool-cards {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-        gap: 12px;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
     }
 
     .tool-card {
@@ -886,6 +973,12 @@
     }
 }
 
+@media (min-width: 1200px) {
+    .tool-cards {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    }
+}
+
 /* ==================== Scrollbar ==================== */
 
 .file-list::-webkit-scrollbar {
@@ -899,6 +992,41 @@
 .file-list::-webkit-scrollbar-thumb {
     background: var(--border-color, #555);
     border-radius: 4px;
+}
+
+/* ==================== PDF Result Modal ==================== */
+
+.modal-result {
+    text-align: center;
+    max-width: 500px;
+}
+
+.modal-result .result-icon {
+    color: #4CAF50;
+    margin-bottom: 16px;
+}
+
+.modal-result .result-icon svg {
+    stroke: #4CAF50;
+}
+
+.modal-result h3 {
+    font-size: 22px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.modal-result .modal-message {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.modal-result .form-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .file-list::-webkit-scrollbar-thumb:hover {
