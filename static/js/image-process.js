@@ -118,6 +118,13 @@ const toolConfig = {
         accept: 'image/*',
         multiple: true,
         btnText: 'Stitch Images'
+    },
+    'resize-file': {
+        title: 'Resize File',
+        description: 'Increase or decrease image to an exact target file size',
+        accept: 'image/*',
+        multiple: false,
+        btnText: 'Resize Image'
     }
 };
 
@@ -133,31 +140,31 @@ document.addEventListener('DOMContentLoaded', function() {
 function selectTool(tool) {
     currentTool = tool;
     const config = toolConfig[tool];
-    
+
     // Update workspace UI
     document.getElementById('toolGrid').style.display = 'none';
     document.getElementById('toolWorkspace').style.display = 'block';
     document.getElementById('workspaceTitle').textContent = config.title;
     document.getElementById('workspaceDescription').textContent = config.description;
     document.getElementById('processBtnText').textContent = config.btnText;
-    
+
     // Configure file input
     const fileInput = document.getElementById('fileInput');
     fileInput.accept = config.accept;
     fileInput.multiple = config.multiple;
-    
+
     // Update upload instruction
-    const instruction = config.multiple ? 
-        'Click or drag & drop multiple images' : 
+    const instruction = config.multiple ?
+        'Click or drag & drop multiple images' :
         'Click or drag & drop a single image';
     document.getElementById('uploadInstruction').textContent = instruction;
-    
+
     // Reset state
     uploadedFiles = [];
     processedResults = [];
     updateFileList();
     hidePreview();
-    
+
     // Render tool-specific options
     renderToolOptions(tool);
 }
@@ -183,24 +190,24 @@ function setupFileInput() {
 
 function setupDragDrop() {
     const uploadBox = document.getElementById('uploadBox');
-    
+
     uploadBox.addEventListener('dragover', (e) => {
         e.preventDefault();
         uploadBox.classList.add('drag-over');
     });
-    
+
     uploadBox.addEventListener('dragleave', () => {
         uploadBox.classList.remove('drag-over');
     });
-    
+
     uploadBox.addEventListener('drop', (e) => {
         e.preventDefault();
         uploadBox.classList.remove('drag-over');
-        
-        const files = Array.from(e.dataTransfer.files).filter(file => 
+
+        const files = Array.from(e.dataTransfer.files).filter(file =>
             file.type.startsWith('image/')
         );
-        
+
         if (files.length > 0) {
             handleFiles(files);
         }
@@ -210,48 +217,59 @@ function setupDragDrop() {
 function handleFileSelect(e) {
     const files = Array.from(e.target.files);
     handleFiles(files);
+    // Reset file input to allow selecting the same file again
+    e.target.value = '';
 }
 
 function handleFiles(files) {
     const config = toolConfig[currentTool];
-    
+
     if (!config.multiple && files.length > 1) {
         showToast('This tool only accepts one image at a time', 'error');
         return;
     }
-    
+
     if (!config.multiple) {
         uploadedFiles = [];
     }
-    
+
     files.forEach(file => {
         if (!uploadedFiles.find(f => f.name === file.name && f.size === file.size)) {
             uploadedFiles.push(file);
         }
     });
-    
+
     updateFileList();
     document.getElementById('processActions').style.display = 'block';
+
+    // Update resize-file current size display if applicable
+    if (currentTool === 'resize-file' && uploadedFiles.length > 0) {
+        const currentFileSizeEl = document.getElementById('currentFileSize');
+        if (currentFileSizeEl) {
+            currentFileSizeEl.textContent = formatFileSize(uploadedFiles[0].size);
+            updateResizeDirection();
+        }
+    }
 }
 
 function updateFileList() {
     const fileList = document.getElementById('fileList');
     const fileItems = document.getElementById('fileItems');
     const fileCount = document.getElementById('fileCount');
-    
+
     if (uploadedFiles.length === 0) {
         fileList.style.display = 'none';
         return;
     }
-    
+
     fileList.style.display = 'block';
     fileCount.textContent = uploadedFiles.length;
     fileItems.innerHTML = '';
-    
+
     uploadedFiles.forEach((file, index) => {
         const item = document.createElement('div');
         item.className = 'file-item';
-        
+
         const reader = new FileReader();
         reader.onload = (e) => {
             item.innerHTML = `
@@ -269,7 +287,7 @@ function updateFileList() {
             `;
         };
         reader.readAsDataURL(file);
-        
+
         fileItems.appendChild(item);
     });
 }
@@ -277,10 +295,23 @@ function updateFileList() {
 function removeFile(index) {
     uploadedFiles.splice(index, 1);
     updateFileList();
-    
+
     if (uploadedFiles.length === 0) {
         document.getElementById('processActions').style.display = 'none';
         hidePreview();
+    }
+
+    // Update resize-file current size if applicable
+    if (currentTool === 'resize-file') {
+        const currentFileSizeEl = document.getElementById('currentFileSize');
+        if (currentFileSizeEl) {
+            if (uploadedFiles.length > 0) {
+                currentFileSizeEl.textContent = formatFileSize(uploadedFiles[0].size);
+            } else {
+                currentFileSizeEl.textContent = 'No file uploaded';
+            }
+            updateResizeDirection();
+        }
     }
 }
 
@@ -290,9 +321,9 @@ function renderToolOptions(tool) {
     const optionsContainer = document.getElementById('toolOptions');
     optionsContainer.innerHTML = '';
     optionsContainer.style.display = 'block';
-    
+
     let optionsHTML = '<h4>Options</h4>';
-    
+
     switch(tool) {
         case 'resize':
             optionsHTML += `
@@ -311,7 +342,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'crop':
             optionsHTML += `
                 <div class="option-group">
@@ -342,7 +373,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'rotate':
             optionsHTML += `
                 <div class="option-group">
@@ -360,7 +391,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'flip':
             optionsHTML += `
                 <div class="option-group">
@@ -382,12 +413,12 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'compress':
             optionsHTML += `
                 <div class="option-group">
                     <label class="option-label">Quality <span class="option-value" id="qualityValue">80%</span></label>
-                    <input type="range" id="compressQuality" class="option-range" min="1" max="100" value="80" 
+                    <input type="range" id="compressQuality" class="option-range" min="1" max="100" value="80"
                            oninput="document.getElementById('qualityValue').textContent = this.value + '%'">
                 </div>
                 <div class="option-group">
@@ -400,7 +431,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'convert-format':
             optionsHTML += `
                 <div class="option-group">
@@ -418,7 +449,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'blur':
             optionsHTML += `
                 <div class="option-group">
@@ -428,7 +459,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'brightness':
             optionsHTML += `
                 <div class="option-group">
@@ -438,7 +469,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'watermark':
             optionsHTML += `
                 <div class="option-group">
@@ -467,7 +498,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'border':
             optionsHTML += `
                 <div class="option-group">
@@ -481,7 +512,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'collage':
             optionsHTML += `
                 <div class="option-group">
@@ -500,7 +531,7 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
         case 'stitch':
             optionsHTML += `
                 <div class="option-group">
@@ -523,19 +554,46 @@ function renderToolOptions(tool) {
                 </div>
             `;
             break;
-            
+
+        case 'resize-file':
+            const currentSize = uploadedFiles.length > 0 ? formatFileSize(uploadedFiles[0].size) : 'No file uploaded';
+            optionsHTML += `
+                <h3>Target File Size</h3>
+                <div class="current-size-display">
+                    <div>
+                        <div class="size-label">Current file size</div>
+                        <div class="size-value" id="currentFileSize">${currentSize}</div>
+                    </div>
+                </div>
+                <div class="target-size-row">
+                    <div class="option-group">
+                        <label for="targetSize">Target Size</label>
+                        <input type="number" id="targetSize" class="option-input" placeholder="e.g. 500" min="1" step="1" oninput="updateResizeDirection()">
+                    </div>
+                    <div class="option-group">
+                        <label for="targetUnit">Unit</label>
+                        <select id="targetUnit" class="option-select" onchange="updateResizeDirection()">
+                            <option value="KB">KB</option>
+                            <option value="MB">MB</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="resizeDirectionInfo" class="resize-direction-info"></div>
+            `;
+            break;
+
         default:
             optionsHTML = ''; // No options for basic filters like grayscale, sepia, optimize
             optionsContainer.style.display = 'none';
     }
-    
+
     if (optionsHTML) {
         optionsContainer.innerHTML = optionsHTML;
-        
+
         // Add event listeners for dynamic options
         if (tool === 'rotate') {
             document.getElementById('rotateAngle').addEventListener('change', function() {
-                document.getElementById('customAngleGroup').style.display = 
+                document.getElementById('customAngleGroup').style.display =
                     this.value === 'custom' ? 'block' : 'none';
             });
         }
@@ -546,7 +604,7 @@ function handleCropPresetChange() {
     const preset = document.getElementById('cropPreset').value;
     const widthInput = document.getElementById('cropWidth');
     const heightInput = document.getElementById('cropHeight');
-    
+
     switch(preset) {
         case 'square':
             widthInput.value = 500;
@@ -574,10 +632,10 @@ async function processImages() {
         showToast('Please upload at least one image', 'error');
         return;
     }
-    
+
     showLoading('Processing images...');
     processedResults = [];
-    
+
     try {
         for (const file of uploadedFiles) {
             const result = await processImageByTool(file, currentTool);
@@ -585,7 +643,7 @@ async function processImages() {
                 processedResults.push(result);
             }
         }
-        
+
         if (processedResults.length > 0) {
             displayResults();
             showToast('Processing complete!', 'success');
@@ -602,7 +660,7 @@ async function processImages() {
 
 async function processImageByTool(file, tool) {
     const img = await loadImage(file);
-    
+
     switch(tool) {
         case 'resize':
             return await resizeImage(img, file.name);
@@ -632,6 +690,8 @@ async function processImageByTool(file, tool) {
             return await addWatermark(img, file.name);
         case 'border':
             return await addBorder(img, file.name);
+        case 'resize-file':
+            return await resizeFile(img, file);
         case 'collage':
             // Collage needs all images at once
             return null;
@@ -646,7 +706,7 @@ async function processImageByTool(file, tool) {
 // Special handling for multi-image tools
 async function processMultiImageTools() {
     const images = await Promise.all(uploadedFiles.map(file => loadImage(file)));
-    
+
     if (currentTool === 'collage') {
         return await createCollage(images);
     } else if (currentTool === 'stitch') {
@@ -674,14 +734,14 @@ async function resizeImage(img, fileName) {
     const width = parseInt(document.getElementById('resizeWidth').value) || null;
     const height = parseInt(document.getElementById('resizeHeight').value) || null;
     const maintainAspect = document.getElementById('maintainAspect').checked;
-    
+
     if (!width && !height) {
         throw new Error('Please specify at least width or height');
     }
-    
+
     let newWidth = width;
     let newHeight = height;
-    
+
     if (maintainAspect) {
         const aspectRatio = img.width / img.height;
         if (width && !height) {
@@ -690,13 +750,13 @@ async function resizeImage(img, fileName) {
             newWidth = Math.round(height * aspectRatio);
         }
     }
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = newWidth || width;
     canvas.height = newHeight || height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `resized_${fileName}`, preview: canvas.toDataURL() };
 }
@@ -706,13 +766,13 @@ async function cropImage(img, fileName) {
     const y = parseInt(document.getElementById('cropY').value) || 0;
     const width = parseInt(document.getElementById('cropWidth').value);
     const height = parseInt(document.getElementById('cropHeight').value);
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, x, y, width, height, 0, 0, width, height);
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `cropped_${fileName}`, preview: canvas.toDataURL() };
 }
@@ -724,10 +784,10 @@ async function rotateImage(img, fileName) {
     } else {
         angle = parseInt(angle);
     }
-    
+
     const canvas = document.createElement('canvas');
     const radians = (angle * Math.PI) / 180;
-    
+
     // Adjust canvas size for rotation
     if (angle === 90 || angle === 270) {
         canvas.width = img.height;
@@ -736,26 +796,26 @@ async function rotateImage(img, fileName) {
         canvas.width = img.width;
         canvas.height = img.height;
     }
-    
+
     const ctx = canvas.getContext('2d');
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.rotate(radians);
     ctx.drawImage(img, -img.width / 2, -img.height / 2);
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `rotated_${fileName}`, preview: canvas.toDataURL() };
 }
 
 async function flipImage(img, fileName) {
     const direction = document.querySelector('input[name="flipDirection"]:checked').value;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
-    
+
     ctx.save();
-    
+
     if (direction === 'horizontal' || direction === 'both') {
         ctx.scale(-1, 1);
         ctx.translate(-canvas.width, 0);
@@ -768,10 +828,10 @@ async function flipImage(img, fileName) {
         ctx.scale(-1, -1);
         ctx.translate(-canvas.width, -canvas.height);
     }
-    
+
     ctx.drawImage(img, 0, 0);
     ctx.restore();
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `flipped_${fileName}`, preview: canvas.toDataURL() };
 }
@@ -779,18 +839,18 @@ async function flipImage(img, fileName) {
 async function compressImage(img, fileName) {
     const quality = parseInt(document.getElementById('compressQuality').value) / 100;
     let format = document.getElementById('compressFormat').value;
-    
+
     if (format === 'same') {
-        format = fileName.match(/\.(jpg|jpeg)$/i) ? 'image/jpeg' : 
+        format = fileName.match(/\.(jpg|jpeg)$/i) ? 'image/jpeg' :
                  fileName.match(/\.webp$/i) ? 'image/webp' : 'image/jpeg';
     }
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-    
+
     const blob = await canvasToBlob(canvas, format, quality);
     const ext = format.split('/')[1];
     return { blob, fileName: `compressed_${fileName.replace(/\.[^.]+$/, '')}.${ext}`, preview: canvas.toDataURL() };
@@ -800,7 +860,7 @@ async function optimizeImage(img, fileName) {
     // Auto optimize: resize if too large, compress to WebP
     let targetWidth = img.width;
     let targetHeight = img.height;
-    
+
     // Resize if larger than 1920px
     if (img.width > 1920 || img.height > 1920) {
         const aspectRatio = img.width / img.height;
@@ -812,13 +872,13 @@ async function optimizeImage(img, fileName) {
             targetWidth = Math.round(1920 * aspectRatio);
         }
     }
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = targetWidth;
     canvas.height = targetHeight;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-    
+
     const blob = await canvasToBlob(canvas, 'image/webp', 0.85);
     return { blob, fileName: `optimized_${fileName.replace(/\.[^.]+$/, '')}.webp`, preview: canvas.toDataURL() };
 }
@@ -826,13 +886,13 @@ async function optimizeImage(img, fileName) {
 async function convertFormat(img, fileName) {
     const format = document.getElementById('convertFormat').value;
     const quality = parseInt(document.getElementById('convertQuality').value) / 100;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-    
+
     const blob = await canvasToBlob(canvas, format, quality);
     const ext = format.split('/')[1];
     return { blob, fileName: `${fileName.replace(/\.[^.]+$/, '')}.${ext}`, preview: canvas.toDataURL() };
@@ -843,8 +903,8 @@ async function convertToBase64(img, file) {
     return new Promise((resolve) => {
         reader.onload = (e) => {
             const base64 = e.target.result;
-            resolve({ 
-                base64, 
+            resolve({
+                base64,
                 fileName: `${file.name}_base64.txt`,
                 isBase64: true
             });
@@ -859,17 +919,17 @@ async function applyGrayscale(img, fileName) {
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-    
+
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
-    
+
     for (let i = 0; i < data.length; i += 4) {
         const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
         data[i] = avg;
         data[i + 1] = avg;
         data[i + 2] = avg;
     }
-    
+
     ctx.putImageData(imageData, 0, 0);
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `grayscale_${fileName}`, preview: canvas.toDataURL() };
@@ -881,20 +941,20 @@ async function applySepia(img, fileName) {
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-    
+
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
-    
+
     for (let i = 0; i < data.length; i += 4) {
         const r = data[i];
         const g = data[i + 1];
         const b = data[i + 2];
-        
+
         data[i] = Math.min(255, (r * 0.393) + (g * 0.769) + (b * 0.189));
         data[i + 1] = Math.min(255, (r * 0.349) + (g * 0.686) + (b * 0.168));
         data[i + 2] = Math.min(255, (r * 0.272) + (g * 0.534) + (b * 0.131));
     }
-    
+
     ctx.putImageData(imageData, 0, 0);
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `sepia_${fileName}`, preview: canvas.toDataURL() };
@@ -902,30 +962,30 @@ async function applySepia(img, fileName) {
 
 async function applyBlur(img, fileName) {
     const blurAmount = parseInt(document.getElementById('blurAmount').value);
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
-    
+
     ctx.filter = `blur(${blurAmount}px)`;
     ctx.drawImage(img, 0, 0);
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `blurred_${fileName}`, preview: canvas.toDataURL() };
 }
 
 async function applyBrightness(img, fileName) {
     const brightness = parseInt(document.getElementById('brightnessAmount').value);
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
-    
+
     ctx.filter = `brightness(${brightness}%)`;
     ctx.drawImage(img, 0, 0);
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `brightness_${fileName}`, preview: canvas.toDataURL() };
 }
@@ -935,25 +995,25 @@ async function addWatermark(img, fileName) {
     const position = document.getElementById('watermarkPosition').value;
     const fontSize = parseInt(document.getElementById('watermarkFontSize').value);
     const opacity = parseInt(document.getElementById('watermarkOpacity').value) / 100;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = img.width;
     canvas.height = img.height;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(img, 0, 0);
-    
+
     ctx.font = `${fontSize}px Arial`;
     ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
     ctx.strokeStyle = `rgba(0, 0, 0, ${opacity * 0.5})`;
     ctx.lineWidth = 2;
-    
+
     const metrics = ctx.measureText(text);
     const textWidth = metrics.width;
     const textHeight = fontSize;
-    
+
     let x, y;
     const padding = 20;
-    
+
     switch(position) {
         case 'bottom-right':
             x = canvas.width - textWidth - padding;
@@ -976,10 +1036,10 @@ async function addWatermark(img, fileName) {
             y = (canvas.height + textHeight) / 2;
             break;
     }
-    
+
     ctx.strokeText(text, x, y);
     ctx.fillText(text, x, y);
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `watermarked_${fileName}`, preview: canvas.toDataURL() };
 }
@@ -987,16 +1047,16 @@ async function addWatermark(img, fileName) {
 async function addBorder(img, fileName) {
     const borderWidth = parseInt(document.getElementById('borderWidth').value);
     const borderColor = document.getElementById('borderColor').value;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = img.width + (borderWidth * 2);
     canvas.height = img.height + (borderWidth * 2);
     const ctx = canvas.getContext('2d');
-    
+
     ctx.fillStyle = borderColor;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, borderWidth, borderWidth);
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: `bordered_${fileName}`, preview: canvas.toDataURL() };
 }
@@ -1004,7 +1064,7 @@ async function addBorder(img, fileName) {
 async function createCollage(images) {
     const layout = document.getElementById('collageLayout').value;
     const spacing = parseInt(document.getElementById('collageSpacing').value);
-    
+
     let cols, rows;
     if (layout === 'auto') {
         cols = Math.ceil(Math.sqrt(images.length));
@@ -1012,27 +1072,27 @@ async function createCollage(images) {
     } else {
         [rows, cols] = layout.split('x').map(Number);
     }
-    
+
     const cellWidth = 300;
     const cellHeight = 300;
-    
+
     const canvas = document.createElement('canvas');
     canvas.width = (cellWidth * cols) + (spacing * (cols - 1));
     canvas.height = (cellHeight * rows) + (spacing * (rows - 1));
     const ctx = canvas.getContext('2d');
-    
+
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
+
     for (let i = 0; i < Math.min(images.length, rows * cols); i++) {
         const col = i % cols;
         const row = Math.floor(i / cols);
         const x = col * (cellWidth + spacing);
         const y = row * (cellHeight + spacing);
-        
+
         ctx.drawImage(images[i], x, y, cellWidth, cellHeight);
     }
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: 'collage.png', preview: canvas.toDataURL() };
 }
@@ -1040,17 +1100,17 @@ async function createCollage(images) {
 async function stitchImages(images) {
     const direction = document.querySelector('input[name="stitchDirection"]:checked').value;
     const spacing = parseInt(document.getElementById('stitchSpacing').value);
-    
+
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
-    
+
     if (direction === 'horizontal') {
         const maxHeight = Math.max(...images.map(img => img.height));
         const totalWidth = images.reduce((sum, img) => sum + img.width, 0) + (spacing * (images.length - 1));
-        
+
         canvas.width = totalWidth;
         canvas.height = maxHeight;
-        
+
         let x = 0;
         for (const img of images) {
             ctx.drawImage(img, x, (maxHeight - img.height) / 2);
@@ -1059,19 +1119,195 @@ async function stitchImages(images) {
     } else {
         const maxWidth = Math.max(...images.map(img => img.width));
         const totalHeight = images.reduce((sum, img) => sum + img.height, 0) + (spacing * (images.length - 1));
-        
+
         canvas.width = maxWidth;
         canvas.height = totalHeight;
-        
+
         let y = 0;
         for (const img of images) {
             ctx.drawImage(img, (maxWidth - img.width) / 2, y);
             y += img.height + spacing;
         }
     }
-    
+
     const blob = await canvasToBlob(canvas);
     return { blob, fileName: 'stitched.png', preview: canvas.toDataURL() };
+}
+
+// ==================== Resize File ====================
+
+function updateResizeDirection() {
+    const info = document.getElementById('resizeDirectionInfo');
+    if (!info) return; // Element not rendered yet
+
+    const targetVal = parseFloat(document.getElementById('targetSize').value);
+    const unit = document.getElementById('targetUnit').value;
+
+    if (!uploadedFiles[0]) {
+        info.className = 'resize-direction-info error';
+        info.textContent = 'Please upload an image first';
+        info.style.display = 'block';
+        return;
+    }
+
+    if (!targetVal || targetVal <= 0) {
+        info.className = 'resize-direction-info';
+        info.style.display = 'none';
+        return;
+    }
+
+    const targetBytes = unit === 'MB' ? targetVal * 1024 * 1024 : targetVal * 1024;
+    const currentBytes = uploadedFiles[0].size;
+
+    if (targetBytes < 1024) {
+        info.className = 'resize-direction-info error';
+        info.textContent = 'Target size is too small. Minimum is 1 KB.';
+    } else if (targetBytes < currentBytes) {
+        const reduction = ((currentBytes - targetBytes) / currentBytes * 100).toFixed(1);
+        info.className = 'resize-direction-info decrease';
+        info.textContent = `File will be decreased by ${reduction}% (${formatFileSize(currentBytes)} → ${formatFileSize(targetBytes)})`;
+    } else if (targetBytes > currentBytes) {
+        const increase = ((targetBytes - currentBytes) / currentBytes * 100).toFixed(1);
+        info.className = 'resize-direction-info increase';
+        info.textContent = `File will be increased by ${increase}% (${formatFileSize(currentBytes)} → ${formatFileSize(targetBytes)})`;
+    } else {
+        info.className = 'resize-direction-info';
+        info.textContent = 'Target size matches current file size.';
+        info.style.display = 'block';
+    }
+}
+
+async function resizeFile(img, file) {
+    const targetVal = parseFloat(document.getElementById('targetSize').value);
+    const unit = document.getElementById('targetUnit').value;
+    const targetBytes = unit === 'MB' ? targetVal * 1024 * 1024 : targetVal * 1024;
+    const originalSize = file.size;
+
+    if (!targetVal || targetVal <= 0) {
+        throw new Error('Please enter a valid target size');
+    }
+
+    if (targetBytes < 1024) {
+        throw new Error('Target size is too small. Minimum is 1 KB.');
+    }
+
+    if (targetBytes < originalSize) {
+        // ========== DECREASE: Reduce quality and potentially dimensions ==========
+
+        let bestBlob = null;
+        let quality = 0.92;
+        let scaleFactor = 1.0;
+        const maxAttempts = 15;
+        let attempts = 0;
+
+        while (attempts < maxAttempts) {
+            attempts++;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(img.width * scaleFactor);
+            canvas.height = Math.round(img.height * scaleFactor);
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+            // Try JPEG format for better compression
+            const blob = await canvasToBlob(canvas, 'image/jpeg', quality);
+
+            if (blob.size <= targetBytes) {
+                bestBlob = blob;
+                // Try slightly higher quality if we have room
+                if (blob.size < targetBytes * 0.85 && quality < 0.92) {
+                    quality = Math.min(0.92, quality + 0.1);
+                    bestBlob = blob;
+                    continue;
+                }
+                break;
+            } else {
+                bestBlob = blob; // Keep as best so far
+                // Reduce quality
+                quality *= 0.75;
+                // If quality is very low, also reduce dimensions
+                if (quality < 0.3) {
+                    scaleFactor *= 0.85;
+                    quality = 0.7; // Reset quality when changing scale
+                }
+                if (quality < 0.1 || scaleFactor < 0.2) {
+                    break; // Prevent infinite loop
+                }
+            }
+        }
+
+        if (!bestBlob) {
+            throw new Error('Could not reduce the file to the target size. Try a larger target.');
+        }
+
+        const finalSize = bestBlob.size;
+        const withinTarget = finalSize <= targetBytes;
+        const resultName = withinTarget
+            ? `resized_${file.name.replace(/\\.[^.]+$/, '')}.jpg`
+            : `resized_closest_${file.name.replace(/\\.[^.]+$/, '')}.jpg`;
+
+        return {
+            blob: bestBlob,
+            fileName: resultName,
+            preview: URL.createObjectURL(bestBlob)
+        };
+
+    } else if (targetBytes > originalSize) {
+        // ========== INCREASE: Add metadata padding ==========
+
+        // Convert image to blob with high quality
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        // Use PNG for lossless quality when increasing size
+        const baseBlob = await canvasToBlob(canvas, 'image/png', 1.0);
+        const currentSize = baseBlob.size;
+
+        if (currentSize >= targetBytes) {
+            return {
+                blob: baseBlob,
+                fileName: `resized_${file.name.replace(/\\.[^.]+$/, '')}.png`,
+                preview: URL.createObjectURL(baseBlob)
+            };
+        }
+
+        // Calculate padding needed
+        const paddingNeeded = targetBytes - currentSize;
+
+        // Create a new blob with padding (add metadata/comments)
+        // For PNG, we can add text chunks as metadata
+        const baseArray = new Uint8Array(await baseBlob.arrayBuffer());
+        const paddedArray = new Uint8Array(targetBytes);
+
+        // Copy original image data
+        paddedArray.set(baseArray, 0);
+
+        // Fill remaining space with comment data (null bytes are safe for PNG)
+        // PNG allows for ancillary chunks that viewers will ignore
+        for (let i = currentSize; i < targetBytes; i++) {
+            paddedArray[i] = 0x00; // Null padding
+        }
+
+        const paddedBlob = new Blob([paddedArray], { type: 'image/png' });
+
+        return {
+            blob: paddedBlob,
+            fileName: `resized_${file.name.replace(/\\.[^.]+$/, '')}.png`,
+            preview: URL.createObjectURL(paddedBlob)
+        };
+
+    } else {
+        // Target matches current size
+        const blob = file;
+        return {
+            blob,
+            fileName: file.name,
+            preview: URL.createObjectURL(blob)
+        };
+    }
 }
 
 // ==================== Helper Functions ====================
