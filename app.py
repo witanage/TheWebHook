@@ -33,6 +33,9 @@ app.secret_key = SECRET_KEY
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
 
+# Preserve JSON object key order (don't sort alphabetically)
+app.config['JSON_SORT_KEYS'] = False
+
 db_config = {
     "host": os.getenv("DB_HOST"),
     "port": int(os.getenv("DB_PORT", "3306")),
@@ -262,6 +265,62 @@ def admin_required(f):
     return decorated_function
 
 
+def token_required(f):
+    """Decorator for API token authentication"""
+
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check for API token in headers
+        api_token = request.headers.get('X-API-Token') or request.headers.get('Authorization')
+
+        # Also check query parameters as fallback
+        if not api_token:
+            api_token = request.args.get('api_token')
+
+        if not api_token:
+            log(f"API token missing for {request.path}")
+            return jsonify({"error": "API token required"}), 401
+
+        # Remove 'Bearer ' prefix if present
+        if api_token.startswith('Bearer '):
+            api_token = api_token[7:]
+
+        # Validate token
+        conn = None
+        cursor = None
+        try:
+            conn = pymysql.connect(**db_config)
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
+            cursor.execute(
+                "SELECT id, username, is_admin FROM users WHERE api_token = %s AND status = 1",
+                (api_token,)
+            )
+            user = cursor.fetchone()
+
+            if not user:
+                log(f"Invalid API token used: {api_token[:10]}...")
+                return jsonify({"error": "Invalid API token"}), 401
+
+            # Store user info in request context
+            request.token_user_id = user['id']
+            request.token_username = user['username']
+            request.token_is_admin = user['is_admin']
+
+            log(f"API token authenticated for user {user['id']} ({user['username']})")
+            return f(*args, **kwargs)
+
+        except Exception as e:
+            log(f"Error validating API token: {str(e)}")
+            return jsonify({"error": "Authentication error"}), 500
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()
+
+    return decorated_function
+
+
 def notify_user_webhook(user_id, webhook_id, webhook_data):
     """Send SSE notification to specific user about new webhook"""
     with queue_lock:
@@ -432,6 +491,40 @@ def menu():
             conn.close()
 
     return render_template("menu.html", username=username, default_app=default_app)
+
+
+@app.route("/profile")
+@login_required
+def profile():
+    """User profile and settings page"""
+    user_id = session["user_id"]
+    username = session.get("username", "User")
+    default_app = None
+
+    # Fetch user data from database
+    conn = None
+    cursor = None
+    try:
+        conn = pymysql.connect(**db_config)
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        cursor.execute("SELECT username, default_app FROM users WHERE id = %s", (user_id,))
+        result = cursor.fetchone()
+        if result:
+            username = result["username"]
+            default_app = result.get("default_app")
+        else:
+            username = username or "User"
+    except Exception as e:
+        log(f"Error fetching user data for profile: {str(e)}")
+        username = username or "User"
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
+
+    log(f"User {user_id} accessed profile page")
+    return render_template("profile.html", username=username, default_app=default_app)
 
 
 @app.route("/webhook-viewer")
@@ -1088,7 +1181,8 @@ def handle_webhook(user_id, webhook_id):
             cursor.execute("""
                 INSERT INTO webhook_responses (user_id, webhook_id, method, headers, body, query_params, timestamp, client_ip)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (user_id, webhook_id, method, json.dumps(headers), json.dumps(body), json.dumps(query_params),
+            """, (user_id, webhook_id, method, json.dumps(headers, sort_keys=False), json.dumps(body, sort_keys=False),
+                  json.dumps(query_params, sort_keys=False),
                   timestamp, client_ip))
             conn.commit()
 
@@ -1102,9 +1196,9 @@ def handle_webhook(user_id, webhook_id):
                 'id': webhook_response_id,
                 'webhook_id': webhook_id,
                 'method': method,
-                'headers': json.dumps(headers),
-                'body': json.dumps(body),
-                'query_params': json.dumps(query_params),
+                'headers': json.dumps(headers, sort_keys=False),
+                'body': json.dumps(body, sort_keys=False),
+                'query_params': json.dumps(query_params, sort_keys=False),
                 'timestamp': timestamp.isoformat(),
                 'client_ip': client_ip,
                 'is_read': 0
@@ -3309,6 +3403,325 @@ def format_code_standard(code, language):
 
 
 # ==================== END CODE FORMATTER ROUTES ====================
+
+
+# ==================== API TOKEN MANAGEMENT ROUTES ====================
+
+@app.route("/api/user/token", methods=["GET"])
+@login_required
+def get_user_api_token():
+    """Get or generate API token for current user"""
+    user_id = session["user_id"]
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT api_token FROM users WHERE id = %s", (user_id,))
+            result = cursor.fetchone()
+
+            if result and result['api_token']:
+                return jsonify({
+                    "success": True,
+                    "api_token": result['api_token']
+                })
+            else:
+                # Generate new token
+                import secrets
+                api_token = secrets.token_urlsafe(32)
+
+                cursor.execute(
+                    "UPDATE users SET api_token = %s WHERE id = %s",
+                    (api_token, user_id)
+                )
+                conn.commit()
+
+                log(f"Generated new API token for user {user_id}")
+                return jsonify({
+                    "success": True,
+                    "api_token": api_token,
+                    "message": "New API token generated"
+                })
+    except Exception as e:
+        log(f"Error getting/generating API token: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/user/token", methods=["POST"])
+@login_required
+def regenerate_api_token():
+    """Regenerate API token for current user"""
+    user_id = session["user_id"]
+
+    import secrets
+    api_token = secrets.token_urlsafe(32)
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "UPDATE users SET api_token = %s WHERE id = %s",
+                (api_token, user_id)
+            )
+            conn.commit()
+
+            log(f"Regenerated API token for user {user_id}")
+            return jsonify({
+                "success": True,
+                "api_token": api_token,
+                "message": "API token regenerated successfully"
+            })
+    except Exception as e:
+        log(f"Error regenerating API token: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/user/token", methods=["DELETE"])
+@login_required
+def delete_api_token():
+    """Delete API token for current user"""
+    user_id = session["user_id"]
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "UPDATE users SET api_token = NULL WHERE id = %s",
+                (user_id,)
+            )
+            conn.commit()
+
+            log(f"Deleted API token for user {user_id}")
+            return jsonify({
+                "success": True,
+                "message": "API token deleted successfully"
+            })
+    except Exception as e:
+        log(f"Error deleting API token: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ==================== END API TOKEN MANAGEMENT ROUTES ====================
+
+
+# ==================== WEBHOOK-OUT API ENDPOINT ====================
+
+@app.route("/api/webhook-out", methods=["POST"])
+@token_required
+def webhook_out():
+    """
+    Webhook-out endpoint to search for latest webhook response.
+
+    Requires API token authentication via:
+    - Header: X-API-Token: <your_token>
+    - Header: Authorization: Bearer <your_token>
+    - Query param: ?api_token=<your_token>
+
+    Request body:
+    {
+        "webhook_id": "my-webhook",
+        "content": "search term",           # Optional: search in body/headers/params
+        "json_path": "path.to.field",       # Optional: specific JSON path to match
+        "json_value": "expected value",     # Optional: value to match at json_path
+        "wait_timeout": 180                 # Optional: seconds to wait for webhook (default 0, max 180)
+    }
+
+    Response:
+    {
+        "success": true,
+        "webhook": {
+            "id": 123,
+            "webhook_id": "my-webhook",
+            "method": "POST",
+            "headers": {...},
+            "body": {...},
+            "query_params": {...},
+            "timestamp": "2026-03-18T...",
+            "client_ip": "192.168.1.1"
+        }
+    }
+    """
+    user_id = request.token_user_id
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"success": False, "error": "JSON body required"}), 400
+
+    webhook_id = data.get("webhook_id")
+    if not webhook_id:
+        return jsonify({"success": False, "error": "webhook_id is required"}), 400
+
+    content = data.get("content", "").strip()
+    json_path = data.get("json_path", "").strip()
+    json_value = data.get("json_value")
+
+    # Get wait_timeout parameter (default 0, max 180 seconds = 3 minutes)
+    wait_timeout = min(int(data.get("wait_timeout", 0)), 180)
+
+    log(f"Webhook-out search: user={user_id}, webhook_id={webhook_id}, content={content}, json_path={json_path}, wait_timeout={wait_timeout}s")
+
+    start_time = time.time()
+    poll_interval = 1  # Check every 1 second
+    attempts = 0
+
+    # Poll for webhook with timeout
+    while True:
+        attempts += 1
+        conn = None
+        cursor = None
+
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            # Base query to get latest webhook
+            query = """
+                SELECT id, webhook_id, method, headers, body, query_params,
+                       timestamp, client_ip, is_read
+                FROM webhook_responses
+                WHERE user_id = %s AND webhook_id = %s
+            """
+            params = [user_id, webhook_id]
+
+            # Add content search if provided
+            if content:
+                query += """
+                    AND (
+                        body LIKE %s
+                        OR headers LIKE %s
+                        OR query_params LIKE %s
+                    )
+                """
+                search_pattern = f"%{content}%"
+                params.extend([search_pattern, search_pattern, search_pattern])
+
+            query += " ORDER BY timestamp DESC LIMIT 1"
+
+            cursor.execute(query, params)
+            result = cursor.fetchone()
+
+            # Close connection immediately after query
+            cursor.close()
+            conn.close()
+            cursor = None
+            conn = None
+
+            if result:
+                # Found a webhook, now validate it
+                # Parse JSON fields - preserve key order
+                try:
+                    result['headers'] = json.loads(result['headers'], object_pairs_hook=dict) if result[
+                        'headers'] else {}
+                    result['body'] = json.loads(result['body'], object_pairs_hook=dict) if result['body'] else None
+                    result['query_params'] = json.loads(result['query_params'], object_pairs_hook=dict) if result[
+                        'query_params'] else {}
+                except json.JSONDecodeError:
+                    pass  # Keep as string if not valid JSON
+
+                # If json_path is specified, validate it matches
+                if json_path and json_value is not None:
+                    body = result.get('body')
+                    if isinstance(body, dict):
+                        # Navigate the JSON path
+                        path_parts = json_path.split('.')
+                        current = body
+
+                        validation_failed = False
+                        try:
+                            for part in path_parts:
+                                if isinstance(current, dict):
+                                    current = current.get(part)
+                                elif isinstance(current, list) and part.isdigit():
+                                    current = current[int(part)]
+                                else:
+                                    current = None
+                                    break
+
+                            # Check if value matches
+                            if current != json_value:
+                                validation_failed = True
+                                log(f"JSON path value mismatch (attempt {attempts}): expected={json_value}, got={current}")
+
+                                # If we have more wait time, continue polling
+                                elapsed = time.time() - start_time
+                                if wait_timeout > 0 and elapsed < wait_timeout:
+                                    time.sleep(poll_interval)
+                                    continue
+                                else:
+                                    # Timeout or no wait requested - return error
+                                    return jsonify({
+                                        "success": False,
+                                        "error": "JSON path value does not match",
+                                        "expected": json_value,
+                                        "actual": current,
+                                        "waited_seconds": round(elapsed, 2)
+                                    }), 404
+
+                        except (KeyError, IndexError, TypeError):
+                            log(f"JSON path traversal failed: {json_path}")
+                            return jsonify({
+                                "success": False,
+                                "error": "Invalid JSON path"
+                            }), 404
+
+                # Webhook found and validated successfully
+                # Convert timestamp to ISO format
+                if result.get('timestamp'):
+                    result['timestamp'] = result['timestamp'].isoformat()
+
+                elapsed = time.time() - start_time
+                log(f"Webhook-out search success: found webhook id={result['id']} after {attempts} attempts ({round(elapsed, 2)}s)")
+
+                return jsonify({
+                    "success": True,
+                    "webhook": result,
+                    "waited_seconds": round(elapsed, 2) if wait_timeout > 0 else 0
+                })
+
+            else:
+                # No webhook found yet
+                elapsed = time.time() - start_time
+
+                # Check if we should continue waiting
+                if wait_timeout > 0 and elapsed < wait_timeout:
+                    log(f"Webhook not found yet (attempt {attempts}), waiting... ({round(elapsed, 2)}s elapsed)")
+                    time.sleep(poll_interval)
+                    continue
+                else:
+                    # Timeout or no wait requested
+                    log(f"No webhook found for user={user_id}, webhook_id={webhook_id} after {attempts} attempts ({round(elapsed, 2)}s)")
+                    return jsonify({
+                        "success": False,
+                        "error": "No matching webhook found",
+                        "waited_seconds": round(elapsed, 2) if wait_timeout > 0 else 0
+                    }), 404
+
+        except Exception as e:
+            log(f"Error in webhook-out search: {str(e)}")
+            return jsonify({
+                "success": False,
+                "error": "Internal server error"
+            }), 500
+        finally:
+            # Clean up any remaining connections
+            if cursor:
+                try:
+                    cursor.close()
+                except:
+                    pass
+            if conn:
+                try:
+                    conn.close()
+                except:
+                    pass
+
+
+# ==================== END WEBHOOK-OUT API ENDPOINT ====================
 
 
 if __name__ == "__main__":
