@@ -55,7 +55,7 @@
                 </button>
                 <div class="apps-dropdown" id="appsDropdown">
                     {% for item in menu_items %}
-                    <a href="{{ url_for(item.route) }}" target="_blank" class="apps-dropdown-item">
+                    <a href="{{ item.route }}" target="_blank" class="apps-dropdown-item">
                         <span class="apps-item-icon">{{ item.icon }}</span>
                         <span class="apps-item-text">{{ item.title }}</span>
                     </a>
@@ -98,6 +98,10 @@
                     <span style="font-size: 12px;">▼</span>
                 </button>
                 <div class="profile-dropdown" id="profileDropdown">
+                    <a href="/profile" class="profile-dropdown-item">
+                        <span>👤</span>
+                        <span>Profile & API Token</span>
+                    </a>
                     <div class="profile-dropdown-item" onclick="openPasswordModal()">
                         <span>🔐</span>
                         <span>Change Password</span>

@@ -21,12 +21,14 @@ CREATE TABLE IF NOT EXISTS users (
     status TINYINT DEFAULT 0,
     is_admin TINYINT DEFAULT 0,
     default_app VARCHAR(255) DEFAULT NULL,
+    api_token VARCHAR(64) UNIQUE DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- Create index for default_app
+-- Create indexes for users table
 CREATE INDEX IF NOT EXISTS idx_users_default_app ON users(default_app);
+CREATE INDEX IF NOT EXISTS idx_users_api_token ON users(api_token);
 
 -- Webhook responses table
 CREATE TABLE IF NOT EXISTS webhook_responses (

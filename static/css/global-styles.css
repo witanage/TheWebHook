@@ -197,6 +197,12 @@ body {
     gap: 0.5rem;
 }
 
+/* Make anchor tags in profile dropdown look like div items */
+a.profile-dropdown-item {
+    text-decoration: none;
+    color: var(--text-primary);
+}
+
 .profile-dropdown-item:hover {
     background: var(--bg-tertiary);
 }
