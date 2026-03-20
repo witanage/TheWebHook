@@ -3568,6 +3568,7 @@ def webhook_out():
     start_time = time.time()
     poll_interval = 1  # Check every 1 second
     attempts = 0
+    last_checked_timestamp = None  # Track the latest timestamp we've already checked
 
     # Poll for webhook with timeout
     while True:
@@ -3579,7 +3580,12 @@ def webhook_out():
             conn = get_db_connection()
             cursor = conn.cursor()
 
-            # Base query to get latest webhook
+            # Determine how many webhooks to check
+            # On first attempt, check multiple existing webhooks
+            # On subsequent attempts, check only new webhooks (LIMIT 1)
+            limit = 1 if last_checked_timestamp is not None else 100
+
+            # Base query to get webhooks
             query = """
                 SELECT id, webhook_id, method, headers, body, query_params,
                        timestamp, client_ip, is_read
@@ -3587,6 +3593,11 @@ def webhook_out():
                 WHERE user_id = %s AND webhook_id = %s
             """
             params = [user_id, webhook_id]
+
+            # On subsequent attempts, only check webhooks newer than what we've already seen
+            if last_checked_timestamp is not None:
+                query += " AND timestamp > %s"
+                params.append(last_checked_timestamp)
 
             # Add content search if provided
             if content:
@@ -3600,10 +3611,10 @@ def webhook_out():
                 search_pattern = f"%{content}%"
                 params.extend([search_pattern, search_pattern, search_pattern])
 
-            query += " ORDER BY timestamp DESC LIMIT 1"
+            query += f" ORDER BY timestamp DESC LIMIT {limit}"
 
             cursor.execute(query, params)
-            result = cursor.fetchone()
+            results = cursor.fetchall()  # Fetch all matching webhooks
 
             # Close connection immediately after query
             cursor.close()
@@ -3611,8 +3622,8 @@ def webhook_out():
             cursor = None
             conn = None
 
-            if result:
-                # Found a webhook, now validate it
+            # Process each webhook to find a match
+            for result in results:
                 # Parse JSON fields - preserve key order
                 try:
                     result['headers'] = json.loads(result['headers'], object_pairs_hook=dict) if result[
@@ -3631,7 +3642,7 @@ def webhook_out():
                         path_parts = json_path.split('.')
                         current = body
 
-                        validation_failed = False
+                        validation_passed = True
                         try:
                             for part in path_parts:
                                 if isinstance(current, dict):
@@ -3644,30 +3655,16 @@ def webhook_out():
 
                             # Check if value matches
                             if current != json_value:
-                                validation_failed = True
-                                log(f"JSON path value mismatch (attempt {attempts}): expected={json_value}, got={current}")
-
-                                # If we have more wait time, continue polling
-                                elapsed = time.time() - start_time
-                                if wait_timeout > 0 and elapsed < wait_timeout:
-                                    time.sleep(poll_interval)
-                                    continue
-                                else:
-                                    # Timeout or no wait requested - return error
-                                    return jsonify({
-                                        "success": False,
-                                        "error": "JSON path value does not match",
-                                        "expected": json_value,
-                                        "actual": current,
-                                        "waited_seconds": round(elapsed, 2)
-                                    }), 404
+                                validation_passed = False
+                                log(f"JSON path value mismatch in webhook id={result['id']}: expected={json_value}, got={current}")
+                                continue  # Try next webhook in the list
 
                         except (KeyError, IndexError, TypeError):
-                            log(f"JSON path traversal failed: {json_path}")
-                            return jsonify({
-                                "success": False,
-                                "error": "Invalid JSON path"
-                            }), 404
+                            log(f"JSON path traversal failed for webhook id={result['id']}: {json_path}")
+                            continue  # Try next webhook in the list
+                    else:
+                        # Body is not a dict, skip this webhook
+                        continue
 
                 # Webhook found and validated successfully
                 # Convert timestamp to ISO format
@@ -3683,23 +3680,34 @@ def webhook_out():
                     "waited_seconds": round(elapsed, 2) if wait_timeout > 0 else 0
                 })
 
-            else:
-                # No webhook found yet
-                elapsed = time.time() - start_time
+            # No matching webhook found in this batch
+            elapsed = time.time() - start_time
 
-                # Check if we should continue waiting
-                if wait_timeout > 0 and elapsed < wait_timeout:
-                    log(f"Webhook not found yet (attempt {attempts}), waiting... ({round(elapsed, 2)}s elapsed)")
-                    time.sleep(poll_interval)
-                    continue
-                else:
-                    # Timeout or no wait requested
-                    log(f"No webhook found for user={user_id}, webhook_id={webhook_id} after {attempts} attempts ({round(elapsed, 2)}s)")
-                    return jsonify({
-                        "success": False,
-                        "error": "No matching webhook found",
-                        "waited_seconds": round(elapsed, 2) if wait_timeout > 0 else 0
-                    }), 404
+            # Track the latest timestamp we've seen to avoid re-checking same webhooks
+            if results:
+                # Update the baseline to the most recent webhook we just checked
+                # This ensures on next iteration we only check newer webhooks
+                if last_checked_timestamp is None or results[0]['timestamp'] > last_checked_timestamp:
+                    last_checked_timestamp = results[0]['timestamp']
+                    log(f"Checked {len(results)} webhooks, none matched. Last checked timestamp: {last_checked_timestamp}")
+            elif last_checked_timestamp is None:
+                # No webhooks exist at all yet, set baseline to now
+                last_checked_timestamp = datetime.now(timezone.utc)
+                log(f"No webhooks found yet. Will wait for new webhooks after {last_checked_timestamp}")
+
+            # Check if we should continue waiting
+            if wait_timeout > 0 and elapsed < wait_timeout:
+                log(f"Webhook not found yet (attempt {attempts}), waiting... ({round(elapsed, 2)}s elapsed)")
+                time.sleep(poll_interval)
+                continue
+            else:
+                # Timeout or no wait requested
+                log(f"No webhook found for user={user_id}, webhook_id={webhook_id} after {attempts} attempts ({round(elapsed, 2)}s)")
+                return jsonify({
+                    "success": False,
+                    "error": "No matching webhook found",
+                    "waited_seconds": round(elapsed, 2) if wait_timeout > 0 else 0
+                }), 404
 
         except Exception as e:
             log(f"Error in webhook-out search: {str(e)}")
