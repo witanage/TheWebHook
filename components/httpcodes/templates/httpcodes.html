@@ -1,0 +1,244 @@
+{% extends "base.html" %}
+
+{% block title %}HTTP Status Code Tester{% endblock %}
+
+{% block header_left %}
+<button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Menu
+</button>
+
+<!-- Apps Dropdown -->
+<div class="apps-menu">
+    <button class="apps-button" onclick="toggleAppsMenu()" title="Open App">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        Apps
+        <span style="font-size: 12px;">▼</span>
+    </button>
+    <div class="apps-dropdown" id="appsDropdown">
+        {% for item in menu_items %}
+        <a href="{{ item.route }}" target="_blank" class="apps-dropdown-item">
+            <span class="apps-item-icon">{{ item.icon }}</span>
+            <span class="apps-item-text">{{ item.title }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet"
+      id="prism-dark-theme"/>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css" rel="stylesheet"
+      id="prism-light-theme" disabled/>
+<link href="{{ url_for('httpcodes.static', filename='css/httpcodes-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="httpcodes-container">
+    <div class="max-width-container">
+        <p class="page-description">
+            This endpoint allows you to test and simulate different HTTP status codes.
+            It supports multiple HTTP methods and provides useful diagnostic information
+            about the request, response, and headers.
+        </p>
+
+        <!-- Sequence Endpoints Section -->
+        <div class="card sequence-endpoints-card">
+            <h2 class="card-title">⚡ Sequence Endpoints</h2>
+            <p class="card-description">Create powerful test sequences combining HTTP codes, delays, and custom payloads. Perfect for testing retry logic and service recovery scenarios.</p>
+
+            <!-- Create New Sequence Endpoint Form -->
+            <div class="form-section">
+                <h3 class="section-title">Create New Sequence</h3>
+                <form id="sequenceEndpointForm" class="endpoint-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="sequenceEndpointName">Endpoint Name</label>
+                            <input type="text" id="sequenceEndpointName" name="endpoint_name" required
+                                placeholder="e.g., service-recovery">
+                        </div>
+                        <div class="form-group">
+                            <label for="sequenceDescription">Description (Optional)</label>
+                            <input type="text" id="sequenceDescription" name="description"
+                                placeholder="e.g., Simulates service recovery with delays">
+                        </div>
+                    </div>
+
+                    <!-- Sequence Steps Container -->
+                    <div class="sequence-steps-container">
+                        <label class="steps-label">Sequence Steps</label>
+                        <div id="sequenceStepsList" class="sequence-steps-list">
+                            <!-- Steps will be added dynamically here -->
+                        </div>
+                        <button type="button" id="addSequenceStep" class="btn btn-secondary">
+                            ➕ Add Step
+                        </button>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Create Sequence Endpoint</button>
+                </form>
+            </div>
+
+            <!-- List of Sequence Endpoints -->
+            <div class="endpoints-list-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3 class="section-title" style="margin: 0;">Your Sequence Endpoints</h3>
+                    <button id="refreshSequenceEndpoints" class="btn btn-secondary" style="padding: 0.5rem 1rem;">🔄 Refresh</button>
+                </div>
+                <div class="table-responsive">
+                    <table class="sequence-table" id="sequenceEndpointsTable">
+                        <thead>
+                            <tr>
+                                <th class="col-status">●</th>
+                                <th class="col-name">Endpoint</th>
+                                <th class="col-sequence">Sequence</th>
+                                <th class="col-progress">Current</th>
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="loading-message">Loading endpoints...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Common Endpoint Links -->
+        <div class="card">
+            <h2 class="card-title">🌐 Common Endpoint Links</h2>
+            <p class="hint-text">Click any copy icon to copy the full endpoint URL.</p>
+
+            <div class="endpoint-grid">
+                {% set status_codes = [200, 201, 204, 301, 302, 304, 400, 401, 403, 404, 405, 422, 429, 500, 502, 503,
+                504] %}
+                {% for code in status_codes %}
+                <div class="endpoint-item">
+                    <code class="inline-code">/httpcode/{{ code }}</code>
+                    <button class="copy-btn" data-url="/httpcode/{{ code }}">📋</button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">🧩 Special Behaviors</h2>
+            <ul class="special-list">
+                <li><code>204</code> → Returns an empty response (No Content)</li>
+                <li><code>301 / 302 / 307 / 308</code> → Adds a <code>Location: /</code> header</li>
+                <li><code>401</code> → Includes <code>WWW-Authenticate</code> header</li>
+                <li><code>429</code> → Includes <code>Retry-After: 60</code> header</li>
+                <li><code>503</code> → Includes <code>Retry-After: 120</code> header</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">💡 Try it Live!</h2>
+            <div class="test-controls">
+                <input type="number" id="statusCode" min="100" max="599" value="200" class="status-input">
+                <select id="httpMethod" class="method-select">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="PATCH">PATCH</option>
+                </select>
+                <button onclick="testHttpCode()" class="test-button">Test Now</button>
+            </div>
+            <div id="testResult" class="test-result" style="display:none;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Pass user_id to JavaScript
+    window.userId = {{ user_id }};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="{{ url_for('httpcodes.static', filename='js/httpcodes.js') }}"></script>
+{% endblock %}
+
+{% block about_title %}About HTTP Status Code Tester{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>🔧 HTTP Status Code Tester</h4>
+    <p>Test and simulate different HTTP status codes with advanced sequence endpoint capabilities for comprehensive API testing.</p>
+</section>
+
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Complete Status Code Coverage</strong> - Support for all HTTP status codes (100-599)</li>
+        <li><strong>Multiple HTTP Methods</strong> - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</li>
+        <li><strong>Sequence Endpoints</strong> - Create powerful test sequences with custom HTTP codes, delays, and payloads</li>
+        <li><strong>Quick Links</strong> - One-click access to common status codes with copy-to-clipboard</li>
+        <li><strong>Request/Response Details</strong> - View complete HTTP transaction information</li>
+        <li><strong>Special Behaviors</strong> - Automatic handling of special headers (Location, WWW-Authenticate, Retry-After)</li>
+        <li><strong>Live Testing</strong> - Interactive test interface for immediate results</li>
+        <li><strong>Code Examples</strong> - Built-in curl examples and JSON response formats</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>⚡ Sequence Endpoints</h5>
+    <p>Create sophisticated test sequences for simulating complex scenarios:</p>
+    <ul class="feature-list">
+        <li><strong>Custom Sequences</strong> - Define multiple steps with different HTTP codes</li>
+        <li><strong>Delay Simulation</strong> - Add delays (0-60000ms) between responses</li>
+        <li><strong>Custom Payloads</strong> - Return custom JSON payloads for each step</li>
+        <li><strong>Circular Rotation</strong> - Automatically cycles through steps</li>
+        <li><strong>Progress Tracking</strong> - See current step in the sequence</li>
+        <li><strong>Reset Capability</strong> - Reset sequence to start from beginning</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>🚀 How to Use</h5>
+    <div class="info-card">
+        <p><strong>Simple Testing:</strong> Use /httpcode/&lt;code&gt; endpoint with any status code (100-599)</p>
+    </div>
+    <div class="info-card">
+        <p><strong>Sequence Testing:</strong></p>
+        <ol>
+            <li>Create a new sequence endpoint with a unique name</li>
+            <li>Add multiple steps with HTTP codes and delays</li>
+            <li>Optionally add custom JSON payloads</li>
+            <li>Use the generated endpoint URL for testing</li>
+        </ol>
+    </div>
+    <p><strong>Live Testing:</strong> Use the "Try it Live!" section to test any code instantly</p>
+    <p><strong>Copy URLs:</strong> Click copy icons next to common endpoints to get full URLs</p>
+</section>
+
+<section class="about-section">
+    <h5>⚠️ Special Status Codes</h5>
+    <ul class="feature-list">
+        <li><strong>204</strong> - Returns empty response (No Content)</li>
+        <li><strong>301/302/307/308</strong> - Includes Location header</li>
+        <li><strong>401</strong> - Includes WWW-Authenticate header</li>
+        <li><strong>429</strong> - Includes Retry-After: 60 header</li>
+        <li><strong>503</strong> - Includes Retry-After: 120 header</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
+{% endblock %}

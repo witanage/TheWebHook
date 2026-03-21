@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{% block title %}iFrame Loader{% endblock %}
+
+{% block header_left %}
+<button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Menu
+</button>
+
+<!-- Apps Dropdown -->
+<div class="apps-menu">
+    <button class="apps-button" onclick="toggleAppsMenu()" title="Open App">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        Apps
+        <span style="font-size: 12px;">▼</span>
+    </button>
+    <div class="apps-dropdown" id="appsDropdown">
+        {% for item in menu_items %}
+        <a href="{{ item.route }}" target="_blank" class="apps-dropdown-item">
+            <span class="apps-item-icon">{{ item.icon }}</span>
+            <span class="apps-item-text">{{ item.title }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block page_title %}iFrame Loader{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('iframe_loader.static', filename='css/iframe-loader-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="iframe-loader-container">
+    <!-- URL Input Bar -->
+    <div class="url-bar">
+        <div class="url-input-group">
+            <svg class="url-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                 fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+            <input type="url" id="urlInput" class="url-input" placeholder="Enter URL to load (e.g., https://example.com)" autocomplete="off" spellcheck="false">
+            <button id="clearBtn" class="url-clear-btn" title="Clear URL" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div class="xframe-toggle-wrapper" title="Bypass X-Frame-Options via server-side proxy">
+            <label class="toggle-switch">
+                <input type="checkbox" id="xframeToggle">
+                <span class="toggle-slider"></span>
+            </label>
+            <span class="xframe-toggle-label">Ignore X-Frame-Options</span>
+        </div>
+        <button id="loadBtn" class="btn-load" title="Load URL">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <polyline points="9 18 15 12 9 6"></polyline>
+            </svg>
+            Load
+        </button>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="iframe-toolbar" id="iframeToolbar" style="display: none;">
+        <div class="toolbar-left">
+            <button class="toolbar-btn" id="refreshBtn" title="Refresh">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                </svg>
+            </button>
+            <button class="toolbar-btn" id="newTabBtn" title="Open in new tab">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+            </button>
+            <button class="toolbar-btn" id="copyUrlBtn" title="Copy URL">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="toolbar-center">
+            <span class="toolbar-url" id="toolbarUrl"></span>
+        </div>
+        <div class="toolbar-right">
+            <button class="toolbar-btn toolbar-btn-close" id="closeIframeBtn" title="Close iframe">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading Indicator -->
+    <div class="iframe-loading" id="iframeLoading" style="display: none;">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">Loading...</span>
+    </div>
+
+    <!-- iframe Container -->
+    <div class="iframe-area" id="iframeArea" style="display: none;">
+        <div class="iframe-wrapper" id="iframeWrapper">
+            <iframe id="contentFrame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" allow="camera; microphone" allowfullscreen></iframe>
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+        <div class="empty-state-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="1.5">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="2" y1="12" x2="22" y2="12"></line>
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+            </svg>
+        </div>
+        <h2 class="empty-state-title">Load a webpage</h2>
+        <p class="empty-state-description">Enter a URL above to load and preview it in an embedded frame.</p>
+        <div class="quick-links">
+            <p class="quick-links-label">Quick links:</p>
+            <div class="quick-links-grid">
+                <button class="quick-link-btn" data-url="https://httpbin.org">httpbin.org</button>
+                <button class="quick-link-btn" data-url="https://jsonplaceholder.typicode.com">jsonplaceholder</button>
+                <button class="quick-link-btn" data-url="https://example.com">example.com</button>
+                <button class="quick-link-btn" data-url="https://developer.mozilla.org">MDN Web Docs</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error State -->
+    <div class="error-state" id="errorState" style="display: none;">
+        <div class="error-state-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+        </div>
+        <h3 class="error-state-title">Unable to load page</h3>
+        <p class="error-state-message" id="errorMessage">The page could not be loaded. It may block embedding or the URL may be invalid.</p>
+        <button class="btn-retry" id="retryBtn">Try Again</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('iframe_loader.static', filename='js/iframe-loader.js') }}"></script>
+{% endblock %}
+
+{% block about_title %}About iFrame Loader{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>iFrame Loader</h4>
+    <p>Load and preview external web pages directly within the dashboard using an embedded frame.</p>
+</section>
+
+<section class="about-section">
+    <h5>Features</h5>
+    <ul class="feature-list">
+        <li><strong>URL Loading</strong> - Enter any URL to preview it in an embedded frame</li>
+        <li><strong>Quick Links</strong> - One-click access to popular developer resources</li>
+        <li><strong>Toolbar Controls</strong> - Refresh, open in new tab, copy URL, and close actions</li>
+        <li><strong>Ignore X-Frame-Options</strong> - Toggle to bypass X-Frame-Options and CSP frame restrictions via a server-side proxy</li>
+        <li><strong>Error Handling</strong> - Clear feedback when a page cannot be embedded</li>
+        <li><strong>Keyboard Shortcut</strong> - Press Enter to load, Escape to close</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <h5>Notes</h5>
+    <div class="info-card">
+        <p>Some websites block embedding via X-Frame-Options or Content-Security-Policy headers. If a page cannot be loaded, use the "Open in new tab" button to view it directly.</p>
+    </div>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
+{% endblock %}

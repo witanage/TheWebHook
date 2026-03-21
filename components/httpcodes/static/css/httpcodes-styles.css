@@ -1,0 +1,790 @@
+.httpcodes-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    color: var(--accent-color);
+}
+
+.page-description {
+    color: var(--text-secondary);
+    margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.card {
+    background: var(--bg-secondary);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.card-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--accent-color);
+    margin-bottom: 1rem;
+}
+
+.card-text {
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+}
+
+.hint-text {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0.5rem 0;
+}
+
+.code-block {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    padding: 1rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.inline-code {
+    background: var(--bg-tertiary);
+    color: var(--accent-color);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9rem;
+}
+
+.error-code {
+    color: var(--danger-color);
+    background: rgba(220, 53, 69, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.endpoint-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.endpoint-item {
+    background: var(--bg-tertiary);
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.endpoint-item:hover {
+    background: var(--bg-quaternary);
+    transform: translateY(-2px);
+}
+
+.copy-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.2rem;
+    padding: 0.25rem;
+    transition: color 0.3s ease;
+}
+
+.copy-btn:hover {
+    color: var(--accent-color);
+}
+
+.special-list {
+    list-style: none;
+    padding-left: 0;
+}
+
+.special-list li {
+    padding: 0.5rem 0;
+    color: var(--text-primary);
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.special-list li::before {
+    content: '•';
+    position: absolute;
+    left: 0;
+    color: var(--accent-color);
+}
+
+.test-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.status-input,
+.method-select {
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.test-button {
+    padding: 0.5rem 1.5rem;
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.test-button:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+}
+
+.test-result {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+/* Light theme overrides */
+:root[data-theme="light"] .code-block,
+:root[data-theme="light"] .inline-code {
+    background: #f5f5f5;
+}
+
+:root[data-theme="light"] pre[class*="language-"] {
+    background: #f5f5f5 !important;
+}
+
+/* Prism theme switch */
+:root[data-theme="light"] #prism-dark-theme {
+    disabled: true;
+}
+
+:root[data-theme="dark"] #prism-light-theme {
+    disabled: true;
+}
+
+@media (max-width: 768px) {
+    .httpcodes-container {
+        padding: 1rem;
+    }
+
+    .endpoint-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .test-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* ==================== SEQUENCE ENDPOINTS STYLES ==================== */
+
+/* Section Styling */
+.form-section,
+.endpoints-list-section {
+    margin: 24px 0;
+}
+
+.section-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-color);
+    margin: 0 0 16px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Sequence steps container */
+.sequence-steps-container {
+    margin: 20px 0;
+}
+
+.steps-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text-color);
+}
+
+.sequence-steps-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* Individual sequence step */
+.sequence-step {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    position: relative;
+}
+
+.step-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.step-number {
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--primary-color);
+}
+
+.btn-remove-step {
+    background: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+}
+
+.btn-remove-step:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+.step-fields {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+}
+
+.step-fields .form-group-full {
+    grid-column: 1 / -1;
+}
+
+.step-fields input,
+.step-fields textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 0.95rem;
+}
+
+.step-fields textarea {
+    font-family: 'Courier New', monospace;
+    resize: vertical;
+}
+
+.step-fields input:focus,
+.step-fields textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+/* Sequence display in table */
+.sequence-display {
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    max-width: 300px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.next-step {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.position {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+}
+
+/* Button styles */
+.btn-secondary {
+    background: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color), #8b5cf6);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 123, 255, 0.4);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+.btn-create {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.btn-icon {
+    font-size: 1.1rem;
+}
+
+/* Responsive adjustments for sequence endpoints */
+@media (max-width: 1024px) {
+    .feature-highlights {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .card-title-large {
+        font-size: 1.6rem;
+    }
+
+    .card-subtitle {
+        font-size: 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .step-fields {
+        grid-template-columns: 1fr;
+    }
+
+    .sequence-display {
+        font-size: 0.75rem;
+        max-width: 200px;
+    }
+
+    #sequenceEndpointsTable th:nth-child(3),
+    #sequenceEndpointsTable td:nth-child(3) {
+        display: none;
+    }
+
+    .feature-highlights {
+        grid-template-columns: 1fr;
+    }
+
+    .card-header-fancy {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .card-title-large {
+        font-size: 1.4rem;
+    }
+
+    .highlight-text strong {
+        font-size: 0.9rem;
+    }
+
+    .highlight-text small {
+        font-size: 0.75rem;
+    }
+}
+
+/* ==================== SEQUENCE ENDPOINTS TABLE ==================== */
+
+.table-responsive {
+    overflow-x: auto;
+    margin-top: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-primary);
+}
+
+.sequence-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.sequence-table thead {
+    background: var(--bg-secondary);
+    border-bottom: 2px solid var(--border-color);
+}
+
+.sequence-table th {
+    padding: 14px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+.sequence-table th:first-child {
+    padding-left: 20px;
+}
+
+.sequence-table th:last-child {
+    padding-right: 20px;
+}
+
+.sequence-table td {
+    padding: 16px;
+    vertical-align: middle;
+    color: var(--text-color);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+.sequence-table td:first-child {
+    padding-left: 20px;
+    border-left: none;
+}
+
+.sequence-table td:last-child {
+    padding-right: 20px;
+    border-right: none;
+}
+
+.sequence-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.sequence-table tbody tr:hover {
+    background-color: var(--bg-secondary);
+}
+
+.sequence-table tbody tr:hover td {
+    background-color: var(--bg-secondary);
+}
+
+.sequence-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Column widths */
+.col-status {
+    width: 60px;
+    text-align: center;
+}
+
+.col-name {
+    width: 25%;
+}
+
+.col-sequence {
+    width: 35%;
+}
+
+.col-progress {
+    width: 20%;
+}
+
+.col-actions {
+    width: 20%;
+}
+
+/* Row states */
+.seq-row.inactive {
+    opacity: 0.5;
+}
+
+.seq-row.inactive:hover {
+    opacity: 0.7;
+}
+
+/* Status indicators */
+.status-active {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success-color, #22c55e);
+}
+
+.status-inactive {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--text-secondary);
+    opacity: 0.5;
+}
+
+/* Endpoint info */
+.endpoint-info {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.endpoint-name {
+    font-weight: 600;
+    color: var(--text-color);
+    font-size: 1rem;
+    line-height: 1.5;
+}
+
+.endpoint-desc {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+/* Sequence display */
+.sequence-display {
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 0.85rem;
+    line-height: 1.8;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.step-normal {
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
+
+.step-current {
+    color: var(--text-color);
+    background: var(--accent-color, var(--primary-color));
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    border: 2px solid var(--accent-color, var(--primary-color));
+}
+
+.step-arrow {
+    color: var(--text-secondary);
+    opacity: 0.5;
+    font-size: 0.7rem;
+}
+
+.delay-text {
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-left: 4px;
+}
+
+/* Current step info */
+.current-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.step-info {
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 0.85rem;
+    color: var(--text-color);
+    font-weight: 600;
+}
+
+/* Loading and empty states */
+.loading-message {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+/* Progress bar for current step */
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-top: 6px;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--accent-color, var(--primary-color));
+    border-radius: 2px;
+    transition: width 0.5s ease;
+}
+
+/* Step change animation */
+.step-changed {
+    animation: highlight-change 1s ease;
+}
+
+@keyframes highlight-change {
+    0%, 100% {
+        background: transparent;
+    }
+    50% {
+        background: rgba(34, 197, 94, 0.15);
+        box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+    }
+}
+
+/* Action buttons */
+.action-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.action-btn:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary-color);
+}
+
+.copy-btn {
+    background: var(--accent-color, var(--primary-color));
+    color: white;
+    border-color: var(--accent-color, var(--primary-color));
+}
+
+.copy-btn:hover {
+    opacity: 0.9;
+}
+
+.delete-btn:hover {
+    background: var(--danger-color, #dc3545);
+    color: white;
+    border-color: var(--danger-color, #dc3545);
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+    .sequence-display {
+        font-size: 0.75rem;
+        gap: 6px;
+    }
+
+    .step-normal,
+    .step-current {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sequence-table .col-sequence {
+        display: none;
+    }
+
+    .sequence-table .col-progress {
+        width: auto;
+    }
+
+    .sequence-table th,
+    .sequence-table td {
+        padding: 12px 10px;
+    }
+
+    .sequence-table th:first-child,
+    .sequence-table td:first-child {
+        padding-left: 12px;
+    }
+
+    .sequence-table th:last-child,
+    .sequence-table td:last-child {
+        padding-right: 12px;
+    }
+
+    .action-btns {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .action-btn {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .endpoint-name {
+        font-size: 0.9rem;
+    }
+
+    .endpoint-desc {
+        font-size: 0.8rem;
+    }
+}

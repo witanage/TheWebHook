@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}User Profile{% endblock %}
+{% block content %}
+<div class="profile-container">
+    <div class="profile-header">
+        <h1>User Profile</h1>
+        <p class="username-display">{{ username }}</p>
+    </div>
+
+    <!-- Profile Navigation Tabs -->
+    <div class="profile-tabs">
+        <button class="tab-button active" data-tab="api-token">API Token</button>
+        <button class="tab-button" data-tab="password">Change Password</button>
+        <button class="tab-button" data-tab="settings">Settings</button>
+    </div>
+
+    <!-- API Token Tab -->
+    <div id="api-token-tab" class="tab-content active">
+        <div class="section-card">
+            <h2>API Token Management</h2>
+            <p class="section-description">
+                Use API tokens to authenticate programmatic access to your webhooks without requiring session authentication.
+            </p>
+
+            <div class="token-container">
+                <div id="token-status" class="token-status">
+                    <div class="loading-spinner" id="token-loading">Loading...</div>
+                    <div id="token-display" class="token-display" style="display: none;">
+                        <label>Your API Token:</label>
+                        <div class="token-value-container">
+                            <input type="password" id="token-value" class="token-input" readonly>
+                            <button id="toggle-token-visibility" class="btn btn-icon" title="Show/Hide Token">
+                                <span id="eye-icon">👁️</span>
+                            </button>
+                            <button id="copy-token" class="btn btn-icon" title="Copy to Clipboard">
+                                📋
+                            </button>
+                        </div>
+                        <small class="token-warning">⚠️ Keep your token secure. Never share it or commit it to version control.</small>
+                    </div>
+                    <div id="no-token" class="no-token" style="display: none;">
+                        <p>You don't have an API token yet.</p>
+                    </div>
+                </div>
+
+                <div class="token-actions">
+                    <button id="generate-token" class="btn btn-primary" style="display: none;">
+                        Generate API Token
+                    </button>
+                    <button id="regenerate-token" class="btn btn-warning" style="display: none;">
+                        Regenerate Token
+                    </button>
+                    <button id="delete-token" class="btn btn-danger" style="display: none;">
+                        Delete Token
+                    </button>
+                </div>
+            </div>
+
+            <div class="token-info">
+                <h3>Using Your API Token</h3>
+                <p>Include your token in API requests using one of these methods:</p>
+                
+                <div class="code-example">
+                    <h4>Method 1: X-API-Token Header</h4>
+                    <pre><code>curl -X POST 'https://{{ request.host }}/api/webhook-out' \
+  -H 'Content-Type: application/json' \
+  -H 'X-API-Token: YOUR_TOKEN' \
+  -d '{"webhook_id": "my-webhook"}'</code></pre>
+                </div>
+
+                <div class="code-example">
+                    <h4>Method 2: Authorization Bearer</h4>
+                    <pre><code>curl -X POST 'https://{{ request.host }}/api/webhook-out' \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer YOUR_TOKEN' \
+  -d '{"webhook_id": "my-webhook"}'</code></pre>
+                </div>
+
+                <div class="code-example">
+                    <h4>Method 3: Query Parameter</h4>
+                    <pre><code>curl -X POST 'https://{{ request.host }}/api/webhook-out?api_token=YOUR_TOKEN' \
+  -H 'Content-Type: application/json' \
+  -d '{"webhook_id": "my-webhook"}'</code></pre>
+                </div>
+
+                <p>
+                    <a href="/API_DOCUMENTATION.md" target="_blank" class="btn btn-link">📖 Full API Documentation</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Tab -->
+    <div id="password-tab" class="tab-content">
+        <div class="section-card">
+            <h2>Change Password</h2>
+            <form id="change-password-form">
+                <div class="form-group">
+                    <label for="old-password">Current Password:</label>
+                    <input type="password" id="old-password" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="new-password">New Password:</label>
+                    <input type="password" id="new-password" class="form-control" required minlength="6">
+                    <small>Minimum 6 characters</small>
+                </div>
+                <div class="form-group">
+                    <label for="confirm-password">Confirm New Password:</label>
+                    <input type="password" id="confirm-password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Change Password</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Tab -->
+    <div id="settings-tab" class="tab-content">
+        <div class="section-card">
+            <h2>Settings</h2>
+            <form id="settings-form">
+                <div class="form-group">
+                    <label for="default-app-select">Default Application:</label>
+                    <select id="default-app-select" class="form-control">
+                        <option value="">None (Show Menu)</option>
+                        {% for item in menu_items %}
+                        <option value="{{ item.route }}" {% if default_app == item.route %}selected{% endif %}>
+                            {{ item.title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small>Choose which application to open by default after login</small>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<link rel="stylesheet" href="/static/css/profile-styles.css">
+<script src="/static/js/profile.js"></script>
+{% endblock %}
