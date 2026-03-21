@@ -45,7 +45,7 @@ from components.pdf_process import pdf_process_bp
 from components.totp_authenticator import totp_authenticator_bp
 from components.webhook_viewer import webhook_viewer_bp
 
-# ==================== BLUEPRINT REGISTRATIONS ====================
+# ==================== BLUEPRINT REGISTRATIONS =====================
 app.register_blueprint(code_formatter_bp)
 app.register_blueprint(httpcodes_bp)
 app.register_blueprint(iframe_loader_bp)
