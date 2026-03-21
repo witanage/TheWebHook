@@ -3,15 +3,13 @@ import pymysql
 import bcrypt
 import json
 from datetime import datetime, timezone
-from functools import wraps
 import logging
 import traceback
 import sys
 import threading
-from queue import Queue, Empty
-import pyotp
 import ntplib
 import time
+import secrets
 
 import os
 from dotenv import load_dotenv
@@ -36,45 +34,45 @@ app.config['PRESERVE_CONTEXT_ON_EXCEPTION'] = False
 # Preserve JSON object key order (don't sort alphabetically)
 app.config['JSON_SORT_KEYS'] = False
 
-db_config = {
-    "host": os.getenv("DB_HOST"),
-    "port": int(os.getenv("DB_PORT", "3306")),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASSWORD"),
-    "database": os.getenv("DB_NAME"),
-    "connect_timeout": 10
-}
+# ==================== BLUEPRINT IMPORTS ====================
+from components.code_formatter import code_formatter_bp
+from components.httpcodes import httpcodes_bp
+from components.iframe_loader import iframe_loader_bp
+from components.image_process import image_process_bp
+from components.json_compare import json_compare_bp
+from components.karate_generator import karate_generator_bp
+from components.pdf_process import pdf_process_bp
+from components.totp_authenticator import totp_authenticator_bp
+from components.webhook_viewer import webhook_viewer_bp
+
+# ==================== BLUEPRINT REGISTRATIONS ====================
+app.register_blueprint(code_formatter_bp)
+app.register_blueprint(httpcodes_bp)
+app.register_blueprint(iframe_loader_bp)
+app.register_blueprint(image_process_bp)
+app.register_blueprint(json_compare_bp)
+app.register_blueprint(karate_generator_bp)
+app.register_blueprint(pdf_process_bp)
+app.register_blueprint(totp_authenticator_bp)
+app.register_blueprint(webhook_viewer_bp)
+
+# Import shared utilities from components
+from components.utils import (
+    get_db_connection,
+    login_required,
+    admin_required,
+    log,
+    user_event_queues,
+    queue_lock
+)
 
 
-def get_db_connection():
-    """Helper function to get database connection"""
-    return pymysql.connect(
-        host=db_config["host"],
-        port=db_config["port"],
-        user=db_config["user"],
-        password=db_config["password"],
-        database=db_config["database"],
-        connect_timeout=db_config["connect_timeout"],
-        cursorclass=pymysql.cursors.DictCursor
-    )
-
-
-# Logging Configuration
+# Logging configuration
 logging.basicConfig(
     filename='app.log',
     level=logging.INFO,
     format='%(asctime)s %(levelname)s: %(message)s'
 )
-logger = logging.getLogger(__name__)
-
-# SSE event queues for each user
-user_event_queues = {}
-queue_lock = threading.Lock()
-
-
-def log(message):
-    if LOGGING_ENABLED:
-        logger.info(message)
 
 
 # Global exception handler
@@ -218,135 +216,7 @@ def inject_menu_items():
 
 
 # ==================== END MENU ITEMS FUNCTIONS ====================
-
-
-def get_client_ip():
-    """
-    Get the client's IP address, accounting for proxies and load balancers.
-    Checks headers in order of preference: X-Forwarded-For, X-Real-IP, then remote_addr.
-    """
-    # Check X-Forwarded-For header (most common for proxies/load balancers)
-    if request.environ.get('HTTP_X_FORWARDED_FOR'):
-        # X-Forwarded-For can contain multiple IPs, take the first one (original client)
-        forwarded_ips = request.environ.get('HTTP_X_FORWARDED_FOR').split(',')
-        client_ip = forwarded_ips[0].strip()
-    # Check X-Real-IP header (used by some proxies like nginx)
-    elif request.environ.get('HTTP_X_REAL_IP'):
-        client_ip = request.environ.get('HTTP_X_REAL_IP')
-    # Fallback to direct connection IP
-    else:
-        client_ip = request.environ.get('REMOTE_ADDR')
-
-    return client_ip
-
-
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            log(f"Unauthorized access attempt to {request.path}")
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
-            log(f"Unauthorized access attempt to {request.path}")
-            return redirect(url_for("login"))
-        if not session.get("is_admin"):
-            log(f"Non-admin user attempted to access {request.path}")
-            return redirect(url_for("menu"))
-        return f(*args, **kwargs)
-
-    return decorated_function
-
-
-def token_required(f):
-    """Decorator for API token authentication"""
-
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        # Check for API token in headers
-        api_token = request.headers.get('X-API-Token') or request.headers.get('Authorization')
-
-        # Also check query parameters as fallback
-        if not api_token:
-            api_token = request.args.get('api_token')
-
-        if not api_token:
-            log(f"API token missing for {request.path}")
-            return jsonify({"error": "API token required"}), 401
-
-        # Remove 'Bearer ' prefix if present
-        if api_token.startswith('Bearer '):
-            api_token = api_token[7:]
-
-        # Validate token
-        conn = None
-        cursor = None
-        try:
-            conn = pymysql.connect(**db_config)
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
-            cursor.execute(
-                "SELECT id, username, is_admin FROM users WHERE api_token = %s AND status = 1",
-                (api_token,)
-            )
-            user = cursor.fetchone()
-
-            if not user:
-                log(f"Invalid API token used: {api_token[:10]}...")
-                return jsonify({"error": "Invalid API token"}), 401
-
-            # Store user info in request context
-            request.token_user_id = user['id']
-            request.token_username = user['username']
-            request.token_is_admin = user['is_admin']
-
-            log(f"API token authenticated for user {user['id']} ({user['username']})")
-            return f(*args, **kwargs)
-
-        except Exception as e:
-            log(f"Error validating API token: {str(e)}")
-            return jsonify({"error": "Authentication error"}), 500
-        finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
-
-    return decorated_function
-
-
-def notify_user_webhook(user_id, webhook_id, webhook_data):
-    """Send SSE notification to specific user about new webhook"""
-    with queue_lock:
-        if user_id in user_event_queues:
-            # Send to all active connections for this user
-            for queue in user_event_queues[user_id]:
-                event_data = {
-                    'type': 'new_webhook',
-                    'webhook_id': webhook_id,
-                    'data': webhook_data
-                }
-                queue.put(json.dumps(event_data))
-
-
-def notify_user_notification(user_id, webhook_id, webhook_data):
-    """Send SSE notification about webhooks from other webhook IDs"""
-    with queue_lock:
-        if user_id in user_event_queues:
-            # Send notification event to all active connections for this user
-            for queue in user_event_queues[user_id]:
-                event_data = {
-                    'type': 'new_notification',
-                    'webhook_id': webhook_id,
-                    'data': webhook_data
-                }
-                queue.put(json.dumps(event_data))
+# Note: login_required and admin_required decorators are imported from components.utils
 
 
 @app.route("/", methods=["GET", "POST"])
@@ -360,8 +230,8 @@ def login():
 
             # Check if user has a default app set
             try:
-                conn = pymysql.connect(**db_config)
-                cursor = conn.cursor(pymysql.cursors.DictCursor)
+                conn = get_db_connection()
+                cursor = conn.cursor()
                 cursor.execute("SELECT default_app FROM users WHERE id = %s", (session['user_id'],))
                 result = cursor.fetchone()
 
@@ -391,16 +261,8 @@ def login():
 
             log(f"Login attempt for username: {username}")
 
-            log(f"Attempting database connection with config: {db_config}")
             try:
-                conn = pymysql.connect(
-                    host=db_config["host"],
-                    port=db_config["port"],
-                    user=db_config["user"],
-                    password=db_config["password"],
-                    database=db_config["database"],
-                    connect_timeout=db_config["connect_timeout"]
-                )
+                conn = get_db_connection()
                 log("Database connection successful")
             except pymysql.MySQLError as db_err:
                 log(f"Failed to connect to database: {str(db_err)}")
@@ -471,7 +333,7 @@ def menu():
     conn = None
     cursor = None
     try:
-        conn = pymysql.connect(**db_config)
+        conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT username, default_app FROM users WHERE id = %s", (user_id,))
         result = cursor.fetchone()
@@ -505,7 +367,7 @@ def profile():
     conn = None
     cursor = None
     try:
-        conn = pymysql.connect(**db_config)
+        conn = get_db_connection()
         cursor = conn.cursor(pymysql.cursors.DictCursor)
         cursor.execute("SELECT username, default_app FROM users WHERE id = %s", (user_id,))
         result = cursor.fetchone()
@@ -527,42 +389,6 @@ def profile():
     return render_template("profile.html", username=username, default_app=default_app)
 
 
-@app.route("/webhook-viewer")
-@login_required
-def webhook_viewer():
-    """Webhook viewer application"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    log(f"User {user_id} accessed webhook viewer")
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor()
-
-        # Get webhook IDs
-        cursor.execute(
-            "SELECT r.webhook_id FROM webhook_responses r INNER JOIN (SELECT webhook_id, MAX(timestamp) AS max_ts FROM webhook_responses WHERE user_id = %s GROUP BY webhook_id) latest ON r.webhook_id = latest.webhook_id AND r.timestamp = latest.max_ts WHERE r.user_id = %s ORDER BY r.timestamp DESC",
-            (user_id, user_id))
-        webhook_ids = [row[0] for row in cursor.fetchall()]
-
-    except pymysql.MySQLError as err:
-        log(f"Database error fetching data: {str(err)}")
-        return jsonify({"error": str(err)}), 500
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-    # Get base URL for webhook endpoints
-    base_url = request.url_root.rstrip('/')
-
-    return render_template("webhook-viewer.html", webhook_ids=webhook_ids, user_id=user_id, username=username,
-                           base_url=base_url)
-
-
 @app.route("/logout")
 @login_required
 def logout():
@@ -579,222 +405,6 @@ def dashboard():
     return redirect(url_for("menu"))
 
 
-@app.route("/webhook_ids/<user_id>")
-@login_required
-def webhook_ids(user_id):
-    # Only allow the logged‑in user to fetch their own IDs
-    if str(session["user_id"]) != user_id:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            SELECT r.webhook_id
-            FROM webhook_responses r
-            INNER JOIN (
-                SELECT webhook_id, MAX(timestamp) AS max_ts
-                FROM webhook_responses
-                WHERE user_id = %s
-                GROUP BY webhook_id
-            ) latest ON r.webhook_id = latest.webhook_id
-                AND r.timestamp = latest.max_ts
-            WHERE r.user_id = %s
-            ORDER BY latest.max_ts DESC
-        """, (user_id, user_id))
-
-        ids = [row[0] for row in cursor.fetchall()]
-        return jsonify({"ids": ids}), 200
-
-    except pymysql.MySQLError as err:
-        log(f"Database error fetching webhook IDs: {err}")
-        return jsonify({"error": "Database error"}), 500
-
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-
-@app.route("/search_webhooks", methods=["POST"])
-@login_required
-def search_webhooks():
-    user_id = session["user_id"]
-    data = request.get_json()
-    search_term = data.get("search_term", "").strip()
-    start_date = data.get("start_date", "")
-    end_date = data.get("end_date", "")
-
-    log(f"User {user_id} searching for: '{search_term}', date range: {start_date} to {end_date}")
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
-
-        # Base query
-        query = """
-            SELECT id, webhook_id, method, headers, body, query_params, 
-                   timestamp, is_read, client_ip
-            FROM webhook_responses
-            WHERE user_id = %s
-        """
-        params = [user_id]
-
-        # Add search term conditions only if search term is provided
-        if search_term:
-            query += """ 
-            AND (
-                body LIKE %s 
-                OR headers LIKE %s 
-                OR query_params LIKE %s
-                OR webhook_id LIKE %s
-                OR method LIKE %s
-            )
-            """
-            search_pattern = f"%{search_term}%"
-            params.extend([search_pattern] * 5)
-
-        # Add date range conditions
-        if start_date:
-            query += " AND timestamp >= %s"
-            params.append(start_date)
-
-        if end_date:
-            query += " AND timestamp <= %s"
-            params.append(end_date)
-
-        query += " ORDER BY timestamp DESC LIMIT 100"
-
-        cursor.execute(query, params)
-        results = cursor.fetchall()
-
-        # Add context for each result only if there's a search term
-        for result in results:
-            result['match_context'] = []
-
-            if search_term:
-                # Check where the match occurred
-                if search_term.lower() in str(result.get('body', '')).lower():
-                    result['match_context'].append('body')
-                if search_term.lower() in str(result.get('headers', '')).lower():
-                    result['match_context'].append('headers')
-                if search_term.lower() in str(result.get('query_params', '')).lower():
-                    result['match_context'].append('query_params')
-                if search_term.lower() in result.get('webhook_id', '').lower():
-                    result['match_context'].append('webhook_id')
-                if search_term.lower() in result.get('method', '').lower():
-                    result['match_context'].append('method')
-
-        log(f"Found {len(results)} results for search with term='{search_term}', start={start_date}, end={end_date}")
-        return jsonify({"results": results}), 200
-
-    except pymysql.MySQLError as err:
-        log(f"Database error during search: {str(err)}")
-        return jsonify({"error": "Database error occurred"}), 500
-    except Exception as e:
-        log(f"Unexpected error during search: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-
-@app.route("/search_thread", methods=["POST"])
-@login_required
-def search_thread():
-    user_id = session["user_id"]
-    data = request.get_json()
-    search_term = data.get("search_term", "").strip()
-    webhook_id = data.get("webhook_id", "").strip()
-    start_date = data.get("start_date", "")
-    end_date = data.get("end_date", "")
-
-    log(f"User {user_id} searching thread '{webhook_id}' for: '{search_term}', date range: {start_date} to {end_date}")
-
-    if not webhook_id:
-        return jsonify({"error": "Webhook ID is required"}), 400
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
-
-        # Base query - filter by user_id AND webhook_id
-        query = """
-            SELECT id, webhook_id, method, headers, body, query_params,
-                   timestamp, is_read, client_ip
-            FROM webhook_responses
-            WHERE user_id = %s AND webhook_id = %s
-        """
-        params = [user_id, webhook_id]
-
-        # Add search term conditions only if search term is provided
-        if search_term:
-            query += """
-            AND (
-                body LIKE %s
-                OR headers LIKE %s
-                OR query_params LIKE %s
-                OR method LIKE %s
-            )
-            """
-            search_pattern = f"%{search_term}%"
-            params.extend([search_pattern] * 4)
-
-        # Add date range conditions
-        if start_date:
-            query += " AND timestamp >= %s"
-            params.append(start_date)
-
-        if end_date:
-            query += " AND timestamp <= %s"
-            params.append(end_date)
-
-        query += " ORDER BY timestamp DESC LIMIT 100"
-
-        cursor.execute(query, params)
-        results = cursor.fetchall()
-
-        # Add context for each result only if there's a search term
-        for result in results:
-            result['match_context'] = []
-
-            if search_term:
-                # Check where the match occurred
-                if search_term.lower() in str(result.get('body', '')).lower():
-                    result['match_context'].append('body')
-                if search_term.lower() in str(result.get('headers', '')).lower():
-                    result['match_context'].append('headers')
-                if search_term.lower() in str(result.get('query_params', '')).lower():
-                    result['match_context'].append('query_params')
-                if search_term.lower() in result.get('method', '').lower():
-                    result['match_context'].append('method')
-
-        log(f"Found {len(results)} results for thread search in webhook '{webhook_id}' with term='{search_term}', start={start_date}, end={end_date}")
-        return jsonify({"results": results}), 200
-
-    except pymysql.MySQLError as err:
-        log(f"Database error during thread search: {str(err)}")
-        return jsonify({"error": "Database error occurred"}), 500
-    except Exception as e:
-        log(f"Unexpected error during thread search: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "POST":
@@ -806,7 +416,7 @@ def register():
         conn = None
         cursor = None
         try:
-            conn = pymysql.connect(**db_config)
+            conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute("INSERT INTO users (username, password_hash, status) VALUES (%s, %s, 0)",
                            (username, hashed_password))
@@ -845,8 +455,8 @@ def change_password():
     conn = None
     cursor = None
     try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
         # Get current password hash
         cursor.execute("SELECT password_hash FROM users WHERE id = %s", (user_id,))
@@ -903,8 +513,8 @@ def set_default_app():
     conn = None
     cursor = None
     try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
         # Update user's default app
         cursor.execute("UPDATE users SET default_app = %s WHERE id = %s",
@@ -927,501 +537,6 @@ def set_default_app():
             conn.close()
 
 
-@app.route("/mark_as_read/<int:request_id>", methods=["POST"])
-@login_required
-def mark_as_read(request_id):
-    user_id = session["user_id"]
-    log(f"User {user_id} marking request {request_id} as read")
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE webhook_responses
-            SET is_read = 1
-            WHERE id = %s AND user_id = %s
-        """, (request_id, user_id))
-        conn.commit()
-        log(f"Request {request_id} marked as read by user {user_id}")
-    except pymysql.MySQLError as err:
-        log(f"Database error marking request as read: {str(err)}")
-        return jsonify({"error": str(err)}), 500
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-    return jsonify({"message": "Request marked as read"}), 200
-
-
-@app.route("/get_notifications")
-@login_required
-def get_notifications():
-    user_id = session["user_id"]
-    log(f"User {user_id} fetching notifications")
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor(pymysql.cursors.DictCursor)
-
-        # Get recent unread webhooks from all webhook IDs
-        cursor.execute("""
-            SELECT id, webhook_id, method, timestamp, client_ip
-            FROM webhook_responses
-            WHERE user_id = %s AND is_read = 0
-            ORDER BY timestamp DESC
-            LIMIT 10
-        """, (user_id,))
-
-        notifications = cursor.fetchall()
-
-        # Get count of all unread
-        cursor.execute("""
-            SELECT COUNT(*) as count
-            FROM webhook_responses
-            WHERE user_id = %s AND is_read = 0
-        """, (user_id,))
-
-        count_result = cursor.fetchone()
-        unread_count = count_result['count'] if count_result else 0
-
-        log(f"Found {unread_count} unread notifications for user {user_id}")
-
-        return jsonify({
-            "notifications": notifications,
-            "unread_count": unread_count
-        }), 200
-
-    except pymysql.MySQLError as err:
-        log(f"Database error fetching notifications: {str(err)}")
-        return jsonify({"error": str(err)}), 500
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-
-@app.route("/mark_all_notifications_read", methods=["POST"])
-@login_required
-def mark_all_notifications_read():
-    user_id = session["user_id"]
-    log(f"User {user_id} marking all notifications as read")
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor()
-
-        cursor.execute("""
-            UPDATE webhook_responses
-            SET is_read = 1
-            WHERE user_id = %s AND is_read = 0
-        """, (user_id,))
-
-        affected_rows = cursor.rowcount
-        conn.commit()
-
-        log(f"Marked {affected_rows} notifications as read for user {user_id}")
-
-        # Notify clients about the update
-        with queue_lock:
-            if user_id in user_event_queues:
-                for queue in user_event_queues[user_id]:
-                    event_data = {
-                        'type': 'notifications_cleared',
-                        'count': 0
-                    }
-                    queue.put(json.dumps(event_data))
-
-        return jsonify({"message": f"Marked {affected_rows} notifications as read"}), 200
-
-    except pymysql.MySQLError as err:
-        log(f"Database error marking notifications as read: {str(err)}")
-        return jsonify({"error": str(err)}), 500
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-
-@app.route("/delete_request/<int:request_id>", methods=["DELETE"])
-@login_required
-def delete_request(request_id):
-    user_id = session["user_id"]
-    log(f"User {user_id} deleting request {request_id}")
-
-    conn = None
-    cursor = None
-    try:
-        conn = pymysql.connect(**db_config)
-        cursor = conn.cursor()
-
-        # First verify the request belongs to this user
-        cursor.execute("SELECT webhook_id FROM webhook_responses WHERE id = %s AND user_id = %s",
-                       (request_id, user_id))
-        result = cursor.fetchone()
-
-        if not result:
-            log(f"Request {request_id} not found or doesn't belong to user {user_id}")
-            return jsonify({"error": "Request not found or unauthorized"}), 404
-
-        webhook_id = result[0]
-
-        # Delete the request
-        cursor.execute("DELETE FROM webhook_responses WHERE id = %s AND user_id = %s",
-                       (request_id, user_id))
-        conn.commit()
-
-        # Notify connected clients about the deletion
-        event_data = {
-            'type': 'webhook_deleted',
-            'webhook_id': webhook_id,
-            'request_id': request_id
-        }
-
-        with queue_lock:
-            if user_id in user_event_queues:
-                for queue in user_event_queues[user_id]:
-                    queue.put(json.dumps(event_data))
-
-        log(f"Request {request_id} deleted successfully by user {user_id}")
-        return jsonify({"message": "Request deleted successfully"}), 200
-
-    except pymysql.MySQLError as err:
-        log(f"Database error deleting request: {str(err)}")
-        return jsonify({"error": str(err)}), 500
-    finally:
-        if cursor is not None:
-            cursor.close()
-        if conn is not None and conn.open:
-            conn.close()
-
-
-@app.route("/webhook/<user_id>/<webhook_id>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-def handle_webhook(user_id, webhook_id):
-    # Handle GET requests to retrieve webhook data (original behavior)
-    if request.method == "GET":
-        log(f"Webhook GET request for user {user_id}, webhook {webhook_id}")
-        conn = None
-        cursor = None
-        try:
-            conn = pymysql.connect(**db_config)
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
-            cursor.execute("""
-                    SELECT id, webhook_id, method, headers, body, query_params, timestamp, is_read, client_ip
-                    FROM webhook_responses
-                    WHERE user_id = %s AND webhook_id = %s
-                    ORDER BY timestamp DESC
-                """, (user_id, webhook_id))
-            data = cursor.fetchall()
-            log(f"Webhook data retrieved for user {user_id}, webhook {webhook_id}")
-        except pymysql.MySQLError as err:
-            log(f"Database error in webhook GET: {str(err)}")
-            return jsonify({"error": str(err)}), 500
-        finally:
-            if cursor is not None:
-                cursor.close()
-            if conn is not None and conn.open:
-                conn.close()
-
-        return jsonify(data), 200
-
-    # Handle all other HTTP methods (POST, PUT, DELETE, PATCH, HEAD, OPTIONS)
-    else:
-        # Get client IP address
-        client_ip = get_client_ip()
-        log(f"Webhook {request.method} received from IP {client_ip} for user {user_id}, webhook {webhook_id}")
-
-        conn = None
-        cursor = None
-        try:
-            conn = pymysql.connect(**db_config)
-            cursor = conn.cursor(pymysql.cursors.DictCursor)
-
-            # Verify user exists
-            cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
-            user = cursor.fetchone()
-            if not user:
-                log(f"Webhook failed: User {user_id} does not exist")
-                return jsonify({"error": "User does not exist"}), 404
-
-            method = request.method
-            headers = dict(request.headers)
-            query_params = request.args.to_dict()
-
-            # Handle different content types for body
-            body = None
-            if request.content_type and 'application/json' in request.content_type:
-                body = request.get_json(silent=True)
-            elif request.content_type and 'application/x-www-form-urlencoded' in request.content_type:
-                body = request.form.to_dict()
-            elif request.content_type and 'multipart/form-data' in request.content_type:
-                body = {
-                    'form_data': request.form.to_dict(),
-                    'files': {key: {'filename': file.filename, 'content_type': file.content_type}
-                              for key, file in request.files.items()}
-                }
-            else:
-                # For other content types, get raw data
-                try:
-                    body = request.data.decode("utf-8") if request.data else ""
-                except UnicodeDecodeError:
-                    body = f"<Binary data: {len(request.data)} bytes>"
-
-            # Insert webhook data including client IP
-            timestamp = datetime.now(timezone.utc)
-            cursor.execute("""
-                INSERT INTO webhook_responses (user_id, webhook_id, method, headers, body, query_params, timestamp, client_ip)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (user_id, webhook_id, method, json.dumps(headers, sort_keys=False), json.dumps(body, sort_keys=False),
-                  json.dumps(query_params, sort_keys=False),
-                  timestamp, client_ip))
-            conn.commit()
-
-            # Get the inserted ID
-            webhook_response_id = cursor.lastrowid
-
-            log(f"Webhook data stored for user {user_id}, webhook {webhook_id} - Method: {method}, IP: {client_ip}")
-
-            # Prepare webhook data for SSE notification
-            webhook_data = {
-                'id': webhook_response_id,
-                'webhook_id': webhook_id,
-                'method': method,
-                'headers': json.dumps(headers, sort_keys=False),
-                'body': json.dumps(body, sort_keys=False),
-                'query_params': json.dumps(query_params, sort_keys=False),
-                'timestamp': timestamp.isoformat(),
-                'client_ip': client_ip,
-                'is_read': 0
-            }
-
-            # Notify connected clients via SSE
-            notify_user_webhook(user_id, webhook_id, webhook_data)
-
-            # Also send as notification for other webhook IDs
-            notify_user_notification(user_id, webhook_id, webhook_data)
-
-        except pymysql.MySQLError as err:
-            log(f"Database error in webhook {request.method}: {str(err)}")
-            return jsonify({"error": str(err)}), 500
-        finally:
-            if cursor is not None:
-                cursor.close()
-            if conn is not None and conn.open:
-                conn.close()
-
-        # Return appropriate response based on method
-        if request.method == "HEAD":
-            return "", 200
-        elif request.method == "OPTIONS":
-            response = jsonify({"message": "Options request received and logged successfully"})
-            response.headers["Allow"] = "GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS"
-            return response, 200
-        else:
-            return jsonify({"message": f"{request.method} webhook received and logged successfully"}), 200
-
-
-@app.route("/http-codes")
-@login_required
-def http_codes():
-    """HTTP Codes Tester documentation page"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    log(f"User {user_id} accessed HTTP codes tester")
-    return render_template("httpcodes.html", username=username, user_id=user_id)
-
-
-@app.route("/json-compare")
-@login_required
-def json_compare():
-    """JSON comparison tool page"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    log(f"User {user_id} accessed JSON comparison tool")
-    return render_template("json-compare.html", username=username)
-
-
-@app.route("/api/json-compare/save", methods=["POST"])
-@login_required
-def save_json_comparison():
-    """Save a JSON comparison to database"""
-    user_id = session["user_id"]
-    data = request.json
-
-    json1 = data.get("json1", "")
-    json2 = data.get("json2", "")
-    comparison_name = data.get("comparison_name", "Untitled Comparison")
-    comparison_id = data.get("comparison_id")
-
-    if not json1 and not json2:
-        return jsonify({"success": False, "error": "Nothing to save - both JSON fields are empty"}), 400
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            if comparison_id:
-                cursor.execute("""
-                    UPDATE json_comparisons
-                    SET comparison_name = %s, json1 = %s, json2 = %s
-                    WHERE id = %s AND user_id = %s
-                """, (comparison_name, json1, json2, comparison_id, user_id))
-
-                if cursor.rowcount == 0:
-                    return jsonify({"success": False, "error": "Comparison not found"}), 404
-
-                log(f"User {user_id} updated JSON comparison {comparison_id}")
-                message = "Comparison updated successfully"
-            else:
-                cursor.execute("""
-                    INSERT INTO json_comparisons (user_id, comparison_name, json1, json2)
-                    VALUES (%s, %s, %s, %s)
-                """, (user_id, comparison_name, json1, json2))
-                comparison_id = cursor.lastrowid
-                log(f"User {user_id} saved new JSON comparison {comparison_id}")
-                message = "Comparison saved successfully"
-
-            conn.commit()
-
-            return jsonify({
-                "success": True,
-                "message": message,
-                "comparison_id": comparison_id,
-                "saved_at": datetime.now(timezone.utc).isoformat()
-            })
-    except Exception as e:
-        conn.rollback()
-        log(f"Error saving JSON comparison for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/json-compare/load", methods=["GET"])
-@login_required
-def load_json_comparison():
-    """Load a JSON comparison from database"""
-    user_id = session["user_id"]
-    comparison_id = request.args.get("comparison_id")
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            if comparison_id:
-                cursor.execute("""
-                    SELECT id, comparison_name, json1, json2, updated_at
-                    FROM json_comparisons
-                    WHERE id = %s AND user_id = %s
-                """, (comparison_id, user_id))
-            else:
-                cursor.execute("""
-                    SELECT id, comparison_name, json1, json2, updated_at
-                    FROM json_comparisons
-                    WHERE user_id = %s
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                """, (user_id,))
-
-            result = cursor.fetchone()
-
-            if result:
-                log(f"User {user_id} loaded JSON comparison {result.get('id', 'N/A')}")
-                return jsonify({
-                    "success": True,
-                    "data": {
-                        "comparison_id": result["id"],
-                        "comparison_name": result["comparison_name"],
-                        "json1": result["json1"],
-                        "json2": result["json2"],
-                        "saved_at": result["updated_at"].isoformat() if result["updated_at"] else None
-                    }
-                })
-            else:
-                return jsonify({"success": False, "error": "No saved comparisons found"}), 404
-    except Exception as e:
-        log(f"Error loading JSON comparison for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/json-compare/list", methods=["GET"])
-@login_required
-def list_json_comparisons():
-    """List all saved JSON comparisons for the user"""
-    user_id = session["user_id"]
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT id, comparison_name, created_at, updated_at
-                FROM json_comparisons
-                WHERE user_id = %s
-                ORDER BY updated_at DESC
-            """, (user_id,))
-
-            results = cursor.fetchall()
-
-            comparisons = []
-            for row in results:
-                comparisons.append({
-                    "id": row["id"],
-                    "name": row["comparison_name"],
-                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-                    "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None
-                })
-
-            return jsonify({
-                "success": True,
-                "comparisons": comparisons
-            })
-    except Exception as e:
-        log(f"Error listing JSON comparisons for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/json-compare/delete/<int:comparison_id>", methods=["DELETE"])
-@login_required
-def delete_json_comparison(comparison_id):
-    """Delete a specific JSON comparison"""
-    user_id = session["user_id"]
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                DELETE FROM json_comparisons
-                WHERE id = %s AND user_id = %s
-            """, (comparison_id, user_id))
-            conn.commit()
-
-            if cursor.rowcount == 0:
-                return jsonify({"success": False, "error": "Comparison not found"}), 404
-
-            log(f"User {user_id} deleted JSON comparison {comparison_id}")
-            return jsonify({
-                "success": True,
-                "message": "Comparison deleted successfully"
-            })
-    except Exception as e:
-        conn.rollback()
-        log(f"Error deleting JSON comparison {comparison_id} for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
 @app.route("/aws-log-compare")
 @login_required
 def aws_log_compare():
@@ -1430,203 +545,6 @@ def aws_log_compare():
     username = session.get("username", "User")
     log(f"User {user_id} accessed AWS Log comparison tool")
     return render_template("aws-log-compare.html", username=username)
-
-
-@app.route("/karate-generator")
-@login_required
-def karate_generator():
-    """Karate feature file generator page"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    is_admin = session.get("is_admin", 0)
-    log(f"User {user_id} accessed Karate generator tool")
-    return render_template("karate-generator.html", username=username, is_admin=is_admin)
-
-
-@app.route("/api/karate-generator/save", methods=["POST"])
-@login_required
-def save_karate_work():
-    """Save Karate generator work to database (supports multiple projects)"""
-    user_id = session["user_id"]
-    data = request.json
-
-    # Validate required fields
-    if not data.get("feature_config") or not data.get("scenarios_data"):
-        return jsonify({"success": False, "error": "Missing required data"}), 400
-
-    work_name = data.get("work_name", "My Work")
-    feature_config = data.get("feature_config")
-    scenarios_data = data.get("scenarios_data")
-    env_variables = data.get("env_variables", [])
-    project_id = data.get("project_id")  # Optional: for updating existing project
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            if project_id:
-                # Update existing project
-                cursor.execute("""
-                    UPDATE karate_saved_work
-                    SET work_name = %s, feature_config = %s, scenarios_data = %s, env_variables = %s
-                    WHERE id = %s AND user_id = %s
-                """, (work_name, json.dumps(feature_config), json.dumps(scenarios_data), json.dumps(env_variables),
-                      project_id, user_id))
-
-                if cursor.rowcount == 0:
-                    return jsonify({"success": False, "error": "Project not found"}), 404
-
-                log(f"User {user_id} updated Karate project {project_id}")
-                message = "Project updated successfully"
-            else:
-                # Insert new project
-                cursor.execute("""
-                    INSERT INTO karate_saved_work (user_id, work_name, feature_config, scenarios_data, env_variables)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (user_id, work_name, json.dumps(feature_config), json.dumps(scenarios_data),
-                      json.dumps(env_variables)))
-                project_id = cursor.lastrowid
-                log(f"User {user_id} saved new Karate project {project_id}")
-                message = "Project saved successfully"
-
-            conn.commit()
-
-            return jsonify({
-                "success": True,
-                "message": message,
-                "project_id": project_id,
-                "saved_at": datetime.now(timezone.utc).isoformat()
-            })
-    except Exception as e:
-        conn.rollback()
-        log(f"Error saving Karate work for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/karate-generator/load", methods=["GET"])
-@login_required
-def load_karate_work():
-    """Load Karate generator work from database (most recent or by ID)"""
-    user_id = session["user_id"]
-    project_id = request.args.get("project_id")
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            if project_id:
-                # Load specific project
-                cursor.execute("""
-                    SELECT id, work_name, feature_config, scenarios_data, env_variables, updated_at
-                    FROM karate_saved_work
-                    WHERE id = %s AND user_id = %s
-                """, (project_id, user_id))
-            else:
-                # Load most recent project
-                cursor.execute("""
-                    SELECT id, work_name, feature_config, scenarios_data, env_variables, updated_at
-                    FROM karate_saved_work
-                    WHERE user_id = %s
-                    ORDER BY updated_at DESC
-                    LIMIT 1
-                """, (user_id,))
-
-            result = cursor.fetchone()
-
-            if result:
-                log(f"User {user_id} loaded Karate project {result.get('id', 'N/A')}")
-                return jsonify({
-                    "success": True,
-                    "data": {
-                        "project_id": result.get("id"),
-                        "work_name": result["work_name"],
-                        "feature_config": json.loads(result["feature_config"]) if isinstance(result["feature_config"],
-                                                                                             str) else result[
-                            "feature_config"],
-                        "scenarios_data": json.loads(result["scenarios_data"]) if isinstance(result["scenarios_data"],
-                                                                                             str) else result[
-                            "scenarios_data"],
-                        "env_variables": json.loads(result["env_variables"]) if result["env_variables"] and isinstance(
-                            result["env_variables"], str) else (result["env_variables"] or []),
-                        "saved_at": result["updated_at"].isoformat() if result["updated_at"] else None
-                    }
-                })
-            else:
-                return jsonify({"success": False, "error": "No saved work found"}), 404
-    except Exception as e:
-        log(f"Error loading Karate work for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/karate-generator/projects", methods=["GET"])
-@login_required
-def list_karate_projects():
-    """List all saved Karate projects for the user"""
-    user_id = session["user_id"]
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT id, work_name, created_at, updated_at
-                FROM karate_saved_work
-                WHERE user_id = %s
-                ORDER BY updated_at DESC
-            """, (user_id,))
-
-            results = cursor.fetchall()
-
-            projects = []
-            for row in results:
-                projects.append({
-                    "id": row["id"],
-                    "name": row["work_name"],
-                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-                    "updated_at": row["updated_at"].isoformat() if row["updated_at"] else None
-                })
-
-            return jsonify({
-                "success": True,
-                "projects": projects
-            })
-    except Exception as e:
-        log(f"Error listing Karate projects for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/karate-generator/delete/<int:project_id>", methods=["DELETE"])
-@login_required
-def delete_karate_project(project_id):
-    """Delete a specific Karate project"""
-    user_id = session["user_id"]
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                DELETE FROM karate_saved_work
-                WHERE id = %s AND user_id = %s
-            """, (project_id, user_id))
-            conn.commit()
-
-            if cursor.rowcount == 0:
-                return jsonify({"success": False, "error": "Project not found"}), 404
-
-            log(f"User {user_id} deleted Karate project {project_id}")
-            return jsonify({
-                "success": True,
-                "message": "Project deleted successfully"
-            })
-    except Exception as e:
-        conn.rollback()
-        log(f"Error deleting Karate project {project_id} for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-    finally:
-        conn.close()
 
 
 @app.route("/httpcode/<int:code>", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
@@ -2109,70 +1027,6 @@ def sequence_endpoint_handler(user_id, endpoint_name, extra_path=None):
         conn.close()
 
 
-@app.route("/events/<user_id>")
-@login_required
-def events(user_id):
-    """Server-Sent Events endpoint for real-time webhook notifications"""
-    # Verify the user is accessing their own events
-    if str(session.get("user_id")) != user_id:
-        return jsonify({"error": "Unauthorized"}), 403
-
-    def generate():
-        # Create a queue for this connection
-        event_queue = Queue()
-
-        # Register this connection for the user
-        with queue_lock:
-            if user_id not in user_event_queues:
-                user_event_queues[user_id] = []
-            user_event_queues[user_id].append(event_queue)
-
-        try:
-            # Send initial connection event
-            yield f"data: {json.dumps({'type': 'connected'})}\n\n"
-
-            while True:
-                try:
-                    # Wait for events with timeout to allow periodic heartbeat
-                    event_data = event_queue.get(timeout=30)
-                    yield f"data: {event_data}\n\n"
-                except Empty:
-                    # Queue timeout - send heartbeat to keep connection alive
-                    yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
-                except GeneratorExit:
-                    # Re-raise to be caught by outer try-except
-                    raise
-                except Exception as e:
-                    # Log unexpected errors but continue
-                    log(f"Error in SSE event loop for user {user_id}: {str(e)}")
-                    continue
-
-        except GeneratorExit:
-            # Client disconnected, clean up gracefully
-            log(f"SSE client disconnected for user {user_id}")
-        except Exception as e:
-            # Log any other exceptions
-            log(f"SSE error for user {user_id}: {str(e)}")
-        finally:
-            # Clean up on disconnect
-            with queue_lock:
-                if user_id in user_event_queues:
-                    try:
-                        user_event_queues[user_id].remove(event_queue)
-                        if not user_event_queues[user_id]:
-                            del user_event_queues[user_id]
-                    except (ValueError, KeyError):
-                        # Queue already removed or user_id not in dict
-                        pass
-            log(f"SSE cleanup completed for user {user_id}")
-
-    response = Response(generate(), mimetype="text/event-stream")
-    response.headers['Cache-Control'] = 'no-cache'
-    response.headers['X-Accel-Buffering'] = 'no'
-    response.headers['Connection'] = 'keep-alive'
-    return response
-
-
 @app.route("/health", methods=["GET"])
 def health_check():
     """
@@ -2192,7 +1046,7 @@ def health_check():
     conn = None
     cursor = None
     try:
-        conn = pymysql.connect(**db_config)
+        conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT 1")
         cursor.fetchone()
@@ -2547,7 +1401,6 @@ def admin_users():
         conn.close()
 
 
-@admin_required
 @app.route('/api/admin/users', methods=['GET'])
 @admin_required
 def api_get_users():
@@ -2571,7 +1424,6 @@ def api_get_users():
         conn.close()
 
 
-@admin_required
 @app.route('/api/admin/users/<int:user_id>', methods=['GET'])
 @admin_required
 def api_get_user(user_id):
@@ -2594,7 +1446,6 @@ def api_get_user(user_id):
         conn.close()
 
 
-@admin_required
 @app.route('/api/admin/users', methods=['POST'])
 @admin_required
 def api_create_user():
@@ -2643,7 +1494,6 @@ def api_create_user():
         conn.close()
 
 
-@admin_required
 @app.route('/api/admin/users/<int:user_id>/status', methods=['PUT'])
 @admin_required
 def api_toggle_user_status(user_id):
@@ -2729,7 +1579,6 @@ def api_update_user(user_id):
         conn.close()
 
 
-@admin_required
 @app.route('/api/admin/users/<int:user_id>/password', methods=['PUT'])
 @admin_required
 def api_reset_user_password(user_id):
@@ -2774,7 +1623,6 @@ def api_reset_user_password(user_id):
         conn.close()
 
 
-@admin_required
 @app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
 @admin_required
 def api_delete_user(user_id):
@@ -2810,7 +1658,6 @@ def api_delete_user(user_id):
         conn.close()
 
 
-@admin_required
 @app.route('/api/admin/stats', methods=['GET'])
 @admin_required
 def api_admin_stats():
@@ -2852,559 +1699,6 @@ def api_admin_stats():
 
 # ==================== IFRAME LOADER ROUTES ====================
 
-
-@app.route("/iframe-loader")
-@login_required
-def iframe_loader():
-    """iFrame Loader page"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    log(f"User {user_id} accessed iFrame Loader")
-    return render_template("iframe-loader.html", username=username)
-
-
-@app.route("/iframe-proxy")
-@login_required
-def iframe_proxy():
-    """Proxy for fetching external URLs with X-Frame-Options and CSP headers stripped"""
-    import urllib.request
-    import urllib.error
-    import socket
-    import ipaddress
-    from urllib.parse import urlparse, quote
-
-    url = request.args.get("url", "").strip()
-
-    if not url:
-        return Response("<p>URL parameter is required.</p>", status=400, content_type="text/html")
-
-    try:
-        parsed = urlparse(url)
-        if parsed.scheme not in ("http", "https"):
-            return Response("<p>Only http and https URLs are allowed.</p>", status=400, content_type="text/html")
-        hostname = parsed.hostname
-        if not hostname:
-            return Response("<p>Invalid URL: missing hostname.</p>", status=400, content_type="text/html")
-    except Exception:
-        return Response("<p>Invalid URL.</p>", status=400, content_type="text/html")
-
-    # SSRF protection: block requests to private/loopback addresses
-    try:
-        ip_str = socket.gethostbyname(hostname)
-        ip = ipaddress.ip_address(ip_str)
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast:
-            return Response("<p>Access to private or local addresses is not permitted.</p>", status=403,
-                            content_type="text/html")
-    except socket.gaierror:
-        return Response("<p>Could not resolve hostname.</p>", status=502, content_type="text/html")
-
-    try:
-        req = urllib.request.Request(
-            url,
-            headers={
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "Accept-Language": "en-US,en;q=0.5",
-            }
-        )
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            content = resp.read()
-            content_type = resp.headers.get("Content-Type", "text/html; charset=utf-8")
-            status_code = resp.status
-    except urllib.error.HTTPError as e:
-        content = e.read()
-        content_type = e.headers.get("Content-Type", "text/html; charset=utf-8")
-        status_code = e.code
-    except urllib.error.URLError as e:
-        return Response(f"<p>Failed to fetch URL: {e.reason}</p>", status=502, content_type="text/html")
-    except Exception as e:
-        return Response(f"<p>Proxy error: {e}</p>", status=500, content_type="text/html")
-
-    # For HTML responses, inject <base href> so relative URLs resolve correctly
-    if "text/html" in content_type:
-        try:
-            charset = "utf-8"
-            if "charset=" in content_type:
-                charset = content_type.split("charset=")[-1].strip().split(";")[0].strip()
-            html = content.decode(charset, errors="replace")
-            base_tag = f'<base href="{url}">'
-            lower = html.lower()
-            if "<head>" in lower:
-                idx = lower.index("<head>") + len("<head>")
-                html = html[:idx] + base_tag + html[idx:]
-            elif "<html>" in lower:
-                idx = lower.index("<html>") + len("<html>")
-                html = html[:idx] + "<head>" + base_tag + "</head>" + html[idx:]
-            else:
-                html = base_tag + html
-            content = html.encode("utf-8")
-            content_type = "text/html; charset=utf-8"
-        except Exception:
-            pass
-
-    flask_response = Response(content, status=status_code, content_type=content_type)
-    # X-Frame-Options is intentionally omitted to allow embedding
-    return flask_response
-
-
-# ==================== END ADMIN USER MANAGEMENT ROUTES ====================
-
-
-# ==================== IFRAME LOADER ROUTES ====================
-
-@app.route("/totp-authenticator")
-@login_required
-def totp_authenticator():
-    """TOTP Authenticator page"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    log(f"User {user_id} accessed TOTP Authenticator")
-    return render_template("totp-authenticator.html", username=username)
-
-
-@app.route("/api/totp/accounts", methods=["GET"])
-@login_required
-def get_totp_accounts():
-    """Get all TOTP accounts for the current user"""
-    user_id = session["user_id"]
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            sql = """
-                SELECT id, service_name, account_identifier, secret_key, issuer,
-                       digits, period, algorithm, color, icon, created_at, updated_at
-                FROM totp_accounts
-                WHERE user_id = %s
-                ORDER BY created_at DESC
-            """
-            cursor.execute(sql, (user_id,))
-            accounts = cursor.fetchall()
-
-            log(f"User {user_id} retrieved {len(accounts)} TOTP accounts")
-            return jsonify({'success': True, 'accounts': accounts})
-    except Exception as e:
-        log(f"Error fetching TOTP accounts for user {user_id}: {e}")
-        return jsonify({'success': False, 'message': 'Failed to load accounts'}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/totp/accounts", methods=["POST"])
-@login_required
-def create_totp_account():
-    """Create a new TOTP account"""
-    user_id = session["user_id"]
-    data = request.get_json()
-
-    # Validate required fields
-    required_fields = ['service_name', 'secret_key']
-    for field in required_fields:
-        if not data.get(field):
-            return jsonify({'success': False, 'message': f'Missing required field: {field}'}), 400
-
-    # Validate secret key format
-    try:
-        # Test if the secret key is valid by trying to create a TOTP object
-        pyotp.TOTP(data['secret_key'])
-    except Exception as e:
-        log(f"Invalid TOTP secret key provided by user {user_id}: {e}")
-        return jsonify({'success': False, 'message': 'Invalid secret key format'}), 400
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            sql = """
-                INSERT INTO totp_accounts
-                (user_id, service_name, account_identifier, secret_key, issuer,
-                 digits, period, algorithm, color, icon)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(sql, (
-                user_id,
-                data.get('service_name'),
-                data.get('account_identifier', ''),
-                data.get('secret_key'),
-                data.get('issuer', ''),
-                data.get('digits', 6),
-                data.get('period', 30),
-                data.get('algorithm', 'SHA1'),
-                data.get('color', '#007bff'),
-                data.get('icon', '')
-            ))
-            conn.commit()
-
-            account_id = cursor.lastrowid
-            log(f"User {user_id} created TOTP account {account_id} for service: {data.get('service_name')}")
-            return jsonify({'success': True, 'account_id': account_id, 'message': 'Account created successfully'})
-    except Exception as e:
-        log(f"Error creating TOTP account for user {user_id}: {e}")
-        return jsonify({'success': False, 'message': 'Failed to create account'}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/totp/accounts/<int:account_id>", methods=["PUT"])
-@login_required
-def update_totp_account(account_id):
-    """Update an existing TOTP account"""
-    user_id = session["user_id"]
-    data = request.get_json()
-
-    # Validate secret key format if provided
-    if 'secret_key' in data:
-        try:
-            pyotp.TOTP(data['secret_key'])
-        except Exception as e:
-            log(f"Invalid TOTP secret key provided by user {user_id}: {e}")
-            return jsonify({'success': False, 'message': 'Invalid secret key format'}), 400
-
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # First verify the account belongs to the user
-            cursor.execute("SELECT id FROM totp_accounts WHERE id = %s AND user_id = %s", (account_id, user_id))
-            if not cursor.fetchone():
-                return jsonify({'success': False, 'message': 'Account not found'}), 404
-
-            # Update the account
-            sql = """
-                UPDATE totp_accounts
-                SET service_name = %s, account_identifier = %s, secret_key = %s,
-                    issuer = %s, digits = %s, period = %s, color = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                WHERE id = %s AND user_id = %s
-            """
-            cursor.execute(sql, (
-                data.get('service_name'),
-                data.get('account_identifier', ''),
-                data.get('secret_key'),
-                data.get('issuer', ''),
-                data.get('digits', 6),
-                data.get('period', 30),
-                data.get('color', '#007bff'),
-                account_id,
-                user_id
-            ))
-            conn.commit()
-
-            log(f"User {user_id} updated TOTP account {account_id}")
-            return jsonify({'success': True, 'message': 'Account updated successfully'})
-    except Exception as e:
-        log(f"Error updating TOTP account {account_id} for user {user_id}: {e}")
-        return jsonify({'success': False, 'message': 'Failed to update account'}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/totp/accounts/<int:account_id>", methods=["DELETE"])
-@login_required
-def delete_totp_account(account_id):
-    """Delete a TOTP account"""
-    user_id = session["user_id"]
-    conn = get_db_connection()
-    try:
-        with conn.cursor() as cursor:
-            # Verify the account belongs to the user before deleting
-            cursor.execute("SELECT id FROM totp_accounts WHERE id = %s AND user_id = %s", (account_id, user_id))
-            if not cursor.fetchone():
-                return jsonify({'success': False, 'message': 'Account not found'}), 404
-
-            # Delete the account
-            cursor.execute("DELETE FROM totp_accounts WHERE id = %s AND user_id = %s", (account_id, user_id))
-            conn.commit()
-
-            log(f"User {user_id} deleted TOTP account {account_id}")
-            return jsonify({'success': True, 'message': 'Account deleted successfully'})
-    except Exception as e:
-        log(f"Error deleting TOTP account {account_id} for user {user_id}: {e}")
-        return jsonify({'success': False, 'message': 'Failed to delete account'}), 500
-    finally:
-        conn.close()
-
-
-@app.route("/api/totp/ntp-time", methods=["GET"])
-@login_required
-def get_ntp_synced_time():
-    """
-    Get current NTP-synchronized time for TOTP generation.
-    Returns Unix timestamp in milliseconds and seconds, plus offset information.
-    """
-    try:
-        ntp_time = get_ntp_time()
-        offset = get_ntp_offset()
-
-        return jsonify({
-            'success': True,
-            'timestamp': int(ntp_time * 1000),  # milliseconds for JavaScript
-            'timestamp_seconds': int(ntp_time),  # seconds for TOTP calculation
-            'offset': offset,
-            'cached': (time.time() - ntp_offset_cache['timestamp']) < NTP_CACHE_DURATION
-        })
-    except Exception as e:
-        log(f"Error getting NTP time: {e}")
-        # Fallback to system time if NTP fails
-        current_time = time.time()
-        return jsonify({
-            'success': True,
-            'timestamp': int(current_time * 1000),
-            'timestamp_seconds': int(current_time),
-            'offset': 0,
-            'cached': False,
-            'fallback': True
-        })
-
-
-@app.route("/api/totp/generate/<int:account_id>", methods=["GET"])
-@login_required
-def generate_totp_code(account_id):
-    """
-    Generate TOTP code for a specific account using NTP-synchronized time.
-    This ensures the code matches standard authenticators.
-    """
-    user_id = session["user_id"]
-    conn = get_db_connection()
-
-    try:
-        with conn.cursor() as cursor:
-            # Fetch account details
-            cursor.execute(
-                "SELECT secret_key, digits, period FROM totp_accounts WHERE id = %s AND user_id = %s",
-                (account_id, user_id)
-            )
-            account = cursor.fetchone()
-
-            if not account:
-                return jsonify({'success': False, 'message': 'Account not found'}), 404
-
-            # Generate TOTP using NTP-synchronized time
-            totp = pyotp.TOTP(
-                account['secret_key'],
-                digits=account['digits'],
-                interval=account['period']
-            )
-
-            # Use NTP time for generation
-            ntp_time = get_ntp_time()
-            code = totp.at(ntp_time)
-
-            # Calculate time remaining
-            period = account['period']
-            epoch = int(ntp_time)
-            time_remaining = period - (epoch % period)
-
-            return jsonify({
-                'success': True,
-                'code': code,
-                'time_remaining': time_remaining,
-                'period': period
-            })
-
-    except Exception as e:
-        log(f"Error generating TOTP code for account {account_id}: {e}")
-        return jsonify({'success': False, 'message': 'Failed to generate code'}), 500
-    finally:
-        conn.close()
-
-
-# ==================== END TOTP AUTHENTICATOR ROUTES ====================
-
-
-# ==================== CODE FORMATTER ROUTES ====================
-
-@app.route("/pdf-process")
-@login_required
-def pdf_process():
-    """PDF Process page - all-in-one PDF tools"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    is_admin = session.get("is_admin", 0)
-    log(f"User {user_id} accessed PDF Process")
-    return render_template("pdf-process.html", username=username, is_admin=is_admin)
-
-
-@app.route("/image-process")
-@login_required
-def image_process():
-    """Image Process page - all-in-one image tools"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    is_admin = session.get("is_admin", 0)
-    log(f"User {user_id} accessed Image Process")
-    return render_template("image-process.html", username=username, is_admin=is_admin)
-
-
-@app.route("/code-formatter")
-@login_required
-def code_formatter():
-    """Code Formatter page"""
-    user_id = session["user_id"]
-    username = session.get("username", "User")
-    log(f"User {user_id} accessed Code Formatter")
-    return render_template("code-formatter.html", username=username)
-
-
-@app.route("/api/code-formatter/format", methods=["POST"])
-@login_required
-def format_code():
-    """Format code based on selected mode"""
-    user_id = session["user_id"]
-    data = request.json
-
-    code = data.get("code", "")
-    language = data.get("language", "javascript")
-    mode = data.get("mode", "standard")  # 'standard' or 'oneline'
-
-    if not code:
-        return jsonify({"success": False, "error": "No code provided"}), 400
-
-    try:
-        if mode == "oneline":
-            # Convert to one line (minify)
-            formatted_code = minify_code(code, language)
-        else:
-            # Standard IntelliJ-style formatting
-            formatted_code = format_code_standard(code, language)
-
-        log(f"User {user_id} formatted {language} code in {mode} mode")
-        return jsonify({
-            "success": True,
-            "formatted_code": formatted_code
-        })
-    except Exception as e:
-        log(f"Error formatting code for user {user_id}: {str(e)}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-def minify_code(code, language):
-    """Convert code to single line (minify)"""
-    import re
-
-    # Remove comments based on language
-    if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript"]:
-        # Remove single-line comments
-        code = re.sub(r'//.*?$', '', code, flags=re.MULTILINE)
-        # Remove multi-line comments
-        code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
-    elif language in ["python", "ruby", "bash", "shell"]:
-        # Remove single-line comments
-        code = re.sub(r'#.*?$', '', code, flags=re.MULTILINE)
-    elif language in ["sql"]:
-        # Remove SQL comments
-        code = re.sub(r'--.*?$', '', code, flags=re.MULTILINE)
-        code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
-    elif language in ["html", "xml"]:
-        # Remove HTML/XML comments
-        code = re.sub(r'<!--.*?-->', '', code, flags=re.DOTALL)
-    elif language in ["css", "scss", "less"]:
-        # Remove CSS comments
-        code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
-
-    # Replace multiple spaces with single space
-    code = re.sub(r'[ \t]+', ' ', code)
-
-    # Remove all newlines and replace with space
-    code = re.sub(r'\n+', ' ', code)
-
-    # Remove spaces around operators and special characters (language-specific)
-    if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript"]:
-        code = re.sub(r'\s*([{}();,:])\s*', r'\1', code)
-        code = re.sub(r'\s*([=+\-*/<>!&|])\s*', r'\1', code)
-    elif language == "python":
-        # Python needs spaces around operators
-        code = re.sub(r'\s*([{}();,:])\s*', r'\1', code)
-
-    # Clean up extra spaces
-    code = re.sub(r'\s+', ' ', code)
-    code = code.strip()
-
-    return code
-
-
-def format_code_standard(code, language):
-    """Format code with Postman-style beautify (2-space indentation)"""
-    import re
-    import json
-
-    # Special handling for JSON
-    if language == "json":
-        try:
-            parsed = json.loads(code)
-            return json.dumps(parsed, indent=2, ensure_ascii=False)
-        except:
-            pass  # Fall back to regular formatting if JSON parsing fails
-
-    # First, split code by common delimiters to ensure proper line breaks
-    if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript", "css",
-                    "scss", "less", "php"]:
-        # Add line breaks after opening braces and before closing braces
-        code = re.sub(r'\{', '{\n', code)
-        code = re.sub(r'\}', '\n}\n', code)
-        code = re.sub(r';', ';\n', code)
-        # Clean up multiple newlines
-        code = re.sub(r'\n+', '\n', code)
-
-    lines = code.split('\n')
-    formatted_lines = []
-    indent_level = 0
-    indent_char = '  '  # 2 spaces (Postman/Beautify style)
-
-    for line in lines:
-        stripped = line.strip()
-
-        if not stripped:
-            continue
-
-        # Decrease indent for closing braces/brackets
-        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript",
-                        "css", "scss", "less", "php", "json"]:
-            if stripped.startswith('}') or stripped.startswith(']'):
-                indent_level = max(0, indent_level - 1)
-        elif language == "python":
-            # Python indentation based on dedent keywords
-            if stripped.startswith('elif ') or stripped.startswith('else:') or stripped.startswith(
-                    'except') or stripped.startswith('finally:'):
-                indent_level = max(0, indent_level - 1)
-        elif language in ["html", "xml"]:
-            if stripped.startswith('</'):
-                indent_level = max(0, indent_level - 1)
-
-        # Add indented line
-        formatted_lines.append(indent_char * indent_level + stripped)
-
-        # Increase indent for opening braces/brackets
-        if language in ["javascript", "java", "c", "cpp", "csharp", "go", "rust", "swift", "kotlin", "typescript",
-                        "css", "scss", "less", "php", "json"]:
-            if stripped.endswith('{') or stripped.endswith('['):
-                indent_level += 1
-            # Handle closing and opening on same line like "}, {"
-            if re.search(r'\},\s*\{', stripped):
-                indent_level = max(0, indent_level - 1)
-        elif language == "python":
-            # Python indentation based on colon
-            if stripped.endswith(':'):
-                indent_level += 1
-        elif language in ["html", "xml"]:
-            # HTML/XML opening tags
-            if re.match(r'<[^/][^>]*>$', stripped) and not re.match(r'<[^>]*/>$', stripped):
-                indent_level += 1
-        elif language == "sql":
-            # SQL formatting - major keywords on new lines
-            if any(stripped.upper().startswith(keyword) for keyword in
-                   ['FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN', 'GROUP BY', 'ORDER BY',
-                    'HAVING']):
-                indent_level = 1
-
-    formatted_code = '\n'.join(formatted_lines)
-
-    # Clean up excessive blank lines
-    formatted_code = re.sub(r'\n{3,}', '\n\n', formatted_code)
-
-    return formatted_code
-
-
-# ==================== END CODE FORMATTER ROUTES ====================
-
-
 # ==================== API TOKEN MANAGEMENT ROUTES ====================
 
 @app.route("/api/user/token", methods=["GET"])
@@ -3412,13 +1706,13 @@ def format_code_standard(code, language):
 def get_user_api_token():
     """Get or generate API token for current user"""
     user_id = session["user_id"]
-
+    
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT api_token FROM users WHERE id = %s", (user_id,))
             result = cursor.fetchone()
-
+            
             if result and result['api_token']:
                 return jsonify({
                     "success": True,
@@ -3426,15 +1720,14 @@ def get_user_api_token():
                 })
             else:
                 # Generate new token
-                import secrets
                 api_token = secrets.token_urlsafe(32)
-
+                
                 cursor.execute(
                     "UPDATE users SET api_token = %s WHERE id = %s",
                     (api_token, user_id)
                 )
                 conn.commit()
-
+                
                 log(f"Generated new API token for user {user_id}")
                 return jsonify({
                     "success": True,
@@ -3453,10 +1746,9 @@ def get_user_api_token():
 def regenerate_api_token():
     """Regenerate API token for current user"""
     user_id = session["user_id"]
-
-    import secrets
+    
     api_token = secrets.token_urlsafe(32)
-
+    
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -3465,7 +1757,7 @@ def regenerate_api_token():
                 (api_token, user_id)
             )
             conn.commit()
-
+            
             log(f"Regenerated API token for user {user_id}")
             return jsonify({
                 "success": True,
@@ -3484,7 +1776,7 @@ def regenerate_api_token():
 def delete_api_token():
     """Delete API token for current user"""
     user_id = session["user_id"]
-
+    
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -3493,7 +1785,7 @@ def delete_api_token():
                 (user_id,)
             )
             conn.commit()
-
+            
             log(f"Deleted API token for user {user_id}")
             return jsonify({
                 "success": True,
@@ -3507,229 +1799,6 @@ def delete_api_token():
 
 
 # ==================== END API TOKEN MANAGEMENT ROUTES ====================
-
-
-# ==================== WEBHOOK-OUT API ENDPOINT ====================
-
-@app.route("/api/webhook-out", methods=["POST"])
-@token_required
-def webhook_out():
-    """
-    Webhook-out endpoint to search for latest webhook response.
-
-    Requires API token authentication via:
-    - Header: X-API-Token: <your_token>
-    - Header: Authorization: Bearer <your_token>
-    - Query param: ?api_token=<your_token>
-
-    Request body:
-    {
-        "webhook_id": "my-webhook",
-        "content": "search term",           # Optional: search in body/headers/params
-        "json_path": "path.to.field",       # Optional: specific JSON path to match
-        "json_value": "expected value",     # Optional: value to match at json_path
-        "wait_timeout": 180                 # Optional: seconds to wait for webhook (default 0, max 180)
-    }
-
-    Response:
-    {
-        "success": true,
-        "webhook": {
-            "id": 123,
-            "webhook_id": "my-webhook",
-            "method": "POST",
-            "headers": {...},
-            "body": {...},
-            "query_params": {...},
-            "timestamp": "2026-03-18T...",
-            "client_ip": "192.168.1.1"
-        }
-    }
-    """
-    user_id = request.token_user_id
-    data = request.get_json()
-
-    if not data:
-        return jsonify({"success": False, "error": "JSON body required"}), 400
-
-    webhook_id = data.get("webhook_id")
-    if not webhook_id:
-        return jsonify({"success": False, "error": "webhook_id is required"}), 400
-
-    content = data.get("content", "").strip()
-    json_path = data.get("json_path", "").strip()
-    json_value = data.get("json_value")
-
-    # Get wait_timeout parameter (default 0, max 180 seconds = 3 minutes)
-    wait_timeout = min(int(data.get("wait_timeout", 0)), 180)
-
-    log(f"Webhook-out search: user={user_id}, webhook_id={webhook_id}, content={content}, json_path={json_path}, wait_timeout={wait_timeout}s")
-
-    start_time = time.time()
-    poll_interval = 1  # Check every 1 second
-    attempts = 0
-    last_checked_timestamp = None  # Track the latest timestamp we've already checked
-
-    # Poll for webhook with timeout
-    while True:
-        attempts += 1
-        conn = None
-        cursor = None
-
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-
-            # Determine how many webhooks to check
-            # On first attempt, check multiple existing webhooks
-            # On subsequent attempts, check only new webhooks (LIMIT 1)
-            limit = 1 if last_checked_timestamp is not None else 100
-
-            # Base query to get webhooks
-            query = """
-                SELECT id, webhook_id, method, headers, body, query_params,
-                       timestamp, client_ip, is_read
-                FROM webhook_responses
-                WHERE user_id = %s AND webhook_id = %s
-            """
-            params = [user_id, webhook_id]
-
-            # On subsequent attempts, only check webhooks newer than what we've already seen
-            if last_checked_timestamp is not None:
-                query += " AND timestamp > %s"
-                params.append(last_checked_timestamp)
-
-            # Add content search if provided
-            if content:
-                query += """
-                    AND (
-                        body LIKE %s
-                        OR headers LIKE %s
-                        OR query_params LIKE %s
-                    )
-                """
-                search_pattern = f"%{content}%"
-                params.extend([search_pattern, search_pattern, search_pattern])
-
-            query += f" ORDER BY timestamp DESC LIMIT {limit}"
-
-            cursor.execute(query, params)
-            results = cursor.fetchall()  # Fetch all matching webhooks
-
-            # Close connection immediately after query
-            cursor.close()
-            conn.close()
-            cursor = None
-            conn = None
-
-            # Process each webhook to find a match
-            for result in results:
-                # Parse JSON fields - preserve key order
-                try:
-                    result['headers'] = json.loads(result['headers'], object_pairs_hook=dict) if result[
-                        'headers'] else {}
-                    result['body'] = json.loads(result['body'], object_pairs_hook=dict) if result['body'] else None
-                    result['query_params'] = json.loads(result['query_params'], object_pairs_hook=dict) if result[
-                        'query_params'] else {}
-                except json.JSONDecodeError:
-                    pass  # Keep as string if not valid JSON
-
-                # If json_path is specified, validate it matches
-                if json_path and json_value is not None:
-                    body = result.get('body')
-                    if isinstance(body, dict):
-                        # Navigate the JSON path
-                        path_parts = json_path.split('.')
-                        current = body
-
-                        validation_passed = True
-                        try:
-                            for part in path_parts:
-                                if isinstance(current, dict):
-                                    current = current.get(part)
-                                elif isinstance(current, list) and part.isdigit():
-                                    current = current[int(part)]
-                                else:
-                                    current = None
-                                    break
-
-                            # Check if value matches
-                            if current != json_value:
-                                validation_passed = False
-                                log(f"JSON path value mismatch in webhook id={result['id']}: expected={json_value}, got={current}")
-                                continue  # Try next webhook in the list
-
-                        except (KeyError, IndexError, TypeError):
-                            log(f"JSON path traversal failed for webhook id={result['id']}: {json_path}")
-                            continue  # Try next webhook in the list
-                    else:
-                        # Body is not a dict, skip this webhook
-                        continue
-
-                # Webhook found and validated successfully
-                # Convert timestamp to ISO format
-                if result.get('timestamp'):
-                    result['timestamp'] = result['timestamp'].isoformat()
-
-                elapsed = time.time() - start_time
-                log(f"Webhook-out search success: found webhook id={result['id']} after {attempts} attempts ({round(elapsed, 2)}s)")
-
-                return jsonify({
-                    "success": True,
-                    "webhook": result,
-                    "waited_seconds": round(elapsed, 2) if wait_timeout > 0 else 0
-                })
-
-            # No matching webhook found in this batch
-            elapsed = time.time() - start_time
-
-            # Track the latest timestamp we've seen to avoid re-checking same webhooks
-            if results:
-                # Update the baseline to the most recent webhook we just checked
-                # This ensures on next iteration we only check newer webhooks
-                if last_checked_timestamp is None or results[0]['timestamp'] > last_checked_timestamp:
-                    last_checked_timestamp = results[0]['timestamp']
-                    log(f"Checked {len(results)} webhooks, none matched. Last checked timestamp: {last_checked_timestamp}")
-            elif last_checked_timestamp is None:
-                # No webhooks exist at all yet, set baseline to now
-                last_checked_timestamp = datetime.now(timezone.utc)
-                log(f"No webhooks found yet. Will wait for new webhooks after {last_checked_timestamp}")
-
-            # Check if we should continue waiting
-            if wait_timeout > 0 and elapsed < wait_timeout:
-                log(f"Webhook not found yet (attempt {attempts}), waiting... ({round(elapsed, 2)}s elapsed)")
-                time.sleep(poll_interval)
-                continue
-            else:
-                # Timeout or no wait requested
-                log(f"No webhook found for user={user_id}, webhook_id={webhook_id} after {attempts} attempts ({round(elapsed, 2)}s)")
-                return jsonify({
-                    "success": False,
-                    "error": "No matching webhook found",
-                    "waited_seconds": round(elapsed, 2) if wait_timeout > 0 else 0
-                }), 404
-
-        except Exception as e:
-            log(f"Error in webhook-out search: {str(e)}")
-            return jsonify({
-                "success": False,
-                "error": "Internal server error"
-            }), 500
-        finally:
-            # Clean up any remaining connections
-            if cursor:
-                try:
-                    cursor.close()
-                except:
-                    pass
-            if conn:
-                try:
-                    conn.close()
-                except:
-                    pass
-
-
-# ==================== END WEBHOOK-OUT API ENDPOINT ====================
 
 
 if __name__ == "__main__":
