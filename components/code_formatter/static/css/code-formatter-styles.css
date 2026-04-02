@@ -21,6 +21,67 @@
     color: #aaa;
 }
 
+/* Mode Toggle Buttons */
+.mode-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    padding: 10px;
+}
+
+.mode-btn {
+    padding: 12px 24px;
+    border: 2px solid var(--border-color, #dee2e6);
+    border-radius: 8px;
+    background: var(--bg-primary, white);
+    color: var(--text-primary, #333);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.mode-btn:hover {
+    border-color: var(--accent-color, #007bff);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
+}
+
+.mode-btn.active {
+    background: var(--accent-color, #007bff);
+    color: white;
+    border-color: var(--accent-color, #007bff);
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+}
+
+[data-theme="dark"] .mode-btn {
+    background: #2a2a2a;
+    color: #ddd;
+    border-color: #444;
+}
+
+[data-theme="dark"] .mode-btn:hover {
+    border-color: #007bff;
+}
+
+[data-theme="dark"] .mode-btn.active {
+    background: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+@media (max-width: 768px) {
+    .mode-toggle {
+        flex-direction: column;
+    }
+    
+    .mode-btn {
+        width: 100%;
+    }
+}
+
 /* Controls Section */
 .controls {
     padding: 20px;
@@ -112,6 +173,16 @@ button {
 }
 
 .btn-success:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+}
+
+.btn-info {
+    background: var(--info-color, #17a2b8);
+    color: white;
+}
+
+.btn-info:hover {
     filter: brightness(1.1);
     transform: translateY(-2px);
 }

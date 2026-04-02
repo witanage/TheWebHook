@@ -358,3 +358,134 @@ ORDER BY orders.total DESC;`
     inputCode.value = samples[language] || samples.javascript;
     showToast(`Sample ${language} code loaded`, 'success');
 }
+
+/**
+ * Switch between code formatter and translator modes
+ */
+function switchMode(mode) {
+    const codeControls = document.getElementById('codeControls');
+    const translateControls = document.getElementById('translateControls');
+    const modeCodeBtn = document.getElementById('modeCodeBtn');
+    const modeTranslateBtn = document.getElementById('modeTranslateBtn');
+    const inputHeader = document.getElementById('inputPanelHeader');
+    const outputHeader = document.getElementById('outputPanelHeader');
+
+    if (mode === 'code') {
+        codeControls.style.display = 'flex';
+        translateControls.style.display = 'none';
+        modeCodeBtn.classList.add('active');
+        modeTranslateBtn.classList.remove('active');
+        inputHeader.textContent = 'Input Code';
+        outputHeader.textContent = 'Formatted Code';
+        document.getElementById('inputCode').placeholder = 'Paste your code here...';
+        document.getElementById('outputCode').placeholder = 'Formatted code will appear here...';
+    } else if (mode === 'translate') {
+        codeControls.style.display = 'none';
+        translateControls.style.display = 'flex';
+        modeCodeBtn.classList.remove('active');
+        modeTranslateBtn.classList.add('active');
+        inputHeader.textContent = 'Source Text';
+        outputHeader.textContent = 'Translated Text';
+        document.getElementById('inputCode').placeholder = 'Enter text to translate...';
+        document.getElementById('outputCode').placeholder = 'Translation will appear here...';
+    }
+
+    // Clear content when switching modes
+    clearAll();
+}
+
+/**
+ * Translate text using Argos Translate (offline)
+ */
+async function translateText() {
+    const inputText = document.getElementById('inputCode').value.trim();
+    const sourceLang = document.getElementById('sourceLanguageSelect').value;
+    const targetLang = document.getElementById('targetLanguageSelect').value;
+
+    if (!inputText) {
+        showModal('Error', 'Please enter some text to translate');
+        return;
+    }
+
+    if (sourceLang === targetLang) {
+        showModal('Error', 'Source and target languages must be different');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/code-formatter/translate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                text: inputText,
+                source_lang: sourceLang,
+                target_lang: targetLang
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            document.getElementById('outputCode').value = data.translated_text;
+            updateCharCount();
+            showToast('Translation completed!', 'success');
+        } else {
+            showModal('Translation Error', data.error || 'Failed to translate text. Make sure language packages are installed.');
+        }
+    } catch (error) {
+        console.error('Translation error:', error);
+        showModal('Error', 'Failed to translate text: ' + error.message);
+    }
+}
+
+/**
+ * Swap source and target languages
+ */
+function swapLanguages() {
+    const sourceSelect = document.getElementById('sourceLanguageSelect');
+    const targetSelect = document.getElementById('targetLanguageSelect');
+    
+    const tempValue = sourceSelect.value;
+    sourceSelect.value = targetSelect.value;
+    targetSelect.value = tempValue;
+    
+    // Also swap input/output text
+    const inputCode = document.getElementById('inputCode');
+    const outputCode = document.getElementById('outputCode');
+    
+    const tempText = inputCode.value;
+    inputCode.value = outputCode.value;
+    outputCode.value = tempText;
+    
+    updateCharCount();
+    showToast('Languages swapped!', 'info');
+}
+
+/**
+ * Check installed translation language packages
+ */
+async function checkInstalledLanguages() {
+    try {
+        const response = await fetch('/api/code-formatter/installed-languages');
+        const data = await response.json();
+
+        if (data.success) {
+            const languages = data.languages;
+            
+            const langList = languages.map(l => `✅ ${l.name} (${l.code})`).join('\n');
+            showModal('✅ Supported Languages', 
+                `Translation supports ${languages.length} languages:\n\n${langList}\n\n` +
+                '🌐 Powered by Google Translate\n' +
+                '⚠️ Note: Translations are sent to Google servers for processing'
+            );
+        } else {
+            showModal('Error', 'Failed to check installed languages: ' + (data.error || 'Unknown error'));
+        }
+    } catch (error) {
+        console.error('Error checking languages:', error);
+        showModal('Error', 'Failed to check installed languages: ' + error.message);
+    }
+}
+
