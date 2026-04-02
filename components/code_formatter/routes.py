@@ -1,6 +1,7 @@
 from flask import render_template, session, request, jsonify
 import re
 import json
+from deep_translator import GoogleTranslator
 
 from . import code_formatter_bp
 from ..utils import login_required, log
@@ -45,6 +46,73 @@ def format_code():
         })
     except Exception as e:
         log(f"Error formatting code for user {user_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@code_formatter_bp.route("/api/code-formatter/translate", methods=["POST"])
+@login_required
+def translate_text():
+    """Translate text using Google Translator (via deep-translator)"""
+    user_id = session["user_id"]
+    data = request.json
+
+    text = data.get("text", "")
+    source_lang = data.get("source_lang", "es")  # ISO 639-1 code
+    target_lang = data.get("target_lang", "en")  # ISO 639-1 code
+
+    if not text:
+        return jsonify({"success": False, "error": "No text provided"}), 400
+
+    if source_lang == target_lang:
+        return jsonify({"success": False, "error": "Source and target languages must be different"}), 400
+
+    try:
+        # Use GoogleTranslator from deep-translator
+        # Note: This uses Google Translate web scraping, so data goes to Google servers
+        translator = GoogleTranslator(source=source_lang, target=target_lang)
+        translated_text = translator.translate(text)
+        
+        log(f"User {user_id} translated text from {source_lang} to {target_lang}")
+        return jsonify({
+            "success": True,
+            "translated_text": translated_text,
+            "source_lang": source_lang,
+            "target_lang": target_lang
+        })
+    except Exception as e:
+        log(f"Error translating text for user {user_id}: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@code_formatter_bp.route("/api/code-formatter/installed-languages", methods=["GET"])
+@login_required
+def get_installed_languages():
+    """Get list of supported translation languages"""
+    try:
+        # deep-translator supports these languages via Google Translate
+        supported_languages = [
+            {"code": "en", "name": "English"},
+            {"code": "es", "name": "Spanish"},
+            {"code": "fr", "name": "French"},
+            {"code": "de", "name": "German"},
+            {"code": "it", "name": "Italian"},
+            {"code": "pt", "name": "Portuguese"},
+            {"code": "ru", "name": "Russian"},
+            {"code": "zh-CN", "name": "Chinese (Simplified)"},
+            {"code": "ja", "name": "Japanese"},
+            {"code": "ko", "name": "Korean"},
+            {"code": "ar", "name": "Arabic"},
+            {"code": "hi", "name": "Hindi"},
+            {"code": "tr", "name": "Turkish"},
+            {"code": "nl", "name": "Dutch"},
+            {"code": "pl", "name": "Polish"},
+        ]
+        
+        return jsonify({
+            "success": True,
+            "languages": supported_languages
+        })
+    except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
 
