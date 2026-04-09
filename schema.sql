@@ -98,6 +98,25 @@ CREATE TABLE IF NOT EXISTS sequence_endpoints (
     UNIQUE KEY unique_user_sequence_endpoint (user_id, endpoint_name)
 );
 
+-- Stored images table for HTTP status code tester
+CREATE TABLE IF NOT EXISTS http_status_images (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    filename VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100) NOT NULL,
+    file_size INT NOT NULL,
+    width INT,
+    height INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Create indexes for http_status_images
+CREATE INDEX IF NOT EXISTS idx_http_status_images_user_id ON http_status_images(user_id);
+CREATE INDEX IF NOT EXISTS idx_http_status_images_created_at ON http_status_images(created_at);
+
 -- Create indexes for sequence_endpoints
 CREATE INDEX IF NOT EXISTS idx_sequence_endpoints_user_id ON sequence_endpoints(user_id);
 CREATE INDEX IF NOT EXISTS idx_sequence_endpoints_is_active ON sequence_endpoints(is_active);

@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response
+from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response, make_response
 import pymysql
 import bcrypt
 import json
@@ -10,6 +10,7 @@ import threading
 import ntplib
 import time
 import secrets
+import uuid
 
 import os
 from dotenv import load_dotenv
@@ -65,7 +66,6 @@ from components.utils import (
     user_event_queues,
     queue_lock
 )
-
 
 # Logging configuration
 logging.basicConfig(
@@ -555,12 +555,74 @@ def http_status_test(code, extra_path=None):
     Simple HTTP status code tester endpoint
     Returns the specified HTTP status code
     Accepts optional extra path segments after the code
+    Supports image responses via ?format=image or uploaded images
     """
     # Validate status code range
     if code < 100 or code > 599:
         return jsonify({"error": "Invalid status code. Must be between 100-599"}), 400
 
-    # Get request data if present
+    # Check if image response is requested
+    response_format = request.args.get('format', '').lower()
+
+    # Handle uploaded image
+    if request.files and 'image' in request.files:
+        uploaded_file = request.files['image']
+        if uploaded_file and uploaded_file.filename:
+            from io import BytesIO
+            # Read the image into memory
+            image_data = uploaded_file.read()
+            # Determine content type
+            content_type = uploaded_file.content_type or 'image/png'
+            # Return the image with the specified status code
+            response = make_response(image_data)
+            response.headers['Content-Type'] = content_type
+            response.status_code = code
+            return response
+
+    # Return a placeholder image if format=image is requested
+    if response_format == 'image':
+        from PIL import Image, ImageDraw, ImageFont
+        from io import BytesIO
+
+        # Create a simple image with the status code
+        img = Image.new('RGB', (400, 300), color=(73, 109, 137))
+        d = ImageDraw.Draw(img)
+
+        # Draw the status code
+        try:
+            # Try to use a nice font, fallback to default if not available
+            font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 60)
+            small_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 20)
+        except:
+            font = ImageFont.load_default()
+            small_font = ImageFont.load_default()
+
+        # Get standard status message
+        status_messages = {
+            200: "OK", 201: "Created", 204: "No Content",
+            301: "Moved Permanently", 302: "Found", 304: "Not Modified",
+            400: "Bad Request", 401: "Unauthorized", 403: "Forbidden",
+            404: "Not Found", 405: "Method Not Allowed", 422: "Unprocessable Entity",
+            429: "Too Many Requests", 500: "Internal Server Error",
+            502: "Bad Gateway", 503: "Service Unavailable", 504: "Gateway Timeout"
+        }
+        status_message = status_messages.get(code, "Custom Status Code")
+
+        # Draw text centered
+        d.text((200, 120), f"HTTP {code}", fill=(255, 255, 255), anchor="mm", font=font)
+        d.text((200, 180), status_message, fill=(255, 255, 255), anchor="mm", font=small_font)
+
+        # Save to BytesIO
+        img_io = BytesIO()
+        img.save(img_io, 'PNG')
+        img_io.seek(0)
+
+        response = make_response(img_io.getvalue())
+        response.headers['Content-Type'] = 'image/png'
+        response.status_code = code
+        return response
+
+    # Get request data if present (original JSON handling)
     request_data = None
     if request.method in ["POST", "PUT", "PATCH"]:
         if request.content_type and 'application/json' in request.content_type:
@@ -614,6 +676,272 @@ def http_status_test(code, extra_path=None):
         response.headers['Retry-After'] = '120'
 
     return response, code
+
+
+# =============================================================================
+# HTTP STATUS CODE IMAGE STORAGE API
+# =============================================================================
+
+# Storage directory for uploaded images
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'http_images')
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+
+@app.route("/api/http-images", methods=["POST"])
+@login_required
+def upload_http_image():
+    """Upload and store an image for reuse with HTTP status codes"""
+    try:
+        user_id = session["user_id"]
+
+        if 'image' not in request.files:
+            return jsonify({"success": False, "error": "No image file provided"}), 400
+
+        file = request.files['image']
+        if file.filename == '':
+            return jsonify({"success": False, "error": "No image file selected"}), 400
+
+        # Get optional name from form data
+        image_name = request.form.get('name', file.filename)
+
+        # Validate file type
+        allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp'}
+        file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+
+        if file_ext not in allowed_extensions:
+            return jsonify(
+                {"success": False, "error": "Invalid file type. Allowed: " + ", ".join(allowed_extensions)}), 400
+
+        # Read image data
+        image_data = file.read()
+        file_size = len(image_data)
+
+        # Get image dimensions
+        from PIL import Image
+        from io import BytesIO
+        img = Image.open(BytesIO(image_data))
+        width, height = img.size
+
+        # Generate unique filename
+        unique_filename = f"{user_id}_{uuid.uuid4().hex}.{file_ext}"
+        file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+
+        # Save file to disk
+        with open(file_path, 'wb') as f:
+            f.write(image_data)
+
+        # Save metadata to database
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            INSERT INTO http_status_images 
+            (user_id, name, filename, content_type, file_size, width, height)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, image_name, unique_filename, file.content_type or f'image/{file_ext}',
+              file_size, width, height))
+
+        conn.commit()
+        image_id = cursor.lastrowid
+
+        cursor.close()
+        conn.close()
+
+        log(f"User {user_id} uploaded image: {image_name} (ID: {image_id})")
+
+        return jsonify({
+            "success": True,
+            "image": {
+                "id": image_id,
+                "name": image_name,
+                "filename": unique_filename,
+                "content_type": file.content_type or f'image/{file_ext}',
+                "file_size": file_size,
+                "width": width,
+                "height": height
+            }
+        })
+
+    except Exception as e:
+        log(f"Error uploading image: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/http-images", methods=["GET"])
+@login_required
+def list_http_images():
+    """List all stored images for the current user"""
+    try:
+        user_id = session["user_id"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT id, name, filename, content_type, file_size, width, height, created_at
+            FROM http_status_images
+            WHERE user_id = %s
+            ORDER BY created_at DESC
+        """, (user_id,))
+
+        images = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        # Convert datetime to string
+        for img in images:
+            if img['created_at']:
+                img['created_at'] = img['created_at'].isoformat()
+
+        return jsonify({"success": True, "images": images})
+
+    except Exception as e:
+        log(f"Error listing images: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/http-images/<int:image_id>", methods=["GET"])
+@login_required
+def get_http_image(image_id):
+    """Get a specific stored image"""
+    try:
+        user_id = session["user_id"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT filename, content_type
+            FROM http_status_images
+            WHERE id = %s AND user_id = %s
+        """, (image_id, user_id))
+
+        image = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if not image:
+            return jsonify({"success": False, "error": "Image not found"}), 404
+
+        file_path = os.path.join(UPLOAD_FOLDER, image['filename'])
+
+        if not os.path.exists(file_path):
+            return jsonify({"success": False, "error": "Image file not found on disk"}), 404
+
+        with open(file_path, 'rb') as f:
+            image_data = f.read()
+
+        response = make_response(image_data)
+        response.headers['Content-Type'] = image['content_type']
+        return response
+
+    except Exception as e:
+        log(f"Error getting image: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/http-images/<int:image_id>", methods=["DELETE"])
+@login_required
+def delete_http_image(image_id):
+    """Delete a stored image"""
+    try:
+        user_id = session["user_id"]
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        # Get image info
+        cursor.execute("""
+            SELECT filename
+            FROM http_status_images
+            WHERE id = %s AND user_id = %s
+        """, (image_id, user_id))
+
+        image = cursor.fetchone()
+
+        if not image:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "Image not found"}), 404
+
+        # Delete from database
+        cursor.execute("""
+            DELETE FROM http_status_images
+            WHERE id = %s AND user_id = %s
+        """, (image_id, user_id))
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Delete file from disk
+        file_path = os.path.join(UPLOAD_FOLDER, image['filename'])
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+        log(f"User {user_id} deleted image ID: {image_id}")
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        log(f"Error deleting image: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/httpcode/<int:code>/image/<int:image_id>", methods=["GET"])
+def http_status_with_stored_image(code, image_id):
+    """Return a stored image with the specified HTTP status code"""
+    try:
+        # Validate status code range
+        if code < 100 or code > 599:
+            return jsonify({"error": "Invalid status code. Must be between 100-599"}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT filename, content_type
+            FROM http_status_images
+            WHERE id = %s
+        """, (image_id,))
+
+        image = cursor.fetchone()
+
+        cursor.close()
+        conn.close()
+
+        if not image:
+            return jsonify({"error": "Image not found"}), 404
+
+        file_path = os.path.join(UPLOAD_FOLDER, image['filename'])
+
+        if not os.path.exists(file_path):
+            return jsonify({"error": "Image file not found on disk"}), 404
+
+        with open(file_path, 'rb') as f:
+            image_data = f.read()
+
+        response = make_response(image_data)
+        response.headers['Content-Type'] = image['content_type']
+        response.status_code = code
+
+        # Add special headers for certain status codes (same as main endpoint)
+        if code == 401:
+            response.headers['WWW-Authenticate'] = 'Basic realm="Authentication Required"'
+        elif code in [301, 302, 307, 308]:
+            response.headers['Location'] = '/'
+        elif code == 429:
+            response.headers['Retry-After'] = '60'
+        elif code == 503:
+            response.headers['Retry-After'] = '120'
+
+        return response
+
+    except Exception as e:
+        log(f"Error serving stored image: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 def get_http_status_message(code):
@@ -942,6 +1270,7 @@ def sequence_endpoint_handler(user_id, endpoint_name, extra_path=None):
             http_code = int(current_step["http_code"])
             delay_ms = int(current_step["delay_ms"])
             payload = current_step.get("payload")
+            image_id = current_step.get("image_id")  # New: support for stored images
 
             # Apply delay if configured
             if delay_ms > 0:
@@ -957,6 +1286,46 @@ def sequence_endpoint_handler(user_id, endpoint_name, extra_path=None):
                 WHERE id = %s
             """, (next_index, endpoint["id"]))
             conn.commit()
+
+            # Check if this step should return an image
+            if image_id:
+                # Fetch the stored image
+                cursor.execute("""
+                    SELECT filename, content_type
+                    FROM http_status_images
+                    WHERE id = %s
+                """, (image_id,))
+
+                image = cursor.fetchone()
+
+                if image:
+                    file_path = os.path.join(UPLOAD_FOLDER, image['filename'])
+
+                    if os.path.exists(file_path):
+                        with open(file_path, 'rb') as f:
+                            image_data = f.read()
+
+                        response = make_response(image_data)
+                        response.headers['Content-Type'] = image['content_type']
+                        response.status_code = http_code
+
+                        # Add special headers based on status code
+                        if http_code == 401:
+                            response.headers['WWW-Authenticate'] = 'Basic realm="Authentication Required"'
+                        elif http_code in [301, 302, 307, 308]:
+                            response.headers['Location'] = '/'
+                        elif http_code == 429:
+                            response.headers['Retry-After'] = '60'
+                        elif http_code == 503:
+                            response.headers['Retry-After'] = '120'
+
+                        return response
+                    else:
+                        # Image file not found, fall back to JSON response with error
+                        payload = {"error": "Image file not found on disk", "image_id": image_id}
+                else:
+                    # Image metadata not found, fall back to JSON response with error
+                    payload = {"error": "Image not found in database", "image_id": image_id}
 
             # Prepare response
             # Use custom payload if provided and HTTP code is 200, otherwise use default response
@@ -1706,13 +2075,13 @@ def api_admin_stats():
 def get_user_api_token():
     """Get or generate API token for current user"""
     user_id = session["user_id"]
-    
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("SELECT api_token FROM users WHERE id = %s", (user_id,))
             result = cursor.fetchone()
-            
+
             if result and result['api_token']:
                 return jsonify({
                     "success": True,
@@ -1721,13 +2090,13 @@ def get_user_api_token():
             else:
                 # Generate new token
                 api_token = secrets.token_urlsafe(32)
-                
+
                 cursor.execute(
                     "UPDATE users SET api_token = %s WHERE id = %s",
                     (api_token, user_id)
                 )
                 conn.commit()
-                
+
                 log(f"Generated new API token for user {user_id}")
                 return jsonify({
                     "success": True,
@@ -1746,9 +2115,9 @@ def get_user_api_token():
 def regenerate_api_token():
     """Regenerate API token for current user"""
     user_id = session["user_id"]
-    
+
     api_token = secrets.token_urlsafe(32)
-    
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -1757,7 +2126,7 @@ def regenerate_api_token():
                 (api_token, user_id)
             )
             conn.commit()
-            
+
             log(f"Regenerated API token for user {user_id}")
             return jsonify({
                 "success": True,
@@ -1776,7 +2145,7 @@ def regenerate_api_token():
 def delete_api_token():
     """Delete API token for current user"""
     user_id = session["user_id"]
-    
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
@@ -1785,7 +2154,7 @@ def delete_api_token():
                 (user_id,)
             )
             conn.commit()
-            
+
             log(f"Deleted API token for user {user_id}")
             return jsonify({
                 "success": True,

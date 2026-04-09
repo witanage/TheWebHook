@@ -212,13 +212,75 @@ function addSequenceStep() {
                 <input type="number" class="step-delay" min="0" max="60000" value="0" required>
             </div>
             <div class="form-group form-group-full">
+                <label>Response Type</label>
+                <select class="step-response-type" onchange="toggleSequenceStepResponseFields(${stepNumber})">
+                    <option value="json">JSON Response</option>
+                    <option value="image">Stored Image</option>
+                </select>
+            </div>
+            <div class="form-group form-group-full step-json-field">
                 <label>Custom JSON Payload (Optional - Only for HTTP 200)</label>
                 <textarea class="step-payload" rows="3" placeholder='{"key": "value"}'></textarea>
+            </div>
+            <div class="form-group form-group-full step-image-field" style="display: none;">
+                <label>Select Stored Image</label>
+                <select class="step-image-id">
+                    <option value="">Loading images...</option>
+                </select>
             </div>
         </div>
     `;
 
     stepsList.appendChild(stepDiv);
+
+    // Populate the image dropdown for this step
+    populateImageDropdown(stepNumber);
+}
+
+// Toggle between JSON and image fields for sequence steps
+function toggleSequenceStepResponseFields(stepNumber) {
+    const step = document.querySelector(`.sequence-step[data-step-id="${stepNumber}"]`);
+    if (!step) return;
+
+    const responseType = step.querySelector('.step-response-type').value;
+    const jsonField = step.querySelector('.step-json-field');
+    const imageField = step.querySelector('.step-image-field');
+
+    if (responseType === 'image') {
+        jsonField.style.display = 'none';
+        imageField.style.display = 'block';
+    } else {
+        jsonField.style.display = 'block';
+        imageField.style.display = 'none';
+    }
+}
+
+// Populate image dropdown for a specific step
+async function populateImageDropdown(stepNumber) {
+    const step = document.querySelector(`.sequence-step[data-step-id="${stepNumber}"]`);
+    if (!step) return;
+
+    const select = step.querySelector('.step-image-id');
+
+    try {
+        const response = await fetch('/api/http-images');
+        const data = await response.json();
+
+        if (data.success && data.images.length > 0) {
+            select.innerHTML = '<option value="">-- No Image (JSON Response) --</option>';
+            data.images.forEach(img => {
+                const option = document.createElement('option');
+                option.value = img.id;
+                option.textContent = `${img.name} (${img.width}×${img.height})`;
+                select.appendChild(option);
+            });
+        } else {
+            select.innerHTML = '<option value="">No images available - Upload one first</option>';
+        }
+    } catch (error) {
+        select.innerHTML = '<option value="">Error loading images</option>';
+        console.error('Error loading images for dropdown:', error);
+    }
 }
 
 // Remove a sequence step
@@ -263,10 +325,13 @@ async function createSequenceEndpoint() {
     for (const stepElement of stepElements) {
         const httpCode = parseInt(stepElement.querySelector('.step-http-code').value);
         const delayMs = parseInt(stepElement.querySelector('.step-delay').value);
+        const responseType = stepElement.querySelector('.step-response-type').value;
         const payloadText = stepElement.querySelector('.step-payload').value.trim();
+        const imageIdSelect = stepElement.querySelector('.step-image-id');
+        const imageId = imageIdSelect ? parseInt(imageIdSelect.value) : null;
 
         let payload = null;
-        if (payloadText) {
+        if (responseType === 'json' && payloadText) {
             try {
                 payload = JSON.parse(payloadText);
             } catch (e) {
@@ -275,11 +340,22 @@ async function createSequenceEndpoint() {
             }
         }
 
-        steps.push({
+        const step = {
             http_code: httpCode,
-            delay_ms: delayMs,
-            payload: payload
-        });
+            delay_ms: delayMs
+        };
+
+        // Only add payload if it's not null/undefined
+        if (payload) {
+            step.payload = payload;
+        }
+
+        // Only add image_id if it's selected and valid
+        if (responseType === 'image' && imageId && !isNaN(imageId)) {
+            step.image_id = imageId;
+        }
+
+        steps.push(step);
     }
 
     try {
@@ -370,7 +446,8 @@ function displaySequenceEndpoints(endpoints) {
             const isNext = idx === endpoint.current_index;
             const code = step.http_code;
             const delay = step.delay_ms > 0 ? `+${step.delay_ms}ms` : '';
-            const stepText = delay ? `${code}<span class="delay-text">${delay}</span>` : code;
+            const hasImage = step.image_id ? '🖼️ ' : '';
+            const stepText = delay ? `${hasImage}${code}<span class="delay-text">${delay}</span>` : `${hasImage}${code}`;
             return isNext ? `<span class="step-current">${stepText}</span>` : `<span class="step-normal">${stepText}</span>`;
         }).join('<span class="step-arrow">→</span>');
 
@@ -487,5 +564,311 @@ async function deleteSequenceEndpoint(endpointId) {
             showModal('Error', `Error deleting sequence endpoint: ${error.message}`);
         }
     });
+}
+
+
+// ==================== IMAGE RESPONSE HANDLING ====================
+
+// Handle image upload form submission (one-time use)
+document.addEventListener('DOMContentLoaded', function() {
+    const imageUploadForm = document.getElementById('imageUploadForm');
+    if (imageUploadForm) {
+        imageUploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('imageFile');
+            const statusCode = document.getElementById('imageStatusCode').value;
+            const resultDiv = document.getElementById('imageTestResult');
+            const resultImg = document.getElementById('imageResultPreview');
+            const resultStatus = document.getElementById('imageResultStatus');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showModal('Error', 'Please select an image file to upload.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+
+            try {
+                resultDiv.style.display = 'block';
+                resultStatus.textContent = 'Uploading...';
+                resultStatus.style.color = 'var(--text-color)';
+                resultImg.src = '';
+
+                const response = await fetch(`/httpcode/${statusCode}`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                // Get the image blob from response
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+
+                resultImg.src = imageUrl;
+                resultStatus.textContent = `✅ Response received with status code: ${response.status}`;
+                resultStatus.style.color = 'var(--success-color)';
+
+                console.log('Image upload successful:', {
+                    status: response.status,
+                    contentType: response.headers.get('Content-Type'),
+                    size: blob.size
+                });
+
+            } catch (error) {
+                resultStatus.textContent = `❌ Error: ${error.message}`;
+                resultStatus.style.color = 'var(--danger-color)';
+                console.error('Image upload error:', error);
+            }
+        });
+    }
+});
+
+
+// ==================== IMAGE LIBRARY MANAGEMENT ====================
+
+// Save image to library
+document.addEventListener('DOMContentLoaded', function() {
+    const imageSaveForm = document.getElementById('imageSaveForm');
+    if (imageSaveForm) {
+        imageSaveForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const fileInput = document.getElementById('saveImageFile');
+            const nameInput = document.getElementById('saveImageName');
+            const resultDiv = document.getElementById('imageSaveResult');
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                showModal('Error', 'Please select an image file to save.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+            if (nameInput.value.trim()) {
+                formData.append('name', nameInput.value.trim());
+            }
+
+            try {
+                resultDiv.style.display = 'block';
+                resultDiv.textContent = 'Saving image...';
+                resultDiv.style.color = 'var(--text-color)';
+
+                const response = await fetch('/api/http-images', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    resultDiv.textContent = `✅ Image saved successfully: ${data.image.name}`;
+                    resultDiv.style.color = 'var(--success-color)';
+
+                    // Clear form
+                    fileInput.value = '';
+                    nameInput.value = '';
+
+                    // Refresh image library
+                    await loadImageLibrary();
+
+                    setTimeout(() => {
+                        resultDiv.style.display = 'none';
+                    }, 3000);
+                } else {
+                    resultDiv.textContent = `❌ Error: ${data.error}`;
+                    resultDiv.style.color = 'var(--danger-color)';
+                }
+
+            } catch (error) {
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+                resultDiv.style.color = 'var(--danger-color)';
+                console.error('Image save error:', error);
+            }
+        });
+    }
+
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshImageLibrary');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', loadImageLibrary);
+    }
+
+    // Load image library on page load
+    loadImageLibrary();
+});
+
+// Load and display image library
+async function loadImageLibrary() {
+    const container = document.getElementById('imageLibraryContainer');
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading-message">Loading images...</div>';
+
+    try {
+        const response = await fetch('/api/http-images');
+        const data = await response.json();
+
+        if (data.success) {
+            if (data.images.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-library-message">
+                        <h3>No Images Yet</h3>
+                        <p>Upload an image above to get started with your image library.</p>
+                    </div>
+                `;
+            } else {
+                displayImageLibrary(data.images);
+            }
+        } else {
+            container.innerHTML = `<div class="loading-message" style="color: var(--danger-color);">Error: ${data.error}</div>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<div class="loading-message" style="color: var(--danger-color);">Error loading images: ${error.message}</div>`;
+        console.error('Error loading image library:', error);
+    }
+}
+
+// Display image library grid
+function displayImageLibrary(images) {
+    const container = document.getElementById('imageLibraryContainer');
+
+    const grid = document.createElement('div');
+    grid.className = 'image-library-grid';
+
+    images.forEach(img => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+
+        const fileSize = formatFileSize(img.file_size);
+        const createdDate = new Date(img.created_at).toLocaleDateString();
+
+        card.innerHTML = `
+            <img src="/api/http-images/${img.id}"
+                 alt="${img.name}"
+                 class="image-preview"
+                 onclick="showImageModal(${img.id}, '${escapeHtml(img.name)}')">
+            <div class="image-info">
+                <div class="image-name" title="${escapeHtml(img.name)}">${escapeHtml(img.name)}</div>
+                <div class="image-meta">${img.width} × ${img.height} | ${fileSize}</div>
+                <div class="image-meta">Added: ${createdDate}</div>
+
+                <div class="image-status-form" id="useForm-${img.id}">
+                    <input type="number"
+                           class="image-status-input"
+                           id="statusCode-${img.id}"
+                           min="100"
+                           max="599"
+                           value="200"
+                           placeholder="Status">
+                    <button class="image-action-btn btn-use" onclick="useStoredImage(${img.id})">
+                        🚀 Use
+                    </button>
+                </div>
+
+                <div class="image-actions">
+                    <button class="image-action-btn btn-copy-url" onclick="copyImageUrl(${img.id})">
+                        📋 Copy URL
+                    </button>
+                    <button class="image-action-btn btn-delete" onclick="deleteStoredImage(${img.id})">
+                        🗑️ Delete
+                    </button>
+                </div>
+            </div>
+        `;
+
+        grid.appendChild(card);
+    });
+
+    container.innerHTML = '';
+    container.appendChild(grid);
+}
+
+// Use a stored image with a status code
+async function useStoredImage(imageId) {
+    const statusInput = document.getElementById(`statusCode-${imageId}`);
+    const statusCode = statusInput.value;
+
+    if (statusCode < 100 || statusCode > 599) {
+        showModal('Invalid Status Code', 'Please enter a status code between 100 and 599.');
+        return;
+    }
+
+    const url = `/httpcode/${statusCode}/image/${imageId}`;
+
+    // Open in new tab
+    window.open(url, '_blank');
+}
+
+// Copy image URL to clipboard
+async function copyImageUrl(imageId) {
+    const statusInput = document.getElementById(`statusCode-${imageId}`);
+    const statusCode = statusInput.value || '200';
+    const url = `${window.location.origin}/httpcode/${statusCode}/image/${imageId}`;
+
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(url);
+            showModal('Copied!', `URL copied to clipboard:\n${url}`);
+        } else {
+            // Fallback
+            const textArea = document.createElement('textarea');
+            textArea.value = url;
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showModal('Copied!', `URL copied to clipboard:\n${url}`);
+        }
+    } catch (error) {
+        showModal('Error', `Failed to copy URL: ${error.message}`);
+    }
+}
+
+// Delete a stored image
+async function deleteStoredImage(imageId) {
+    showConfirmModal('Delete Image', 'Are you sure you want to delete this image? This action cannot be undone.', async () => {
+        try {
+            const response = await fetch(`/api/http-images/${imageId}`, {
+                method: 'DELETE'
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await loadImageLibrary();
+                showModal('Success', 'Image deleted successfully.');
+            } else {
+                showModal('Error', data.error);
+            }
+        } catch (error) {
+            showModal('Error', `Failed to delete image: ${error.message}`);
+        }
+    });
+}
+
+// Show image in modal (for preview)
+function showImageModal(imageId, imageName) {
+    const url = `/api/http-images/${imageId}`;
+    const modalContent = `
+        <img src="${url}" alt="${imageName}" style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
+    `;
+    showModal(imageName, modalContent, true);
+}
+
+// Helper function to format file size
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 

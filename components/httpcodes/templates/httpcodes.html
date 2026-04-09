@@ -134,6 +134,68 @@
         </div>
 
         <div class="card">
+            <h2 class="card-title">🖼️ Image Response Options</h2>
+            <p class="hint-text">Test HTTP status codes with image responses instead of JSON.</p>
+
+            <div class="endpoint-examples">
+                <div class="example-section">
+                    <h4>Generated Image Response</h4>
+                    <p>Add <code>?format=image</code> to generate a placeholder image showing the status code:</p>
+                    <div class="endpoint-item">
+                        <code class="inline-code">/httpcode/404?format=image</code>
+                        <button class="copy-btn" data-url="/httpcode/404?format=image">📋</button>
+                    </div>
+                    <p class="hint-text">Try in browser: <a href="/httpcode/200?format=image" target="_blank">Test 200 Image</a></p>
+                </div>
+
+                <div class="example-section">
+                    <h4>Upload & Save Image for Reuse</h4>
+                    <p>Upload an image to your library and reuse it with any status code:</p>
+                    <form id="imageSaveForm" class="image-upload-form" style="margin-top: 1rem;">
+                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="saveImageFile" accept="image/*" style="flex: 1; min-width: 200px;">
+                            <input type="text" id="saveImageName" placeholder="Image name (optional)"
+                                   style="width: 200px; padding: 0.5rem;">
+                            <button type="submit" class="test-button">💾 Save to Library</button>
+                        </div>
+                    </form>
+                    <div id="imageSaveResult" style="margin-top: 0.5rem; display: none;"></div>
+                </div>
+
+                <div class="example-section">
+                    <h4>Upload for One-Time Use</h4>
+                    <p>POST/PUT an image file to return it with a specific status code (temporary):</p>
+                    <form id="imageUploadForm" class="image-upload-form" style="margin-top: 1rem;">
+                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                            <input type="file" id="imageFile" accept="image/*" style="flex: 1; min-width: 200px;">
+                            <input type="number" id="imageStatusCode" min="100" max="599" value="200"
+                                   placeholder="Status Code" style="width: 120px; padding: 0.5rem;">
+                            <button type="submit" class="test-button">Upload & Test</button>
+                        </div>
+                    </form>
+                    <div id="imageTestResult" style="margin-top: 1rem; display: none;">
+                        <p style="margin-bottom: 0.5rem;"><strong>Result:</strong></p>
+                        <img id="imageResultPreview" style="max-width: 400px; border: 1px solid var(--border-color); border-radius: 4px;" alt="Response Image">
+                        <p id="imageResultStatus" style="margin-top: 0.5rem; color: var(--success-color);"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Saved Images Library -->
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h2 class="card-title" style="margin: 0;">📚 Your Image Library</h2>
+                <button id="refreshImageLibrary" class="btn btn-secondary" style="padding: 0.5rem 1rem;">🔄 Refresh</button>
+            </div>
+            <p class="hint-text">Manage your saved images and use them with any HTTP status code.</p>
+
+            <div id="imageLibraryContainer">
+                <div class="loading-message">Loading images...</div>
+            </div>
+        </div>
+
+        <div class="card">
             <h2 class="card-title">🧩 Special Behaviors</h2>
             <ul class="special-list">
                 <li><code>204</code> → Returns an empty response (No Content)</li>
@@ -187,6 +249,7 @@
     <ul class="feature-list">
         <li><strong>Complete Status Code Coverage</strong> - Support for all HTTP status codes (100-599)</li>
         <li><strong>Multiple HTTP Methods</strong> - GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS</li>
+        <li><strong>Image Response Support</strong> - Return generated placeholder images or upload custom images</li>
         <li><strong>Sequence Endpoints</strong> - Create powerful test sequences with custom HTTP codes, delays, and payloads</li>
         <li><strong>Quick Links</strong> - One-click access to common status codes with copy-to-clipboard</li>
         <li><strong>Request/Response Details</strong> - View complete HTTP transaction information</li>
@@ -201,6 +264,8 @@
     <p>Create sophisticated test sequences for simulating complex scenarios:</p>
     <ul class="feature-list">
         <li><strong>Custom Sequences</strong> - Define multiple steps with different HTTP codes</li>
+        <li><strong>Image Support</strong> - Use stored images in sequence steps (🖼️ icon in display)</li>
+        <li><strong>Mixed Responses</strong> - Combine JSON and image responses in one sequence</li>
         <li><strong>Delay Simulation</strong> - Add delays (0-60000ms) between responses</li>
         <li><strong>Custom Payloads</strong> - Return custom JSON payloads for each step</li>
         <li><strong>Circular Rotation</strong> - Automatically cycles through steps</li>
@@ -213,6 +278,13 @@
     <h5>🚀 How to Use</h5>
     <div class="info-card">
         <p><strong>Simple Testing:</strong> Use /httpcode/&lt;code&gt; endpoint with any status code (100-599)</p>
+    </div>
+    <div class="info-card">
+        <p><strong>Image Responses:</strong></p>
+        <ul style="margin-top: 0.5rem;">
+            <li><strong>Generated Images:</strong> Add <code>?format=image</code> to get a placeholder image (e.g., <code>/httpcode/404?format=image</code>)</li>
+            <li><strong>Custom Images:</strong> POST/PUT your image file to return it with the desired status code</li>
+        </ul>
     </div>
     <div class="info-card">
         <p><strong>Sequence Testing:</strong></p>
