@@ -154,6 +154,11 @@ let sequenceStepCounter = 0;
 // Track previous states for change detection and animations
 let previousEndpointStates = new Map();
 
+// Category and filtering state
+let allEndpoints = [];
+let currentCategoryFilter = 'all';
+let isGroupedView = false;
+
 async function initSequenceEndpoints() {
     // Verify userId is available
     if (!window.userId) {
@@ -162,6 +167,7 @@ async function initSequenceEndpoints() {
     }
 
     await loadSequenceEndpoints();
+    await loadCategories();
 
     // Add first step by default
     addSequenceStep();
@@ -182,8 +188,29 @@ async function initSequenceEndpoints() {
             refreshBtn.disabled = true;
             refreshBtn.textContent = '🔄 Refreshing...';
             await loadSequenceEndpoints();
+            await loadCategories();
             refreshBtn.disabled = false;
             refreshBtn.textContent = '🔄 Refresh';
+        });
+    }
+
+    // Event listener for category filter
+    const categoryFilter = document.getElementById('categoryFilter');
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', (e) => {
+            currentCategoryFilter = e.target.value;
+            displayFilteredEndpoints();
+        });
+    }
+
+    // Event listener for group/ungroup toggle
+    const toggleGroupBtn = document.getElementById('toggleGroupView');
+    if (toggleGroupBtn) {
+        toggleGroupBtn.addEventListener('click', () => {
+            isGroupedView = !isGroupedView;
+            toggleGroupBtn.textContent = isGroupedView ? '📋 List' : '📁 Group';
+            toggleGroupBtn.title = isGroupedView ? 'Show list view' : 'Group by category';
+            displayFilteredEndpoints();
         });
     }
 }
@@ -311,6 +338,7 @@ function updateStepNumbers() {
 // Create new sequence endpoint
 async function createSequenceEndpoint() {
     const endpointName = document.getElementById('sequenceEndpointName').value.trim();
+    const category = document.getElementById('sequenceCategory').value.trim();
     const description = document.getElementById('sequenceDescription').value.trim();
 
     // Collect all steps
@@ -364,6 +392,7 @@ async function createSequenceEndpoint() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 endpoint_name: endpointName,
+                category: category,
                 description: description,
                 sequence_config: steps
             })
@@ -380,6 +409,7 @@ async function createSequenceEndpoint() {
             sequenceStepCounter = 0;
             addSequenceStep();
 
+            await loadCategories();
             await loadSequenceEndpoints();
         } else {
             showModal('Error', `Error: ${data.error}`);
@@ -396,7 +426,8 @@ async function loadSequenceEndpoints() {
         const data = await response.json();
 
         if (data.success) {
-            displaySequenceEndpoints(data.endpoints);
+            allEndpoints = data.endpoints;
+            displayFilteredEndpoints();
         } else {
             console.error('Error loading sequence endpoints:', data.error);
         }
@@ -405,15 +436,113 @@ async function loadSequenceEndpoints() {
     }
 }
 
-// Display sequence endpoints in table
-function displaySequenceEndpoints(endpoints) {
-    const tbody = document.querySelector('#sequenceEndpointsTable tbody');
+// Load categories for filter and datalist
+async function loadCategories() {
+    try {
+        const response = await fetch('/api/sequence-endpoints/categories');
+        const data = await response.json();
+
+        if (data.success) {
+            // Update category filter dropdown
+            const categoryFilter = document.getElementById('categoryFilter');
+            if (categoryFilter) {
+                const currentValue = categoryFilter.value;
+                categoryFilter.innerHTML = '<option value="all">All Categories</option>';
+
+                data.categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.category;
+                    option.textContent = `${cat.category} (${cat.endpoint_count})`;
+                    categoryFilter.appendChild(option);
+                });
+
+                categoryFilter.value = currentValue;
+            }
+
+            // Update category datalist for input
+            const categoryList = document.getElementById('categoryList');
+            if (categoryList) {
+                categoryList.innerHTML = '';
+                data.categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.category;
+                    categoryList.appendChild(option);
+                });
+            }
+        }
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
+
+// Display filtered endpoints based on current filter
+function displayFilteredEndpoints() {
+    let filteredEndpoints = allEndpoints;
+
+    // Apply category filter
+    if (currentCategoryFilter !== 'all') {
+        filteredEndpoints = allEndpoints.filter(ep => ep.category === currentCategoryFilter);
+    }
+
+    if (isGroupedView) {
+        displayGroupedEndpoints(filteredEndpoints);
+    } else {
+        displaySequenceEndpoints(filteredEndpoints);
+    }
+}
+
+// Display endpoints grouped by category
+function displayGroupedEndpoints(endpoints) {
+    const container = document.getElementById('endpointsContainer');
 
     if (endpoints.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="no-data">No sequence endpoints yet. Create one above!</td></tr>';
+        container.innerHTML = '<p class="no-data">No sequence endpoints found.</p>';
         return;
     }
 
+    // Group endpoints by category
+    const groups = {};
+    endpoints.forEach(endpoint => {
+        const category = endpoint.category || '📂 Uncategorized';
+        if (!groups[category]) {
+            groups[category] = [];
+        }
+        groups[category].push(endpoint);
+    });
+
+    // Build HTML
+    let html = '';
+    Object.keys(groups).sort().forEach(category => {
+        const categoryEndpoints = groups[category];
+        html += `
+            <div class="category-group">
+                <div class="category-header">
+                    <h4>📁 ${category}</h4>
+                    <span class="category-count">${categoryEndpoints.length} endpoint${categoryEndpoints.length !== 1 ? 's' : ''}</span>
+                </div>
+                <table class="sequence-table">
+                    <thead>
+                        <tr>
+                            <th class="col-status">●</th>
+                            <th class="col-name">Endpoint</th>
+                            <th class="col-sequence">Sequence</th>
+                            <th class="col-progress">Current</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${generateEndpointRows(categoryEndpoints)}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+
+    container.innerHTML = html;
+}
+
+// Generate endpoint table rows
+function generateEndpointRows(endpoints) {
     // Detect changes for animation
     const changedEndpoints = new Set();
     endpoints.forEach(endpoint => {
@@ -427,7 +556,7 @@ function displaySequenceEndpoints(endpoints) {
         });
     });
 
-    tbody.innerHTML = endpoints.map(endpoint => {
+    return endpoints.map(endpoint => {
         const hasChanged = changedEndpoints.has(endpoint.id);
         const sequence = typeof endpoint.sequence_config === 'string'
             ? JSON.parse(endpoint.sequence_config)
@@ -459,6 +588,7 @@ function displaySequenceEndpoints(endpoints) {
         const statusClass = endpoint.is_active ? 'status-active' : 'status-inactive';
 
         const description = endpoint.description ? `<div class="endpoint-desc">${endpoint.description}</div>` : '';
+        const categoryBadge = endpoint.category ? `<span class="category-badge">${endpoint.category}</span>` : '';
 
         return `
             <tr class="seq-row ${endpoint.is_active ? 'active' : 'inactive'} ${hasChanged ? 'step-changed' : ''}" data-endpoint-id="${endpoint.id}" data-current-index="${endpoint.current_index}">
@@ -468,6 +598,7 @@ function displaySequenceEndpoints(endpoints) {
                 <td class="col-name">
                     <div class="endpoint-info">
                         <div class="endpoint-name">${endpoint.endpoint_name}</div>
+                        ${categoryBadge}
                         ${description}
                     </div>
                 </td>
@@ -485,6 +616,7 @@ function displaySequenceEndpoints(endpoints) {
                 <td class="col-actions">
                     <div class="action-btns">
                         <button class="action-btn copy-btn" data-url="/sequence-endpoint/${window.userId}/${endpoint.endpoint_name}" title="Copy URL">📋</button>
+                        <button class="action-btn" onclick="editSequenceEndpoint(${endpoint.id})" title="Edit">✏️</button>
                         <button class="action-btn" onclick="resetSequenceEndpoint(${endpoint.id})" title="Reset">🔄</button>
                         <button class="action-btn" onclick="toggleSequenceEndpoint(${endpoint.id}, ${endpoint.is_active ? 0 : 1})" title="${endpoint.is_active ? 'Deactivate' : 'Activate'}">
                             ${endpoint.is_active ? '⏸' : '▶'}
@@ -495,6 +627,38 @@ function displaySequenceEndpoints(endpoints) {
             </tr>
         `;
     }).join('');
+}
+
+// Display sequence endpoints in table
+function displaySequenceEndpoints(endpoints) {
+    const container = document.getElementById('endpointsContainer');
+    const tbody = document.querySelector('#sequenceEndpointsTable tbody');
+
+    if (endpoints.length === 0) {
+        container.innerHTML = '<p class="no-data">No sequence endpoints yet. Create one above!</p>';
+        return;
+    }
+
+    // Restore table structure if needed
+    if (!tbody) {
+        container.innerHTML = `
+            <table class="sequence-table" id="sequenceEndpointsTable">
+                <thead>
+                    <tr>
+                        <th class="col-status">●</th>
+                        <th class="col-name">Endpoint</th>
+                        <th class="col-sequence">Sequence</th>
+                        <th class="col-progress">Current</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        `;
+    }
+
+    const newTbody = document.querySelector('#sequenceEndpointsTable tbody');
+    newTbody.innerHTML = generateEndpointRows(endpoints);
 }
 
 // Reset sequence endpoint counter

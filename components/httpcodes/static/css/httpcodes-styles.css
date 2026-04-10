@@ -549,6 +549,7 @@
 
 .col-actions {
     width: 20%;
+    min-width: 180px;
 }
 
 /* Row states */
@@ -699,21 +700,24 @@
 /* Action buttons */
 .action-btns {
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    gap: 6px;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
 }
 
 .action-btn {
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     color: var(--text-color);
-    padding: 7px 12px;
+    padding: 6px 10px;
     border-radius: 6px;
     cursor: pointer;
     font-size: 0.85rem;
     font-weight: 500;
     transition: all 0.2s ease;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .action-btn:hover {
@@ -939,4 +943,89 @@
         width: 100%;
     }
 }
+}
+/* ==================== CATEGORY STYLES ==================== */
+
+/* Category Badge */
+.category-badge {
+    display: inline-block;
+    background: var(--accent-color);
+    color: white;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    margin-left: 0.5rem;
+    font-weight: 500;
+}
+
+/* Category Filter */
+.filter-select {
+    padding: 0.5rem 1rem;
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filter-select:hover {
+    background: var(--bg-quaternary);
+    border-color: var(--accent-color);
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+}
+
+/* Category Group View */
+.category-group {
+    margin-bottom: 2rem;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-tertiary);
+    padding: 0.75rem 1rem;
+    border-radius: 8px 8px 0 0;
+    border-bottom: 2px solid var(--accent-color);
+    margin-bottom: 0;
+}
+
+.category-header h4 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.category-count {
+    background: var(--accent-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.category-group .sequence-table {
+    border-radius: 0 0 8px 8px;
+    margin-top: 0;
+}
+
+.category-group .sequence-table thead th {
+    background: var(--bg-secondary);
+}
+
+/* No data message */
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: var(--text-secondary);
+    font-style: italic;
 }

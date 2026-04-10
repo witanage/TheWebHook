@@ -68,6 +68,12 @@
                                 placeholder="e.g., service-recovery">
                         </div>
                         <div class="form-group">
+                            <label for="sequenceCategory">Category (Optional)</label>
+                            <input type="text" id="sequenceCategory" name="category" list="categoryList"
+                                placeholder="e.g., Testing, Production">
+                            <datalist id="categoryList"></datalist>
+                        </div>
+                        <div class="form-group">
                             <label for="sequenceDescription">Description (Optional)</label>
                             <input type="text" id="sequenceDescription" name="description"
                                 placeholder="e.g., Simulates service recovery with delays">
@@ -91,11 +97,21 @@
 
             <!-- List of Sequence Endpoints -->
             <div class="endpoints-list-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
                     <h3 class="section-title" style="margin: 0;">Your Sequence Endpoints</h3>
-                    <button id="refreshSequenceEndpoints" class="btn btn-secondary" style="padding: 0.5rem 1rem;">🔄 Refresh</button>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <select id="categoryFilter" class="filter-select">
+                            <option value="all">All Categories</option>
+                        </select>
+                        <button id="toggleGroupView" class="btn btn-secondary" title="Group by category">
+                            📁 Group
+                        </button>
+                        <button id="refreshSequenceEndpoints" class="btn btn-secondary">
+                            🔄 Refresh
+                        </button>
+                    </div>
                 </div>
-                <div class="table-responsive">
+                <div class="table-responsive" id="endpointsContainer">
                     <table class="sequence-table" id="sequenceEndpointsTable">
                         <thead>
                             <tr>

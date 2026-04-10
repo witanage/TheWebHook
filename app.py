@@ -975,15 +975,41 @@ def get_sequence_endpoints():
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT id, endpoint_name, sequence_config, current_index, description, is_active, created_at, updated_at
+                SELECT id, endpoint_name, category, sequence_config, current_index, description, is_active, created_at, updated_at
                 FROM sequence_endpoints
                 WHERE user_id = %s
-                ORDER BY created_at DESC
+                ORDER BY category ASC, created_at DESC
             """, (user_id,))
             endpoints = cursor.fetchall()
             return jsonify({"success": True, "endpoints": endpoints})
     except Exception as e:
         log(f"Error fetching sequence endpoints: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route("/api/sequence-endpoints/categories", methods=["GET"])
+@login_required
+def get_sequence_categories():
+    """Get all unique categories for the current user's sequence endpoints"""
+    user_id = session.get("user_id")
+
+    conn = get_db_connection()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT DISTINCT category, 
+                       COUNT(*) as endpoint_count
+                FROM sequence_endpoints
+                WHERE user_id = %s AND category IS NOT NULL
+                GROUP BY category
+                ORDER BY category ASC
+            """, (user_id,))
+            categories = cursor.fetchall()
+            return jsonify({"success": True, "categories": categories})
+    except Exception as e:
+        log(f"Error fetching sequence categories: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         conn.close()
@@ -1038,13 +1064,17 @@ def create_sequence_endpoint():
                 except json.JSONDecodeError:
                     return jsonify({"success": False, "error": f"Step {i + 1}: Invalid JSON payload"}), 400
 
+    # Get category (optional)
+    category = data.get("category", "").strip()
+    category = category if category else None
+
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                INSERT INTO sequence_endpoints (user_id, endpoint_name, sequence_config, current_index, description, is_active)
-                VALUES (%s, %s, %s, 0, %s, %s)
-            """, (user_id, data.get("endpoint_name"), json.dumps(sequence_config),
+                INSERT INTO sequence_endpoints (user_id, endpoint_name, category, sequence_config, current_index, description, is_active)
+                VALUES (%s, %s, %s, %s, 0, %s, %s)
+            """, (user_id, data.get("endpoint_name"), category, json.dumps(sequence_config),
                   data.get("description", ""), data.get("is_active", 1)))
             conn.commit()
             endpoint_id = cursor.lastrowid
@@ -1118,6 +1148,11 @@ def update_sequence_endpoint(endpoint_id):
             if data.get("endpoint_name"):
                 update_fields.append("endpoint_name = %s")
                 params.append(data.get("endpoint_name"))
+            if "category" in data:
+                category = data.get("category", "").strip()
+                category = category if category else None
+                update_fields.append("category = %s")
+                params.append(category)
             if data.get("sequence_config"):
                 update_fields.append("sequence_config = %s")
                 params.append(json.dumps(data.get("sequence_config")))
