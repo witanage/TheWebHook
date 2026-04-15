@@ -21,78 +21,13 @@
     color: #aaa;
 }
 
-/* Mode Toggle Buttons */
-.mode-toggle {
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    margin-bottom: 20px;
-    padding: 10px;
-}
-
-.mode-btn {
-    padding: 12px 24px;
-    border: 2px solid var(--border-color, #dee2e6);
-    border-radius: 8px;
-    background: var(--bg-primary, white);
-    color: var(--text-primary, #333);
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    position: relative;
-}
-
-.mode-btn:hover {
-    border-color: var(--accent-color, #007bff);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2);
-}
-
-.mode-btn.active {
-    background: var(--accent-color, #007bff);
-    color: white;
-    border-color: var(--accent-color, #007bff);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-}
-
-[data-theme="dark"] .mode-btn {
-    background: #2a2a2a;
-    color: #ddd;
-    border-color: #444;
-}
-
-[data-theme="dark"] .mode-btn:hover {
-    border-color: #007bff;
-}
-
-[data-theme="dark"] .mode-btn.active {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-}
-
-@media (max-width: 768px) {
-    .mode-toggle {
-        flex-direction: column;
-    }
-    
-    .mode-btn {
-        width: 100%;
-    }
-}
-
 /* Controls Section */
 .controls {
-    padding: 20px;
+    padding: 25px;
     background: var(--bg-secondary, #f8f9fa);
     border-radius: var(--radius, 8px);
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: 1.5rem;
     border: 1px solid var(--border-color, #dee2e6);
+    margin-bottom: 1.5rem;
 }
 
 [data-theme="dark"] .controls {
@@ -100,14 +35,52 @@
     border-color: #444;
 }
 
-.controls label {
-    font-weight: 600;
-    color: var(--text-primary, #333);
-    white-space: nowrap;
+.control-section {
+    margin-bottom: 15px;
 }
 
-[data-theme="dark"] .controls label {
-    color: #ddd;
+.control-section:last-child {
+    margin-bottom: 0;
+}
+
+.control-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary, #333);
+    margin: 0 0 10px 0;
+    padding: 0;
+}
+
+[data-theme="dark"] .control-title {
+    color: #fff;
+}
+
+.control-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.control-divider {
+    height: 1px;
+    background: var(--border-color, #dee2e6);
+    margin: 15px 0;
+}
+
+[data-theme="dark"] .control-divider {
+    background: #444;
+}
+
+@media (max-width: 768px) {
+    .control-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .control-row label {
+        margin-top: 8px;
+    }
 }
 
 .language-select {
@@ -219,6 +192,7 @@ button {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     overflow: hidden;
     border: 1px solid var(--border-color, #dee2e6);
+    min-height: 250px;
 }
 
 [data-theme="dark"] .editor-panel {
@@ -237,6 +211,12 @@ button {
     border-bottom: 1px solid var(--border-color, #dee2e6);
 }
 
+[data-theme="dark"] .panel-header {
+    background: #2a2a2a;
+    color: #ddd;
+    border-bottom-color: #444;
+}
+
 .char-count {
     font-size: 12px;
     font-weight: normal;
@@ -244,17 +224,33 @@ button {
     color: var(--text-secondary, #666);
 }
 
+[data-theme="dark"] .char-count {
+    color: #999;
+}
+
 .code-editor {
-    flex: 1;
-    min-height: 400px;
+    width: 100%;
+    min-height: 200px;
     padding: 16px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', monospace;
     font-size: 14px;
     line-height: 1.6;
     border: none;
     resize: vertical;
+    overflow-y: auto;
     color: var(--text-primary, #333);
     background: var(--bg-tertiary, #fafafa);
+    box-sizing: border-box;
+}
+
+.code-editor::-webkit-resizer {
+    background: var(--accent-color, #007bff);
+    border-radius: 3px;
+}
+
+[data-theme="dark"] .code-editor {
+    background: #1a1a1a;
+    color: #ddd;
 }
 
 .code-editor:focus {
@@ -262,8 +258,16 @@ button {
     background: var(--bg-primary, white);
 }
 
+[data-theme="dark"] .code-editor:focus {
+    background: #252525;
+}
+
 .code-editor::placeholder {
     color: var(--text-secondary, #999);
+}
+
+[data-theme="dark"] .code-editor::placeholder {
+    color: #666;
 }
 
 /* Info Section */
@@ -306,11 +310,19 @@ button {
     color: var(--text-primary, #333);
 }
 
+[data-theme="dark"] .info-content h4 {
+    color: #fff;
+}
+
 .info-content p {
     margin: 0;
     font-size: 14px;
     color: var(--text-secondary, #666);
     line-height: 1.5;
+}
+
+[data-theme="dark"] .info-content p {
+    color: #aaa;
 }
 
 /* Responsive Design */

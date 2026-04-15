@@ -150,52 +150,18 @@
         </div>
 
         <div class="card">
-            <h2 class="card-title">🖼️ Image Response Options</h2>
-            <p class="hint-text">Test HTTP status codes with image responses instead of JSON.</p>
-
-            <div class="endpoint-examples">
-                <div class="example-section">
-                    <h4>Generated Image Response</h4>
-                    <p>Add <code>?format=image</code> to generate a placeholder image showing the status code:</p>
-                    <div class="endpoint-item">
-                        <code class="inline-code">/httpcode/404?format=image</code>
-                        <button class="copy-btn" data-url="/httpcode/404?format=image">📋</button>
-                    </div>
-                    <p class="hint-text">Try in browser: <a href="/httpcode/200?format=image" target="_blank">Test 200 Image</a></p>
+            <h2 class="card-title">🖼️ Image Upload</h2>
+            <p class="hint-text">Upload an image to your library and reuse it with any status code.</p>
+            
+            <form id="imageSaveForm" class="image-upload-form" style="margin-top: 1rem;">
+                <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                    <input type="file" id="saveImageFile" accept="image/*" style="flex: 1; min-width: 200px;">
+                    <input type="text" id="saveImageName" placeholder="Image name (optional)" 
+                           style="width: 200px; padding: 0.5rem;">
+                    <button type="submit" class="test-button">💾 Save to Library</button>
                 </div>
-
-                <div class="example-section">
-                    <h4>Upload & Save Image for Reuse</h4>
-                    <p>Upload an image to your library and reuse it with any status code:</p>
-                    <form id="imageSaveForm" class="image-upload-form" style="margin-top: 1rem;">
-                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                            <input type="file" id="saveImageFile" accept="image/*" style="flex: 1; min-width: 200px;">
-                            <input type="text" id="saveImageName" placeholder="Image name (optional)"
-                                   style="width: 200px; padding: 0.5rem;">
-                            <button type="submit" class="test-button">💾 Save to Library</button>
-                        </div>
-                    </form>
-                    <div id="imageSaveResult" style="margin-top: 0.5rem; display: none;"></div>
-                </div>
-
-                <div class="example-section">
-                    <h4>Upload for One-Time Use</h4>
-                    <p>POST/PUT an image file to return it with a specific status code (temporary):</p>
-                    <form id="imageUploadForm" class="image-upload-form" style="margin-top: 1rem;">
-                        <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
-                            <input type="file" id="imageFile" accept="image/*" style="flex: 1; min-width: 200px;">
-                            <input type="number" id="imageStatusCode" min="100" max="599" value="200"
-                                   placeholder="Status Code" style="width: 120px; padding: 0.5rem;">
-                            <button type="submit" class="test-button">Upload & Test</button>
-                        </div>
-                    </form>
-                    <div id="imageTestResult" style="margin-top: 1rem; display: none;">
-                        <p style="margin-bottom: 0.5rem;"><strong>Result:</strong></p>
-                        <img id="imageResultPreview" style="max-width: 400px; border: 1px solid var(--border-color); border-radius: 4px;" alt="Response Image">
-                        <p id="imageResultStatus" style="margin-top: 0.5rem; color: var(--success-color);"></p>
-                    </div>
-                </div>
-            </div>
+            </form>
+            <div id="imageSaveResult" style="margin-top: 0.5rem; display: none;"></div>
         </div>
 
         <!-- Saved Images Library -->
@@ -205,7 +171,7 @@
                 <button id="refreshImageLibrary" class="btn btn-secondary" style="padding: 0.5rem 1rem;">🔄 Refresh</button>
             </div>
             <p class="hint-text">Manage your saved images and use them with any HTTP status code.</p>
-
+            
             <div id="imageLibraryContainer">
                 <div class="loading-message">Loading images...</div>
             </div>

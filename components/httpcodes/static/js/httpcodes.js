@@ -259,7 +259,7 @@ function addSequenceStep() {
     `;
 
     stepsList.appendChild(stepDiv);
-
+    
     // Populate the image dropdown for this step
     populateImageDropdown(stepNumber);
 }
@@ -268,11 +268,11 @@ function addSequenceStep() {
 function toggleSequenceStepResponseFields(stepNumber) {
     const step = document.querySelector(`.sequence-step[data-step-id="${stepNumber}"]`);
     if (!step) return;
-
+    
     const responseType = step.querySelector('.step-response-type').value;
     const jsonField = step.querySelector('.step-json-field');
     const imageField = step.querySelector('.step-image-field');
-
+    
     if (responseType === 'image') {
         jsonField.style.display = 'none';
         imageField.style.display = 'block';
@@ -286,13 +286,13 @@ function toggleSequenceStepResponseFields(stepNumber) {
 async function populateImageDropdown(stepNumber) {
     const step = document.querySelector(`.sequence-step[data-step-id="${stepNumber}"]`);
     if (!step) return;
-
+    
     const select = step.querySelector('.step-image-id');
-
+    
     try {
         const response = await fetch('/api/http-images');
         const data = await response.json();
-
+        
         if (data.success && data.images.length > 0) {
             select.innerHTML = '<option value="">-- No Image (JSON Response) --</option>';
             data.images.forEach(img => {
@@ -372,17 +372,17 @@ async function createSequenceEndpoint() {
             http_code: httpCode,
             delay_ms: delayMs
         };
-
+        
         // Only add payload if it's not null/undefined
         if (payload) {
             step.payload = payload;
         }
-
+        
         // Only add image_id if it's selected and valid
         if (responseType === 'image' && imageId && !isNaN(imageId)) {
             step.image_id = imageId;
         }
-
+        
         steps.push(step);
     }
 
@@ -448,14 +448,14 @@ async function loadCategories() {
             if (categoryFilter) {
                 const currentValue = categoryFilter.value;
                 categoryFilter.innerHTML = '<option value="all">All Categories</option>';
-
+                
                 data.categories.forEach(cat => {
                     const option = document.createElement('option');
                     option.value = cat.category;
                     option.textContent = `${cat.category} (${cat.endpoint_count})`;
                     categoryFilter.appendChild(option);
                 });
-
+                
                 categoryFilter.value = currentValue;
             }
 
@@ -478,12 +478,12 @@ async function loadCategories() {
 // Display filtered endpoints based on current filter
 function displayFilteredEndpoints() {
     let filteredEndpoints = allEndpoints;
-
+    
     // Apply category filter
     if (currentCategoryFilter !== 'all') {
         filteredEndpoints = allEndpoints.filter(ep => ep.category === currentCategoryFilter);
     }
-
+    
     if (isGroupedView) {
         displayGroupedEndpoints(filteredEndpoints);
     } else {
@@ -494,12 +494,12 @@ function displayFilteredEndpoints() {
 // Display endpoints grouped by category
 function displayGroupedEndpoints(endpoints) {
     const container = document.getElementById('endpointsContainer');
-
+    
     if (endpoints.length === 0) {
         container.innerHTML = '<p class="no-data">No sequence endpoints found.</p>';
         return;
     }
-
+    
     // Group endpoints by category
     const groups = {};
     endpoints.forEach(endpoint => {
@@ -509,7 +509,7 @@ function displayGroupedEndpoints(endpoints) {
         }
         groups[category].push(endpoint);
     });
-
+    
     // Build HTML
     let html = '';
     Object.keys(groups).sort().forEach(category => {
@@ -537,7 +537,7 @@ function displayGroupedEndpoints(endpoints) {
             </div>
         `;
     });
-
+    
     container.innerHTML = html;
 }
 
@@ -739,46 +739,46 @@ document.addEventListener('DOMContentLoaded', function() {
     if (imageUploadForm) {
         imageUploadForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-
+            
             const fileInput = document.getElementById('imageFile');
             const statusCode = document.getElementById('imageStatusCode').value;
             const resultDiv = document.getElementById('imageTestResult');
             const resultImg = document.getElementById('imageResultPreview');
             const resultStatus = document.getElementById('imageResultStatus');
-
+            
             if (!fileInput.files || fileInput.files.length === 0) {
                 showModal('Error', 'Please select an image file to upload.');
                 return;
             }
-
+            
             const formData = new FormData();
             formData.append('image', fileInput.files[0]);
-
+            
             try {
                 resultDiv.style.display = 'block';
                 resultStatus.textContent = 'Uploading...';
                 resultStatus.style.color = 'var(--text-color)';
                 resultImg.src = '';
-
+                
                 const response = await fetch(`/httpcode/${statusCode}`, {
                     method: 'POST',
                     body: formData
                 });
-
+                
                 // Get the image blob from response
                 const blob = await response.blob();
                 const imageUrl = URL.createObjectURL(blob);
-
+                
                 resultImg.src = imageUrl;
                 resultStatus.textContent = `✅ Response received with status code: ${response.status}`;
                 resultStatus.style.color = 'var(--success-color)';
-
+                
                 console.log('Image upload successful:', {
                     status: response.status,
                     contentType: response.headers.get('Content-Type'),
                     size: blob.size
                 });
-
+                
             } catch (error) {
                 resultStatus.textContent = `❌ Error: ${error.message}`;
                 resultStatus.style.color = 'var(--danger-color)';
@@ -797,45 +797,45 @@ document.addEventListener('DOMContentLoaded', function() {
     if (imageSaveForm) {
         imageSaveForm.addEventListener('submit', async function(e) {
             e.preventDefault();
-
+            
             const fileInput = document.getElementById('saveImageFile');
             const nameInput = document.getElementById('saveImageName');
             const resultDiv = document.getElementById('imageSaveResult');
-
+            
             if (!fileInput.files || fileInput.files.length === 0) {
                 showModal('Error', 'Please select an image file to save.');
                 return;
             }
-
+            
             const formData = new FormData();
             formData.append('image', fileInput.files[0]);
             if (nameInput.value.trim()) {
                 formData.append('name', nameInput.value.trim());
             }
-
+            
             try {
                 resultDiv.style.display = 'block';
                 resultDiv.textContent = 'Saving image...';
                 resultDiv.style.color = 'var(--text-color)';
-
+                
                 const response = await fetch('/api/http-images', {
                     method: 'POST',
                     body: formData
                 });
-
+                
                 const data = await response.json();
-
+                
                 if (data.success) {
                     resultDiv.textContent = `✅ Image saved successfully: ${data.image.name}`;
                     resultDiv.style.color = 'var(--success-color)';
-
+                    
                     // Clear form
                     fileInput.value = '';
                     nameInput.value = '';
-
+                    
                     // Refresh image library
                     await loadImageLibrary();
-
+                    
                     setTimeout(() => {
                         resultDiv.style.display = 'none';
                     }, 3000);
@@ -843,7 +843,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     resultDiv.textContent = `❌ Error: ${data.error}`;
                     resultDiv.style.color = 'var(--danger-color)';
                 }
-
+                
             } catch (error) {
                 resultDiv.textContent = `❌ Error: ${error.message}`;
                 resultDiv.style.color = 'var(--danger-color)';
@@ -851,13 +851,13 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-
+    
     // Refresh button
     const refreshBtn = document.getElementById('refreshImageLibrary');
     if (refreshBtn) {
         refreshBtn.addEventListener('click', loadImageLibrary);
     }
-
+    
     // Load image library on page load
     loadImageLibrary();
 });
@@ -866,13 +866,13 @@ document.addEventListener('DOMContentLoaded', function() {
 async function loadImageLibrary() {
     const container = document.getElementById('imageLibraryContainer');
     if (!container) return;
-
+    
     container.innerHTML = '<div class="loading-message">Loading images...</div>';
-
+    
     try {
         const response = await fetch('/api/http-images');
         const data = await response.json();
-
+        
         if (data.success) {
             if (data.images.length === 0) {
                 container.innerHTML = `
@@ -896,40 +896,40 @@ async function loadImageLibrary() {
 // Display image library grid
 function displayImageLibrary(images) {
     const container = document.getElementById('imageLibraryContainer');
-
+    
     const grid = document.createElement('div');
     grid.className = 'image-library-grid';
-
+    
     images.forEach(img => {
         const card = document.createElement('div');
         card.className = 'image-card';
-
+        
         const fileSize = formatFileSize(img.file_size);
         const createdDate = new Date(img.created_at).toLocaleDateString();
-
+        
         card.innerHTML = `
-            <img src="/api/http-images/${img.id}"
-                 alt="${img.name}"
+            <img src="/api/http-images/${img.id}" 
+                 alt="${img.name}" 
                  class="image-preview"
                  onclick="showImageModal(${img.id}, '${escapeHtml(img.name)}')">
             <div class="image-info">
                 <div class="image-name" title="${escapeHtml(img.name)}">${escapeHtml(img.name)}</div>
                 <div class="image-meta">${img.width} × ${img.height} | ${fileSize}</div>
                 <div class="image-meta">Added: ${createdDate}</div>
-
+                
                 <div class="image-status-form" id="useForm-${img.id}">
-                    <input type="number"
-                           class="image-status-input"
-                           id="statusCode-${img.id}"
-                           min="100"
-                           max="599"
-                           value="200"
+                    <input type="number" 
+                           class="image-status-input" 
+                           id="statusCode-${img.id}" 
+                           min="100" 
+                           max="599" 
+                           value="200" 
                            placeholder="Status">
                     <button class="image-action-btn btn-use" onclick="useStoredImage(${img.id})">
                         🚀 Use
                     </button>
                 </div>
-
+                
                 <div class="image-actions">
                     <button class="image-action-btn btn-copy-url" onclick="copyImageUrl(${img.id})">
                         📋 Copy URL
@@ -940,10 +940,10 @@ function displayImageLibrary(images) {
                 </div>
             </div>
         `;
-
+        
         grid.appendChild(card);
     });
-
+    
     container.innerHTML = '';
     container.appendChild(grid);
 }
@@ -952,14 +952,14 @@ function displayImageLibrary(images) {
 async function useStoredImage(imageId) {
     const statusInput = document.getElementById(`statusCode-${imageId}`);
     const statusCode = statusInput.value;
-
+    
     if (statusCode < 100 || statusCode > 599) {
         showModal('Invalid Status Code', 'Please enter a status code between 100 and 599.');
         return;
     }
-
+    
     const url = `/httpcode/${statusCode}/image/${imageId}`;
-
+    
     // Open in new tab
     window.open(url, '_blank');
 }
@@ -969,7 +969,7 @@ async function copyImageUrl(imageId) {
     const statusInput = document.getElementById(`statusCode-${imageId}`);
     const statusCode = statusInput.value || '200';
     const url = `${window.location.origin}/httpcode/${statusCode}/image/${imageId}`;
-
+    
     try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(url);
@@ -998,9 +998,9 @@ async function deleteStoredImage(imageId) {
             const response = await fetch(`/api/http-images/${imageId}`, {
                 method: 'DELETE'
             });
-
+            
             const data = await response.json();
-
+            
             if (data.success) {
                 await loadImageLibrary();
                 showModal('Success', 'Image deleted successfully.');

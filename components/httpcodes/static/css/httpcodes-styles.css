@@ -457,6 +457,8 @@
 
 .table-responsive {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 600px;
     margin-top: 1.5rem;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -934,11 +936,11 @@
         grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
         gap: 1rem;
     }
-
+    
     .image-actions {
         flex-direction: column;
     }
-
+    
     .image-action-btn {
         width: 100%;
     }

@@ -1,43 +1,80 @@
-// Code Formatter JavaScript - All formatting done on frontend
+// Code Formatter JavaScript - Unified interface for code formatting and translation
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-    const inputCode = document.getElementById('inputCode');
-    const outputCode = document.getElementById('outputCode');
+    const inputEditor = document.getElementById('inputEditor');
+    const outputEditor = document.getElementById('outputEditor');
 
-    // Update character count on output change
-    outputCode.addEventListener('input', updateCharCount);
+    // Auto-resize function
+    function autoResize(textarea) {
+        textarea.style.height = 'auto';
+        textarea.style.height = Math.max(200, textarea.scrollHeight) + 'px';
+    }
+
+    // Add auto-resize on input
+    if (inputEditor) {
+        inputEditor.addEventListener('input', function() {
+            autoResize(this);
+        });
+        // Initial resize
+        setTimeout(() => autoResize(inputEditor), 100);
+    }
+
+    if (outputEditor) {
+        outputEditor.addEventListener('input', function() {
+            autoResize(this);
+            updateCharCount();
+        });
+        
+        // Update character count on output change
+        outputEditor.addEventListener('input', updateCharCount);
+        
+        // Initial resize
+        setTimeout(() => autoResize(outputEditor), 100);
+    }
 
     // Enable keyboard shortcuts
     document.addEventListener('keydown', function(e) {
-        // Ctrl/Cmd + Enter to format
-        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        // Ctrl/Cmd + B to beautify
+        if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
             e.preventDefault();
             formatStandard();
         }
-        // Ctrl/Cmd + Shift + C to copy
-        if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+        // Ctrl/Cmd + T to translate
+        if ((e.ctrlKey || e.metaKey) && e.key === 't') {
             e.preventDefault();
-            copyFormatted();
+            translateText();
         }
     });
 });
 
 /**
+ * Auto-resize output editor
+ */
+function autoResizeOutput() {
+    const outputEditor = document.getElementById('outputEditor');
+    if (outputEditor) {
+        outputEditor.style.height = 'auto';
+        outputEditor.style.height = Math.max(200, outputEditor.scrollHeight) + 'px';
+    }
+}
+
+/**
  * Format code with Postman-style beautify (2-space indentation)
  */
 function formatStandard() {
-    const inputCode = document.getElementById('inputCode').value.trim();
+    const inputEditor = document.getElementById('inputEditor').value.trim();
     const language = document.getElementById('languageSelect').value;
 
-    if (!inputCode) {
+    if (!inputEditor) {
         showModal('Error', 'Please enter some code to format');
         return;
     }
 
     try {
-        const outputCode = document.getElementById('outputCode');
-        outputCode.value = beautifyCode(inputCode, language);
+        const outputEditor = document.getElementById('outputEditor');
+        outputEditor.value = beautifyCode(inputEditor, language);
+        autoResizeOutput();
         updateCharCount();
         showToast('Code beautified successfully!', 'success');
     } catch (error) {
@@ -49,17 +86,18 @@ function formatStandard() {
  * Convert code to one line
  */
 function formatOneLine() {
-    const inputCode = document.getElementById('inputCode').value.trim();
+    const inputEditor = document.getElementById('inputEditor').value.trim();
     const language = document.getElementById('languageSelect').value;
 
-    if (!inputCode) {
+    if (!inputEditor) {
         showModal('Error', 'Please enter some code to format');
         return;
     }
 
     try {
-        const outputCode = document.getElementById('outputCode');
-        outputCode.value = minifyToOneLine(inputCode, language);
+        const outputEditor = document.getElementById('outputEditor');
+        outputEditor.value = minifyToOneLine(inputEditor, language);
+        autoResizeOutput();
         updateCharCount();
         showToast('Code converted to one line!', 'success');
     } catch (error) {
@@ -206,68 +244,82 @@ function minifyToOneLine(code, language) {
 }
 
 /**
- * Copy formatted code to clipboard
+ * Copy output to clipboard
  */
-function copyFormatted() {
-    const outputCode = document.getElementById('outputCode');
-    const text = outputCode.value;
+function copyOutput() {
+    const outputEditor = document.getElementById('outputEditor');
+    const text = outputEditor.value;
 
     if (!text) {
-        showModal('Error', 'No formatted code to copy');
+        showModal('Error', 'No output to copy');
         return;
     }
 
+    copyToClipboard(text, 'Copied to clipboard!');
+}
+
+/**
+ * Generic copy to clipboard function
+ */
+function copyToClipboard(text, successMessage) {
     // Modern clipboard API
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text)
             .then(() => {
-                showToast('Code copied to clipboard!', 'success');
+                showToast(successMessage, 'success');
             })
             .catch(err => {
                 // Fallback to old method
-                fallbackCopy(text);
+                fallbackCopy(text, successMessage);
             });
     } else {
         // Fallback for older browsers
-        fallbackCopy(text);
+        fallbackCopy(text, successMessage);
     }
 }
 
 /**
  * Fallback copy method for older browsers
  */
-function fallbackCopy(text) {
-    const outputCode = document.getElementById('outputCode');
-    outputCode.select();
-    outputCode.setSelectionRange(0, 99999); // For mobile devices
+function fallbackCopy(text, successMessage) {
+    const tempTextarea = document.createElement('textarea');
+    tempTextarea.value = text;
+    tempTextarea.style.position = 'fixed';
+    tempTextarea.style.opacity = '0';
+    document.body.appendChild(tempTextarea);
+    tempTextarea.select();
+    tempTextarea.setSelectionRange(0, 99999);
 
     try {
         document.execCommand('copy');
-        showToast('Code copied to clipboard!', 'success');
+        showToast(successMessage || 'Copied to clipboard!', 'success');
     } catch (err) {
-        showModal('Error', 'Failed to copy code. Please copy manually.');
+        showModal('Error', 'Failed to copy. Please copy manually.');
     }
+
+    document.body.removeChild(tempTextarea);
 }
 
 /**
  * Paste from clipboard into input area
  */
 async function pasteFromClipboard() {
-    const inputCode = document.getElementById('inputCode');
+    const inputEditor = document.getElementById('inputEditor');
 
     try {
         if (navigator.clipboard && navigator.clipboard.readText) {
             const text = await navigator.clipboard.readText();
-            inputCode.value = text;
-            showToast('Code pasted from clipboard!', 'success');
+            inputEditor.value = text;
+            autoResizeOutput();
+            showToast('Pasted from clipboard!', 'success');
         } else {
             // Fallback: focus input and let user paste manually
-            inputCode.focus();
+            inputEditor.focus();
             showToast('Please paste using Ctrl+V (Cmd+V on Mac)', 'info');
         }
     } catch (err) {
         // Permission denied or other error
-        inputCode.focus();
+        inputEditor.focus();
         showToast('Please paste using Ctrl+V (Cmd+V on Mac)', 'info');
     }
 }
@@ -276,8 +328,16 @@ async function pasteFromClipboard() {
  * Clear all input and output
  */
 function clearAll() {
-    document.getElementById('inputCode').value = '';
-    document.getElementById('outputCode').value = '';
+    const inputEditor = document.getElementById('inputEditor');
+    const outputEditor = document.getElementById('outputEditor');
+    
+    inputEditor.value = '';
+    outputEditor.value = '';
+    
+    // Reset heights
+    inputEditor.style.height = '200px';
+    outputEditor.style.height = '200px';
+    
     updateCharCount();
 }
 
@@ -285,8 +345,8 @@ function clearAll() {
  * Update character count display
  */
 function updateCharCount() {
-    const outputCode = document.getElementById('outputCode').value;
-    const count = outputCode.length;
+    const outputEditor = document.getElementById('outputEditor').value;
+    const count = outputEditor.length;
     const charCountElement = document.getElementById('charCount');
 
     if (charCountElement) {
@@ -299,7 +359,7 @@ function updateCharCount() {
  */
 function loadSample() {
     const language = document.getElementById('languageSelect').value;
-    const inputCode = document.getElementById('inputCode');
+    const inputEditor = document.getElementById('inputEditor');
 
     const samples = {
         javascript: `function calculateSum(a, b) {
@@ -355,50 +415,20 @@ WHERE orders.total > 100
 ORDER BY orders.total DESC;`
     };
 
-    inputCode.value = samples[language] || samples.javascript;
+    inputEditor.value = samples[language] || samples.javascript;
+    
+    // Auto-resize input
+    inputEditor.style.height = 'auto';
+    inputEditor.style.height = Math.max(200, inputEditor.scrollHeight) + 'px';
+    
     showToast(`Sample ${language} code loaded`, 'success');
 }
 
 /**
- * Switch between code formatter and translator modes
- */
-function switchMode(mode) {
-    const codeControls = document.getElementById('codeControls');
-    const translateControls = document.getElementById('translateControls');
-    const modeCodeBtn = document.getElementById('modeCodeBtn');
-    const modeTranslateBtn = document.getElementById('modeTranslateBtn');
-    const inputHeader = document.getElementById('inputPanelHeader');
-    const outputHeader = document.getElementById('outputPanelHeader');
-
-    if (mode === 'code') {
-        codeControls.style.display = 'flex';
-        translateControls.style.display = 'none';
-        modeCodeBtn.classList.add('active');
-        modeTranslateBtn.classList.remove('active');
-        inputHeader.textContent = 'Input Code';
-        outputHeader.textContent = 'Formatted Code';
-        document.getElementById('inputCode').placeholder = 'Paste your code here...';
-        document.getElementById('outputCode').placeholder = 'Formatted code will appear here...';
-    } else if (mode === 'translate') {
-        codeControls.style.display = 'none';
-        translateControls.style.display = 'flex';
-        modeCodeBtn.classList.remove('active');
-        modeTranslateBtn.classList.add('active');
-        inputHeader.textContent = 'Source Text';
-        outputHeader.textContent = 'Translated Text';
-        document.getElementById('inputCode').placeholder = 'Enter text to translate...';
-        document.getElementById('outputCode').placeholder = 'Translation will appear here...';
-    }
-
-    // Clear content when switching modes
-    clearAll();
-}
-
-/**
- * Translate text using Argos Translate (offline)
+ * Translate text using Google Translate
  */
 async function translateText() {
-    const inputText = document.getElementById('inputCode').value.trim();
+    const inputText = document.getElementById('inputEditor').value.trim();
     const sourceLang = document.getElementById('sourceLanguageSelect').value;
     const targetLang = document.getElementById('targetLanguageSelect').value;
 
@@ -428,11 +458,12 @@ async function translateText() {
         const data = await response.json();
 
         if (data.success) {
-            document.getElementById('outputCode').value = data.translated_text;
+            document.getElementById('outputEditor').value = data.translated_text;
+            autoResizeOutput();
             updateCharCount();
             showToast('Translation completed!', 'success');
         } else {
-            showModal('Translation Error', data.error || 'Failed to translate text. Make sure language packages are installed.');
+            showModal('Translation Error', data.error || 'Failed to translate text.');
         }
     } catch (error) {
         console.error('Translation error:', error);
@@ -452,12 +483,18 @@ function swapLanguages() {
     targetSelect.value = tempValue;
     
     // Also swap input/output text
-    const inputCode = document.getElementById('inputCode');
-    const outputCode = document.getElementById('outputCode');
+    const inputEditor = document.getElementById('inputEditor');
+    const outputEditor = document.getElementById('outputEditor');
     
-    const tempText = inputCode.value;
-    inputCode.value = outputCode.value;
-    outputCode.value = tempText;
+    const tempText = inputEditor.value;
+    inputEditor.value = outputEditor.value;
+    outputEditor.value = tempText;
+    
+    // Auto-resize both
+    inputEditor.style.height = 'auto';
+    inputEditor.style.height = Math.max(200, inputEditor.scrollHeight) + 'px';
+    outputEditor.style.height = 'auto';
+    outputEditor.style.height = Math.max(200, outputEditor.scrollHeight) + 'px';
     
     updateCharCount();
     showToast('Languages swapped!', 'info');
@@ -488,4 +525,3 @@ async function checkInstalledLanguages() {
         showModal('Error', 'Failed to check installed languages: ' + error.message);
     }
 }
-
