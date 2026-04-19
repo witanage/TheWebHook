@@ -691,17 +691,16 @@ def http_status_test(code, extra_path=None):
 
 # Storage directory for uploaded images
 # Use /tmp on Vercel (serverless) since the file system is read-only
-if os.environ.get('VERCEL'):
+# Check for any Vercel environment indicators
+if os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV'):
     UPLOAD_FOLDER = '/tmp/uploads/http_images'
 else:
     UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'http_images')
-
-# Safely create the upload directory
-try:
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-except OSError:
-    # In serverless environments, we'll create the directory on-demand
-    pass
+    # Only create directory during import for local development
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    except OSError:
+        pass
 
 
 def ensure_upload_folder():
@@ -1507,6 +1506,76 @@ def health_check():
         return jsonify(health_status), 503
 
     return jsonify(health_status), 200
+
+
+@app.route("/api/db-test", methods=["GET"])
+def db_test():
+    """
+    Detailed database connection test endpoint for debugging
+    Returns database connection details and environment info
+    """
+    test_result = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "environment": {
+            "is_vercel": bool(os.environ.get('VERCEL') or os.environ.get('VERCEL_ENV')),
+            "vercel_env": os.environ.get('VERCEL_ENV', 'N/A'),
+            "upload_folder": UPLOAD_FOLDER,
+        },
+        "database": {
+            "host": os.getenv("DB_HOST", "NOT_SET"),
+            "port": os.getenv("DB_PORT", "NOT_SET"),
+            "user": os.getenv("DB_USER", "NOT_SET"),
+            "database": os.getenv("DB_NAME", "NOT_SET"),
+            "password_set": bool(os.getenv("DB_PASSWORD")),
+        },
+        "connection_test": {
+            "status": "unknown",
+            "message": ""
+        }
+    }
+
+    # Test database connection
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT VERSION() as version, DATABASE() as current_db")
+        result = cursor.fetchone()
+
+        test_result["connection_test"] = {
+            "status": "success",
+            "message": "Database connection successful",
+            "mysql_version": result.get("version"),
+            "current_database": result.get("current_db")
+        }
+
+        # Test if users table exists
+        cursor.execute("SHOW TABLES LIKE 'users'")
+        if cursor.fetchone():
+            test_result["connection_test"]["users_table_exists"] = True
+            cursor.execute("SELECT COUNT(*) as count FROM users")
+            user_count = cursor.fetchone()
+            test_result["connection_test"]["user_count"] = user_count.get("count")
+        else:
+            test_result["connection_test"]["users_table_exists"] = False
+            test_result["connection_test"]["warning"] = "Users table not found - database may not be initialized"
+
+    except Exception as e:
+        test_result["connection_test"] = {
+            "status": "error",
+            "message": str(e),
+            "error_type": type(e).__name__
+        }
+        log(f"Database test error: {str(e)}")
+        return jsonify(test_result), 500
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.open:
+            conn.close()
+
+    return jsonify(test_result), 200
 
 
 @app.route("/.well-known/pki-validation/<path:filename>")
