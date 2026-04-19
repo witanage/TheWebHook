@@ -45,6 +45,7 @@ from components.karate_generator import karate_generator_bp
 from components.pdf_process import pdf_process_bp
 from components.totp_authenticator import totp_authenticator_bp
 from components.webhook_viewer import webhook_viewer_bp
+from components.cron_scheduler import cron_scheduler_bp
 
 # ==================== BLUEPRINT REGISTRATIONS =====================
 app.register_blueprint(code_formatter_bp)
@@ -56,6 +57,7 @@ app.register_blueprint(karate_generator_bp)
 app.register_blueprint(pdf_process_bp)
 app.register_blueprint(totp_authenticator_bp)
 app.register_blueprint(webhook_viewer_bp)
+app.register_blueprint(cron_scheduler_bp)
 
 # Import shared utilities from components
 from components.utils import (
@@ -66,6 +68,11 @@ from components.utils import (
     user_event_queues,
     queue_lock
 )
+
+# Initialize cron scheduler
+from components.cron_scheduler.scheduler import init_scheduler
+
+init_scheduler(app)
 
 # Logging configuration
 logging.basicConfig(

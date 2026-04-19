@@ -1,0 +1,406 @@
+{% extends "base.html" %}
+
+{% block title %}Cron Job Scheduler{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('cron_scheduler.static', filename='css/cron-scheduler-styles.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="cron-scheduler-container">
+    <!-- Left Sidebar - Folders -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3>Folders</h3>
+            <button class="btn-icon" id="add-folder-btn" title="Add Folder">
+                <span>+</span>
+            </button>
+        </div>
+        
+        <div class="folder-list">
+            <div class="folder-item active" data-folder-id="all">
+                <span class="folder-icon">📋</span>
+                <span class="folder-name">All Jobs</span>
+                <span class="job-count" id="all-jobs-count">0</span>
+            </div>
+            <div class="folder-item" data-folder-id="root">
+                <span class="folder-icon">📁</span>
+                <span class="folder-name">Root</span>
+                <span class="job-count" id="root-jobs-count">0</span>
+            </div>
+            <div id="folders-container"></div>
+        </div>
+    </div>
+    
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="dashboard-stats">
+                <div class="stat-item">
+                    <span class="stat-label">Total:</span>
+                    <span class="stat-value" id="stat-total">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Active:</span>
+                    <span class="stat-value" id="stat-active">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Failing:</span>
+                    <span class="stat-value stat-failing" id="stat-failing">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Executions (24h):</span>
+                    <span class="stat-value" id="stat-executions">0</span>
+                </div>
+            </div>
+            
+            <div class="top-bar-actions">
+                <input type="text" id="search-input" placeholder="Search jobs..." class="search-input">
+                <button class="btn btn-primary" id="new-job-btn">
+                    <span>+ New Job</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Jobs Table -->
+        <div class="jobs-table-container">
+            <table class="jobs-table">
+                <thead>
+                    <tr>
+                        <th class="col-enabled">Enabled</th>
+                        <th class="col-title">Title</th>
+                        <th class="col-url">URL</th>
+                        <th class="col-schedule">Schedule</th>
+                        <th class="col-status">Status</th>
+                        <th class="col-last-exec">Last Execution</th>
+                        <th class="col-next-exec">Next Execution</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="jobs-table-body">
+                    <tr class="no-jobs-row">
+                        <td colspan="8" style="text-align: center; padding: 40px;">
+                            No jobs found. Click "New Job" to create one.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Job Edit Modal -->
+<div id="job-modal" class="modal-overlay">
+    <div class="modal modal-large">
+        <div class="modal-header">
+            <h3 id="modal-title">New Job</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        
+        <div class="modal-content scrollable">
+            <div class="tabs">
+                <button class="tab-button active" data-tab="general">General</button>
+                <button class="tab-button" data-tab="schedule">Schedule</button>
+                <button class="tab-button" data-tab="advanced">Advanced</button>
+                <button class="tab-button" data-tab="notifications">Notifications</button>
+                <button class="tab-button" data-tab="history">History</button>
+            </div>
+            
+            <!-- General Tab -->
+            <div class="tab-content active" data-tab="general">
+                <div class="form-group">
+                    <label for="job-title">Title *</label>
+                    <input type="text" id="job-title" class="form-control" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-url">URL *</label>
+                    <input type="url" id="job-url" class="form-control" placeholder="https://example.com/api/endpoint" required>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="job-method">Method</label>
+                        <select id="job-method" class="form-control">
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                            <option value="HEAD">HEAD</option>
+                            <option value="OPTIONS">OPTIONS</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="job-folder">Folder</label>
+                        <select id="job-folder" class="form-control">
+                            <option value="">Root</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="job-timeout">Timeout (seconds)</label>
+                        <input type="number" id="job-timeout" class="form-control" value="30" min="1" max="300">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="job-enabled" checked>
+                        <span>Enabled (job will execute on schedule)</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="job-save-responses">
+                        <span>Save response headers and body</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="job-redirect-success">
+                        <span>Treat 3xx redirects as success</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Schedule Tab -->
+            <div class="tab-content" data-tab="schedule">
+                <div class="schedule-presets">
+                    <button class="preset-btn" data-preset="every-minute">Every minute</button>
+                    <button class="preset-btn" data-preset="every-15-min">Every 15 minutes</button>
+                    <button class="preset-btn" data-preset="hourly">Hourly</button>
+                    <button class="preset-btn" data-preset="daily">Daily (midnight)</button>
+                    <button class="preset-btn" data-preset="weekly">Weekly (Sunday)</button>
+                    <button class="preset-btn" data-preset="monthly">Monthly (1st)</button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-timezone">Timezone</label>
+                    <select id="job-timezone" class="form-control">
+                        <option value="UTC" selected>UTC</option>
+                        <option value="America/New_York">America/New_York</option>
+                        <option value="America/Chicago">America/Chicago</option>
+                        <option value="America/Denver">America/Denver</option>
+                        <option value="America/Los_Angeles">America/Los_Angeles</option>
+                        <option value="Europe/London">Europe/London</option>
+                        <option value="Europe/Paris">Europe/Paris</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo</option>
+                        <option value="Asia/Shanghai">Asia/Shanghai</option>
+                        <option value="Australia/Sydney">Australia/Sydney</option>
+                    </select>
+                </div>
+                
+                <div class="schedule-builder">
+                    <div class="schedule-section">
+                        <label>Minutes</label>
+                        <div class="schedule-controls">
+                            <button class="toggle-all" data-field="minutes">Every minute</button>
+                            <button class="toggle-none" data-field="minutes">Clear all</button>
+                        </div>
+                        <div class="schedule-grid" id="minutes-grid"></div>
+                    </div>
+                    
+                    <div class="schedule-section">
+                        <label>Hours</label>
+                        <div class="schedule-controls">
+                            <button class="toggle-all" data-field="hours">Every hour</button>
+                            <button class="toggle-none" data-field="hours">Clear all</button>
+                        </div>
+                        <div class="schedule-grid" id="hours-grid"></div>
+                    </div>
+                    
+                    <div class="schedule-section">
+                        <label>Days of Month</label>
+                        <div class="schedule-controls">
+                            <button class="toggle-all" data-field="mdays">Every day</button>
+                            <button class="toggle-none" data-field="mdays">Clear all</button>
+                        </div>
+                        <div class="schedule-grid" id="mdays-grid"></div>
+                    </div>
+                    
+                    <div class="schedule-section">
+                        <label>Months</label>
+                        <div class="schedule-controls">
+                            <button class="toggle-all" data-field="months">Every month</button>
+                            <button class="toggle-none" data-field="months">Clear all</button>
+                        </div>
+                        <div class="schedule-grid" id="months-grid"></div>
+                    </div>
+                    
+                    <div class="schedule-section">
+                        <label>Days of Week</label>
+                        <div class="schedule-controls">
+                            <button class="toggle-all" data-field="wdays">Every day</button>
+                            <button class="toggle-none" data-field="wdays">Clear all</button>
+                        </div>
+                        <div class="schedule-grid" id="wdays-grid"></div>
+                    </div>
+                </div>
+                
+                <div class="next-executions">
+                    <h4>Next Executions:</h4>
+                    <div id="next-executions-list" class="predictions-list">
+                        <em>Save the job to see predicted executions</em>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Advanced Tab -->
+            <div class="tab-content" data-tab="advanced">
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="job-auth-enabled">
+                        <span>Enable HTTP Basic Authentication</span>
+                    </label>
+                </div>
+                
+                <div id="auth-fields" style="display: none;">
+                    <div class="form-group">
+                        <label for="job-auth-user">Username</label>
+                        <input type="text" id="job-auth-user" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="job-auth-password">Password</label>
+                        <input type="password" id="job-auth-password" class="form-control">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Custom Headers</label>
+                    <div id="headers-container">
+                        <div class="header-row">
+                            <input type="text" class="form-control header-key" placeholder="Header name">
+                            <input type="text" class="form-control header-value" placeholder="Header value">
+                            <button class="btn-remove-header">−</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" id="add-header-btn">+ Add Header</button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="job-body">Request Body</label>
+                    <textarea id="job-body" class="form-control" rows="8" placeholder='{"key": "value"}'></textarea>
+                </div>
+            </div>
+            
+            <!-- Notifications Tab -->
+            <div class="tab-content" data-tab="notifications">
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="job-notify-failure">
+                        <span>Notify on failure</span>
+                    </label>
+                </div>
+                
+                <div class="form-group" id="failure-count-group">
+                    <label for="job-failure-count">Failure count threshold</label>
+                    <input type="number" id="job-failure-count" class="form-control" value="1" min="1" max="100">
+                    <small>How many consecutive failures before notifying</small>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="job-notify-success">
+                        <span>Notify when recovered (success after failure)</span>
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="job-notify-disable">
+                        <span>Notify when auto-disabled (after 26 consecutive failures)</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- History Tab -->
+            <div class="tab-content" data-tab="history">
+                <div class="history-container">
+                    <div id="history-loading" style="text-align: center; padding: 20px;">
+                        <em>Save the job first to view execution history</em>
+                    </div>
+                    
+                    <table class="history-table" id="history-table" style="display: none;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>HTTP Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary modal-close">Cancel</button>
+            <button class="btn btn-primary" id="save-job-btn">Save Job</button>
+            <button class="btn btn-success" id="test-job-btn" style="display: none;">Test Run</button>
+        </div>
+    </div>
+</div>
+
+<!-- Folder Modal -->
+<div id="folder-modal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="folder-modal-title">New Folder</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        
+        <div class="modal-content">
+            <div class="form-group">
+                <label for="folder-name">Folder Name</label>
+                <input type="text" id="folder-name" class="form-control" required>
+            </div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary modal-close">Cancel</button>
+            <button class="btn btn-primary" id="save-folder-btn">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- History Detail Modal -->
+<div id="history-detail-modal" class="modal-overlay">
+    <div class="modal modal-large">
+        <div class="modal-header">
+            <h3>Execution Details</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        
+        <div class="modal-content scrollable">
+            <div id="history-detail-content"></div>
+        </div>
+        
+        <div class="modal-footer">
+            <button class="btn btn-secondary modal-close">Close</button>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/showToast-function.js') }}"></script>
+<script src="{{ url_for('cron_scheduler.static', filename='js/cron-scheduler.js') }}"></script>
+<script>
+    let cronScheduler;
+    document.addEventListener('DOMContentLoaded', function() {
+        cronScheduler = new CronScheduler();
+        cronScheduler.init();
+    });
+</script>
+{% endblock %}
