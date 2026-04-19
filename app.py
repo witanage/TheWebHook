@@ -690,8 +690,26 @@ def http_status_test(code, extra_path=None):
 # =============================================================================
 
 # Storage directory for uploaded images
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'http_images')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Use /tmp on Vercel (serverless) since the file system is read-only
+if os.environ.get('VERCEL'):
+    UPLOAD_FOLDER = '/tmp/uploads/http_images'
+else:
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads', 'http_images')
+
+# Safely create the upload directory
+try:
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+except OSError:
+    # In serverless environments, we'll create the directory on-demand
+    pass
+
+
+def ensure_upload_folder():
+    """Ensure the upload folder exists, creating it if necessary"""
+    try:
+        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    except OSError:
+        pass  # Directory might already exist or be uncreatable
 
 
 @app.route("/api/http-images", methods=["POST"])
@@ -732,6 +750,9 @@ def upload_http_image():
         # Generate unique filename
         unique_filename = f"{user_id}_{uuid.uuid4().hex}.{file_ext}"
         file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+
+        # Ensure upload directory exists (important for serverless environments)
+        ensure_upload_folder()
 
         # Save file to disk
         with open(file_path, 'wb') as f:
