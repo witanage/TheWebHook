@@ -46,6 +46,7 @@ from components.pdf_process import pdf_process_bp
 from components.totp_authenticator import totp_authenticator_bp
 from components.webhook_viewer import webhook_viewer_bp
 from components.cron_scheduler import cron_scheduler_bp
+from components.md_compare import md_compare_bp
 
 # ==================== BLUEPRINT REGISTRATIONS =====================
 app.register_blueprint(code_formatter_bp)
@@ -58,6 +59,7 @@ app.register_blueprint(pdf_process_bp)
 app.register_blueprint(totp_authenticator_bp)
 app.register_blueprint(webhook_viewer_bp)
 app.register_blueprint(cron_scheduler_bp)
+app.register_blueprint(md_compare_bp)
 
 # Import shared utilities from components
 from components.utils import (

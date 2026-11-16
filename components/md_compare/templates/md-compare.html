@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Markdown Comparison Tool{% endblock %}
+
+{% block header_left %}
+<button class="back-to-menu" onclick="window.location.href='/menu'" title="Back to Dashboard">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+         stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    Menu
+</button>
+
+<!-- Apps Dropdown -->
+<div class="apps-menu">
+    <button class="apps-button" onclick="toggleAppsMenu()" title="Open App">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+        </svg>
+        Apps
+        <span style="font-size: 12px;">▼</span>
+    </button>
+    <div class="apps-dropdown" id="appsDropdown">
+        {% for item in menu_items %}
+        <a href="{{ item.route }}" target="_blank" class="apps-dropdown-item">
+            <span class="apps-item-icon">{{ item.icon }}</span>
+            <span class="apps-item-text">{{ item.title }}</span>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+<link href="{{ url_for('md_compare.static', filename='css/md-compare-styles.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/toast-styles.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="md-compare-container">
+    <div class="page-header">
+        <p class="page-description">Compare two Markdown files and see line-by-line and word-level differences</p>
+    </div>
+
+    <div class="controls">
+        <button class="btn-primary" onclick="compareMD()">Compare</button>
+        <button class="btn-secondary" onclick="swapSides()">Swap</button>
+        <button class="btn-secondary" onclick="clearAll()">Clear All</button>
+        <button class="btn-success" onclick="loadSample()">Load Sample</button>
+        <div class="controls-divider"></div>
+        <label class="option"><input type="checkbox" id="optIgnoreWs"> Ignore whitespace</label>
+        <label class="option"><input type="checkbox" id="optIgnoreCase"> Ignore case</label>
+        <label class="option"><input type="checkbox" id="optOnlyDiff"> Only show changes</label>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-box added"></div><span>Added</span></div>
+        <div class="legend-item"><div class="legend-box removed"></div><span>Removed</span></div>
+        <div class="legend-item"><div class="legend-box changed"></div><span>Changed</span></div>
+    </div>
+
+    <div class="comparison-area">
+        <div class="md-panel">
+            <div class="panel-header">
+                <span>Markdown 1</span>
+                <label class="file-btn">Open file…
+                    <input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden
+                           onchange="loadFile(event, 'md1')">
+                </label>
+            </div>
+            <textarea class="md-editor" id="md1" placeholder="Paste Markdown here or open a file..." spellcheck="false"></textarea>
+        </div>
+        <div class="md-panel">
+            <div class="panel-header">
+                <span>Markdown 2</span>
+                <label class="file-btn">Open file…
+                    <input type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden
+                           onchange="loadFile(event, 'md2')">
+                </label>
+            </div>
+            <textarea class="md-editor" id="md2" placeholder="Paste Markdown here or open a file..." spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <div class="results" id="results" style="display: none;">
+        <div class="results-header">Comparison Results</div>
+        <div class="stats">
+            <div class="stat-card stat-added"><div class="stat-value" id="addedCount">0</div><div class="stat-label">Lines added</div></div>
+            <div class="stat-card stat-removed"><div class="stat-value" id="removedCount">0</div><div class="stat-label">Lines removed</div></div>
+            <div class="stat-card stat-changed"><div class="stat-value" id="changedCount">0</div><div class="stat-label">Lines changed</div></div>
+        </div>
+        <div class="identical-msg" id="identicalMsg" style="display: none;">The two documents are identical.</div>
+        <div class="diff-table" id="diffContainer"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/showToast-function.js') }}"></script>
+<script src="{{ url_for('md_compare.static', filename='js/md-compare.js') }}"></script>
+{% endblock %}
+
+{% block about_title %}About Markdown Comparison Tool{% endblock %}
+
+{% block about_content %}
+<section class="about-section">
+    <h4>📝 Markdown Comparison Tool</h4>
+    <p>Compare two Markdown documents side by side. Everything runs in your browser; nothing is uploaded.</p>
+</section>
+
+<section class="about-section">
+    <h5>✨ Key Features</h5>
+    <ul class="feature-list">
+        <li><strong>Line diff</strong> - Added, removed and changed lines with line numbers</li>
+        <li><strong>Word-level highlighting</strong> - See exactly what changed inside a modified line</li>
+        <li><strong>Options</strong> - Ignore whitespace, ignore case, or show only changes</li>
+        <li><strong>Open files</strong> - Load .md files from disk or paste text</li>
+    </ul>
+</section>
+
+<section class="about-section">
+    <p><strong>Version:</strong> 1.0</p>
+</section>
+{% endblock %}

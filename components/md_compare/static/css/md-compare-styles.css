@@ -1,0 +1,66 @@
+.md-compare-container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+.page-header { text-align: center; margin-bottom: 2rem; }
+.page-description { color: var(--text-secondary); font-size: 1.1rem; }
+
+.controls {
+    padding: 20px; background: var(--bg-secondary); border-radius: var(--radius);
+    display: flex; gap: 15px; flex-wrap: wrap; align-items: center;
+    margin-bottom: 1.5rem; border: 1px solid var(--border-color);
+}
+.controls-divider { width: 1px; height: 28px; background: var(--border-color); }
+.option { color: var(--text-primary); display: flex; gap: 6px; align-items: center; cursor: pointer; }
+
+button { padding: 12px 24px; border: none; border-radius: 6px; font-size: 1em; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+.btn-primary { background: var(--accent-color); color: white; }
+.btn-primary:hover { filter: brightness(1.1); transform: translateY(-2px); }
+.btn-secondary { background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-color); }
+.btn-secondary:hover { background: var(--bg-quaternary); }
+.btn-success { background: var(--success-color); color: white; }
+.btn-success:hover { filter: brightness(1.1); }
+
+.legend { display: flex; gap: 20px; margin-bottom: 1rem; color: var(--text-primary); }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-box { width: 20px; height: 20px; border: 2px solid; border-radius: 4px; }
+.legend-box.added { background: #d4edda; border-color: #28a745; }
+.legend-box.removed { background: #f8d7da; border-color: #dc3545; }
+.legend-box.changed { background: #fff3cd; border-color: #ffc107; }
+
+.comparison-area { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 2rem; }
+.md-panel { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); overflow: hidden; }
+.panel-header {
+    padding: 10px 15px; font-weight: 600; color: var(--text-primary);
+    background: var(--bg-tertiary); border-bottom: 1px solid var(--border-color);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.file-btn { font-size: 0.85em; color: var(--accent-color); cursor: pointer; font-weight: 600; }
+.md-editor {
+    width: 100%; height: 320px; box-sizing: border-box; resize: vertical; border: none; outline: none; padding: 12px;
+    background: var(--bg-primary); color: var(--text-primary);
+    font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; line-height: 1.5;
+}
+
+.results { background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; }
+.results-header { font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin-bottom: 1rem; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 1.5rem; }
+.stat-card { padding: 15px; border-radius: 8px; text-align: center; border: 1px solid var(--border-color); background: var(--bg-tertiary); }
+.stat-value { font-size: 2rem; font-weight: 700; }
+.stat-label { color: var(--text-secondary); }
+.stat-added .stat-value { color: #28a745; }
+.stat-removed .stat-value { color: #dc3545; }
+.stat-changed .stat-value { color: #e0a800; }
+.identical-msg { padding: 20px; text-align: center; color: var(--success-color); font-weight: 600; }
+
+.diff-table { border: 1px solid var(--border-color); border-radius: 6px; overflow-x: auto; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.85rem; }
+.diff-row { display: grid; grid-template-columns: 48px 1fr 48px 1fr; min-width: 700px; }
+.diff-row > div { padding: 2px 8px; white-space: pre-wrap; word-break: break-word; color: var(--text-primary); min-height: 1.5em; }
+.diff-row .ln { text-align: right; color: var(--text-secondary); background: var(--bg-tertiary); user-select: none; }
+.diff-row .cell-removed { background: #f8d7da; color: #721c24; }
+.diff-row .cell-added { background: #d4edda; color: #155724; }
+.diff-row .cell-changed-l { background: #fff3cd; color: #533f03; }
+.diff-row .cell-changed-r { background: #fff3cd; color: #533f03; }
+.diff-row .cell-empty { background: var(--bg-tertiary); opacity: .5; }
+.diff-row mark.w-del { background: #f5a3ab; color: inherit; border-radius: 2px; }
+.diff-row mark.w-add { background: #8fd19e; color: inherit; border-radius: 2px; }
+.diff-gap { padding: 4px 12px; text-align: center; color: var(--text-secondary); background: var(--bg-tertiary); font-size: 0.8rem; }
+
+@media (max-width: 800px) { .comparison-area { grid-template-columns: 1fr; } }

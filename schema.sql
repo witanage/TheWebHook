@@ -339,7 +339,8 @@ INSERT INTO menu_items (title, description, icon, route, display_order, is_activ
     ('Code Formatter', 'Beautify code like Postman API or convert to single-line format', '💻', '/code-formatter', 7, 1),
     ('PDF Process', 'All-in-one PDF tools: merge, split, compress, convert, rotate, watermark & more', '📄', '/pdf-process', 8, 1),
     ('Image Process', 'All-in-one image tools: resize, convert, compress, rotate, crop, filters & more', '🖼️', '/image-process', 9, 1),
-    ('Cron Job Scheduler', 'Schedule and monitor HTTP requests with cron-like scheduling', '⏰', '/cron-scheduler', 10, 1)
+    ('Cron Job Scheduler', 'Schedule and monitor HTTP requests with cron-like scheduling', '⏰', '/cron-scheduler', 10, 1),
+    ('Markdown Comparison Tool', 'Compare two Markdown files with line and word-level diffs', '📝', '/md-compare', 11, 1)
 ON DUPLICATE KEY UPDATE
     title = VALUES(title),
     description = VALUES(description),
@@ -348,8 +349,9 @@ ON DUPLICATE KEY UPDATE
 
 -- =============================================================================
 -- SCHEMA VERSION
--- ==================6
--- Last updated: 2026-04-19
+-- =============================================================================
+-- Last updated: 2026-11-16
 -- Description: Added Cron Job Scheduler component with cron_folders, cron_jobs, and cron_job_history table
 -- Description: Added Image Process app to default menu items
+-- Description: Added Markdown Comparison Tool to default menu items (client-side only, no new tables)
 -- =============================================================================

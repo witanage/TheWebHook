@@ -61,6 +61,10 @@ TOTP (Time-based One-Time Password) authenticator tool.
 Webhook viewer and testing interface.
 - Route: `/webhook-viewer`
 
+### 10. md_compare
+Markdown file comparison with line and word-level diffs (client-side, no DB).
+- Route: `/md-compare`
+
 ## Shared Utilities
 
 The `utils.py` module provides shared functionality across all components:
