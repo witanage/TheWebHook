@@ -227,6 +227,20 @@ CREATE TABLE IF NOT EXISTS json_comparisons (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Markdown comparisons table (stores user's saved Markdown comparisons)
+CREATE TABLE IF NOT EXISTS md_comparisons (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    comparison_name VARCHAR(255) NOT NULL,
+    md1 MEDIUMTEXT NOT NULL,
+    md2 MEDIUMTEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_md_comparisons_user_id (user_id),
+    INDEX idx_md_comparisons_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- =============================================================================
 -- CRON SCHEDULER TABLES
 -- =============================================================================
@@ -353,5 +367,5 @@ ON DUPLICATE KEY UPDATE
 -- Last updated: 2026-11-16
 -- Description: Added Cron Job Scheduler component with cron_folders, cron_jobs, and cron_job_history table
 -- Description: Added Image Process app to default menu items
--- Description: Added Markdown Comparison Tool to default menu items (client-side only, no new tables)
+-- Description: Added Markdown Comparison Tool with md_comparisons table and default menu item
 -- =============================================================================
