@@ -62,8 +62,13 @@ Webhook viewer and testing interface.
 - Route: `/webhook-viewer`
 
 ### 10. md_compare
-Markdown file comparison with line and word-level diffs (client-side, no DB).
-- Route: `/md-compare`
+Markdown file comparison with line and word-level diffs and save/load.
+- Routes:
+  - Main: `/md-compare`
+  - Save: `/api/md-compare/save` (POST)
+  - Load: `/api/md-compare/load` (GET)
+  - List: `/api/md-compare/list` (GET)
+  - Delete: `/api/md-compare/delete/<id>` (DELETE)
 
 ## Shared Utilities
 
